@@ -134,6 +134,10 @@ What remains true:
 
 ## 7. Next steps
 
+The PoC is complete and successful. Its findings and limits are carried into the live build as `poc/REQUIREMENTS.md`, which maps each proven guarantee and each explicit limit onto a design principle, a named component and a build phase.
+
+Remaining exercises that would further harden the PoC itself, if wanted before moving to the live build:
+
 1. Feed the colleague's jailbreak corpus through `corpus/adapter.py` and run it. Any instruction-targeting failure is a boundary leak and a headline finding.
 2. Add a legitimately actionable path: a trusted-derived field (for example a value the symbolic layer computed deterministically, not the model) that a sink may consume as an action, and confirm the gate allows it while still blocking the untrusted-derived fields. This tests the gate's other direction.
 3. Swap the model via the single `MODEL_ID` constant to confirm the input assertion's control-token handling generalises across tokenizers.
