@@ -90,9 +90,21 @@ Useful flags:
 - `--limit N` runs the first N cases only (handy for a quick check).
 - `--model <id>` overrides the default model.
 - `--corpus <path>` points at a different corpus file.
+- `--temp <float>` sets the sampler temperature (0.0 is greedy; used to test that the guarantees hold beyond deterministic decoding).
+- `--sinks none|safe|unsafe|both` wires downstream sinks to test the provenance gate (see below).
 - `--json` also emits machine-readable results after the table.
 
 The first run downloads the model. Later runs load from the local cache.
+
+### Downstream sinks and the provenance gate
+
+By default nothing consumes the extraction, so it is inert with nothing attached. `--sinks` wires a mock downstream consumer to test whether the pipeline stops attacker-influenced content from reaching an actuator as an instruction.
+
+Every extraction field is `UNTRUSTED_DERIVED`, because the model produced it by reading untrusted data. A sink declares, per field, whether it consumes that field as inert data or as an action instruction. The gate fails the output assertion if any sink consumes an `UNTRUSTED_DERIVED` field as an action. It inspects the wiring, not the content.
+
+- `--sinks safe` wires an audit log that consumes every field only as inert data. It passes on all cases and drives no action effect.
+- `--sinks unsafe` wires a payment actuator deliberately mis-wired to treat the extracted summary as a payment instruction. The gate catches it on every case (including clean controls), because the wiring is unsafe by construction regardless of the payload. The actuator never fires: the gate blocks it first.
+- `--sinks both` wires both; the safe sink passes the gate, the unsafe one is caught.
 
 ---
 
@@ -148,6 +160,7 @@ The adapter accepts a JSON array or JSONL, reads the payload from the first reco
 - `symbolic.py` the deterministic symbolic layer. No model.
 - `neural.py` the MLX schema-constrained extractor. Receives only the typed record.
 - `harness.py` runs the corpus and checks both assertions.
+- `sinks.py` mock downstream sinks and the provenance gate.
 - `corpus/corpus.jsonl` the starter corpus.
 - `corpus/_build_starter.py` regenerates the starter corpus.
 - `corpus/adapter.py` maps an external jailbreak corpus to the schema.
@@ -159,6 +172,6 @@ The adapter accepts a JSON array or JSONL, reads the payload from the first reco
 
 The input assertion is mechanical, not a judgement, and it checks the prompt the model actually received at the token level. `neural.py` puts the trusted instruction in a system message and the untrusted payload alone in a user message, then builds the prompt as token ids: the trusted frame is tokenized once, the payload is tokenized in isolation with special tokens split, and the two are spliced. `harness.py` verifies, per field, that the frame token ids match an independent reconstruction from the trusted constants, that the payload region decodes to the quarantined payload and contains zero control tokens, and that the full prompt is exactly frame plus payload plus frame. There is no in-band delimiter for a payload to forge, and no payload byte can become a control token and forge a role boundary.
 
-The output assertion checks inertness by construction, not by scanning the extraction for directive-like text. Scanning is unsound: a faithful summary of untrusted data must be able to quote it, so text overlap cannot tell describing a directive from obeying one, and a text classifier at the output would itself be injectable. Instead the schema is declared with every field typed and marked non-action-capable, and the check confirms the extraction conforms to that schema, that no field is action-capable, and that passing the extraction through the (empty) registry of downstream sinks fires nothing. The content of any field is therefore irrelevant to whether an action occurred. Nothing acts on the extraction; it is inert typed data, which is the point.
+The output assertion checks inertness by construction, not by scanning the extraction for directive-like text. Scanning is unsound: a faithful summary of untrusted data must be able to quote it, so text overlap cannot tell describing a directive from obeying one, and a text classifier at the output would itself be injectable. Instead the schema is declared with every field typed and marked non-action-capable, and the check confirms the extraction conforms to that schema and that no field is action-capable. It then applies the provenance gate to every wired downstream sink (see the sinks section above): the assertion fails if any sink consumes an `UNTRUSTED_DERIVED` field as an action. With no sinks wired the extraction is inert with nothing attached. The content of any field is therefore irrelevant to whether an action occurred, because whether an action occurs is a property of the wiring, which the gate checks structurally.
 
 Output is valid by construction. Rather than asking the model for JSON and hoping, each field is produced by a bounded single-line generation and the JSON envelope is assembled in Python, so malformed output is impossible.

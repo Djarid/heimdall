@@ -73,6 +73,17 @@ SCHEMA = {
 SCHEMA_FIELDS = tuple(SCHEMA.keys())
 
 
+# Provenance of every extraction field. This is the load-bearing fact for the
+# downstream-sink experiment: every field is produced by the model reading
+# UNTRUSTED data, so every field is UNTRUSTED-derived. There is no
+# trusted-derived extraction field, because the model only ever saw untrusted
+# data. A downstream sink that consumes any of these as an actionable
+# instruction is therefore acting on attacker-influenceable content, which the
+# output assertion must reject.
+PROVENANCE_UNTRUSTED_DERIVED = "UNTRUSTED_DERIVED"
+FIELD_PROVENANCE = {field: PROVENANCE_UNTRUSTED_DERIVED for field in SCHEMA_FIELDS}
+
+
 # Per-field elicitation questions appended after the shared instruction+data
 # block. These are trusted, authored here, and identical for every case.
 _FIELD_PROMPTS = {
@@ -279,14 +290,21 @@ class NeuralExtractor:
             pieces.append(response.text)
         return "".join(pieces).strip(), built
 
-    def extract(self, typed_record: dict) -> tuple[dict, dict]:
+    def extract(self, typed_record: dict) -> tuple[dict, dict, dict]:
         """Run schema-constrained extraction on a typed record.
 
-        Returns a tuple of (extraction dict, prompts dict). ``prompts`` maps
-        each schema field to the structured prompt record actually sent to the
-        model (frame halves, payload ids, full prompt ids and decoded text).
-        The harness uses these to verify the input assertion against the true
-        prompt, not a reconstruction of only part of it.
+        Returns a tuple of (extraction, prompts, provenance).
+
+        ``prompts`` maps each schema field to the structured prompt record
+        actually sent to the model (frame halves, payload ids, full prompt ids
+        and decoded text), so the harness can verify the input assertion against
+        the true prompt.
+
+        ``provenance`` maps each extraction field to its trust origin. Every
+        field is UNTRUSTED_DERIVED, because the model produced it by reading
+        untrusted data. The downstream-sink experiment relies on this: a sink
+        that consumes any extraction field as an actionable instruction is
+        acting on attacker-influenceable content.
         """
         if typed_record.get("provenance") != "UNTRUSTED":
             # The neural layer only ever processes untrusted, quarantined data
@@ -309,7 +327,7 @@ class NeuralExtractor:
 
         extraction["entities"] = _parse_entities(raw_entities)
 
-        return extraction, prompts
+        return extraction, prompts, dict(FIELD_PROVENANCE)
 
 
 def _normalise_scalar(value: str) -> str:
@@ -342,8 +360,10 @@ if __name__ == "__main__":
     record = to_typed_record(raw, source=sys.argv[1])
 
     extractor = NeuralExtractor()
-    result, prompts = extractor.extract(record)
+    result, prompts, provenance = extractor.extract(record)
     print("=== EXACT PROMPT SENT (sender_extracted field) ===")
     print(prompts["sender_extracted"]["prompt_text"])
     print("=== EXTRACTION ===")
     print(json.dumps(result, indent=2, ensure_ascii=False))
+    print("=== FIELD PROVENANCE ===")
+    print(json.dumps(provenance, indent=2, ensure_ascii=False))

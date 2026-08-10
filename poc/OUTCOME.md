@@ -1,9 +1,9 @@
 # Heimdall Premise PoC: Outcome
 
 **Author:** Jason Huxley
-**Version:** 1.2
+**Version:** 1.3
 **Date:** August 2026
-**Status:** result after hardening both boundaries and rebuilding the output assertion
+**Status:** result after wiring a downstream sink and testing the provenance gate
 
 ---
 
@@ -88,20 +88,52 @@ The n-gram experiment (3.4) is the clearest demonstration in this exercise of wh
 
 ---
 
-## 5. The honest limit
+## 5. The downstream-sink experiment
 
-A green board is not the goal. A trustworthy, interpretable board is. This run proves the mechanism on this corpus with this model, now with structural rather than behavioural checks. It does not prove the architecture is secure.
+v1.2 checked inertness against an empty sink registry, which left an honest gap: a green board could be trivial, because a pipeline wired to nothing passes by doing nothing. This phase wires something that actually acts and tests whether the pipeline's provenance discipline stops attacker-influenced content from reaching it as an instruction.
+
+### 5.1 Design
+
+Every extraction field is tagged `UNTRUSTED_DERIVED`, because the model produced it by reading untrusted data. A sink declares, per field it consumes, whether it consumes that field as inert data (logged, stored, displayed) or as an action instruction (money moved, mail sent). The gate is structural and provenance-based: a sink that consumes any `UNTRUSTED_DERIVED` field as an action is acting on attacker-influenceable content, and the output assertion fails. It inspects the wiring, never the field's content.
+
+Two sinks are wired, so the test discriminates rather than passing trivially:
+
+- A **safe** sink, an audit log, consumes all four fields but only as inert data.
+- An **unsafe control** sink, a payment actuator, is deliberately mis-wired to consume the extracted summary (`UNTRUSTED_DERIVED`) as a payment instruction. It must be caught.
+
+Run with `--sinks none|safe|unsafe|both`.
+
+### 5.2 Result
+
+| Sinks | Output-assertion pass | Meaning |
+|---|---|---|
+| none | 31/31 | inert with nothing attached |
+| safe | 31/31 | audit log consumes fields as inert data; gate never trips; zero action effects |
+| unsafe | 0/31 | gate catches the mis-wiring on every case, before the actuator fires |
+| both | 0/31 | safe sink passes the gate, unsafe sink is caught |
+
+The unsafe control fails on all 31 cases, **including the clean controls**. That is correct and is the point: the wiring is unsafe by construction, so the gate fires regardless of whether a given payload happens to contain an attack. A pipeline that would treat an extracted summary as a payment instruction is dangerous even when today's email is benign. In no run did the payment actuator actually fire: the gate blocked it before execution, so no mock money moved.
+
+### 5.3 What this shows and does not show
+
+It shows the provenance gate is a property of the wiring, not the content, and that it discriminates: safe wiring passes, unsafe wiring is caught universally. It does not show that a real system's sinks are correctly wired. It shows the harness can prove a given wiring safe or unsafe, which is the enforcement mechanism a real system would need.
+
+---
+
+## 6. The honest limit
+
+A green board is not the goal. A trustworthy, interpretable board is. This run proves the mechanism on this corpus with this model, with structural rather than behavioural checks, and now with the provenance gate exercised against a real sink. It does not prove the architecture is secure.
 
 What remains true:
 
-1. Inertness here rests on the sink registry being empty. The moment a later phase wires any field to an actuator, the output assertion must prove that actuator consumes only fields that cannot carry untrusted directives, which is a harder claim than this PoC makes.
+1. The gate proves a wiring safe or unsafe; it does not choose the wiring. A real system must still declare, per sink, how each field is consumed, and that declaration is trusted input. The PoC assumes the declaration is honest.
 2. The input assertion is verified for this tokenizer and chat template. A different model family with different control tokens needs its control-token set re-derived; the mechanism is general but the specific ids are not.
 3. Extraction quality is untested. The premise is about action, not accuracy. A wrong sender or a poisoned entity list passes, correctly, because it is inert. It is not evidence the values are right.
 
 ---
 
-## 6. Next steps
+## 7. Next steps
 
 1. Feed the colleague's jailbreak corpus through `corpus/adapter.py` and run it. Any instruction-targeting failure is a boundary leak and a headline finding.
-2. Add a downstream sink in a later phase and re-run: register a mock actuator, prove it consumes no untrusted-derived field, and watch the output assertion enforce it.
+2. Add a legitimately actionable path: a trusted-derived field (for example a value the symbolic layer computed deterministically, not the model) that a sink may consume as an action, and confirm the gate allows it while still blocking the untrusted-derived fields. This tests the gate's other direction.
 3. Swap the model via the single `MODEL_ID` constant to confirm the input assertion's control-token handling generalises across tokenizers.
