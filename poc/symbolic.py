@@ -16,12 +16,35 @@ Output: a typed record (a dict) in which untrusted body content is quarantined
 
 from __future__ import annotations
 
+import re
+
 from email import message_from_string
 from email.message import Message
 from email.utils import parseaddr
 
 
 PROVENANCE_UNTRUSTED = "UNTRUSTED"
+
+
+# Chat-template control-token strings. If an untrusted payload contains these
+# verbatim, the tokenizer promotes them to real control tokens, which would let
+# the payload forge a role boundary (a break of the data/instruction boundary
+# one layer below the string delimiter). The neural layer already neutralises
+# this at encode time (split_special_tokens=True), but we also neutralise here
+# as defence in depth, so the quarantined payload cannot forge a boundary no
+# matter how it is later encoded. This is deterministic string handling, not an
+# interpretation of intent: origin still determines trust.
+_CONTROL_MARKER_RE = re.compile(r"<\|[^>]*?\|>")
+
+
+def neutralise_control_markers(text: str) -> str:
+    """Break any chat-template control-token strings in untrusted text.
+
+    ``<|im_start|>`` becomes ``<| im_start |>`` and so on. The change is
+    visible, reversible by eye and cannot itself be steered by the payload. It
+    only ever fires on the ``<|...|>`` shape, so ordinary prose is untouched.
+    """
+    return _CONTROL_MARKER_RE.sub(lambda m: m.group(0).replace("<|", "<| ").replace("|>", " |>"), text)
 
 
 def _extract_body(msg: Message) -> str:
@@ -62,8 +85,10 @@ def to_typed_record(raw_text: str, source: str) -> dict:
       1. Parse the raw message into structural parts with the standard-library
          ``email`` module only.
       2. Stamp everything derived from the raw message as UNTRUSTED.
-      3. Place the untrusted body verbatim in ``data_payload``. It is never
-         concatenated into an instruction, system prompt or task string.
+      3. Neutralise any chat-template control-token strings in the untrusted
+         content (defence in depth against tokenizer-level boundary forgery).
+      4. Place the untrusted body in ``data_payload``. It is never concatenated
+         into an instruction, system prompt or task string.
 
     The function is a pure function of its inputs: the same ``raw_text`` and
     ``source`` always produce the same record.
@@ -83,18 +108,28 @@ def to_typed_record(raw_text: str, source: str) -> dict:
     subject = (msg.get("Subject", "") or "").strip()
 
     body = _extract_body(msg)
+    body = body if body else raw_text
+
+    # Neutralise control-token strings everywhere the untrusted content flows.
+    sender = neutralise_control_markers(sender)
+    subject = neutralise_control_markers(subject)
+    payload = neutralise_control_markers(body)
+    neutralised = payload != body
 
     return {
         "provenance": PROVENANCE_UNTRUSTED,
         "source": source,
+        # Record that neutralisation happened, so the harness and a reviewer can
+        # see the payload was altered from verbatim and why.
+        "control_markers_neutralised": neutralised,
         "parsed_fields": {
             "sender": sender,
             "subject": subject,
         },
-        # The full body, verbatim, quarantined here as data. Never an
-        # instruction. If headers failed to parse (a plain-text case with no
-        # email structure), the whole raw text is still available as data.
-        "data_payload": body if body else raw_text,
+        # The full body, quarantined here as data with control markers broken.
+        # Never an instruction. If headers failed to parse (a plain-text case
+        # with no email structure), the whole raw text is still available here.
+        "data_payload": payload,
     }
 
 
