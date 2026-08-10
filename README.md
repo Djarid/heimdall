@@ -42,6 +42,9 @@ Read the [**Architecture**](HEIMDALL.md#architecture) overview, then the [**Comp
 ### ⚙️ I care about the operational trade-offs
 The [**Action-Critical Set Sizing**](HEIMDALL.md#action-critical-set-sizing--the-central-operational-discipline) section is the most important operational decision in the whole design — it determines whether the system is secure, usable, or neither. The [**Fenrir implementation notes**](HEIMDALL.md#fenrir--sandbox-agent) cover hardware and model choices (local, egress-restricted, dense model with speculative decoding).
 
+### 🧪 I want to see the separation actually proven
+A throwaway proof-of-concept tested the core premise (untrusted instructions embedded in data do not cause action) against an adversarial corpus with a real local model. Read [**poc/OUTCOME.md**](poc/OUTCOME.md) for the result and [**poc/SPEC.md**](poc/SPEC.md) for the build brief. The findings and limits are extracted into [**NEUROSYMBOLIC_FILTER_INVARIANTS.md**](NEUROSYMBOLIC_FILTER_INVARIANTS.md), which states each invariant the filter must hold, marks it PROVEN, DEMONSTRATED or NOT YET TESTED, and maps it onto a design principle, a component and a build phase. The ontology (classification coverage and soundness) is recorded there as the largest untested dependency.
+
 ### 📖 I keep hitting Norse names I don't recognise
 The [**GLOSSARY**](GLOSSARY.md) maps every name to its mythological origin and its architectural role. Heimdall, Bifröst, Fenrir, Nornir, Gjöll, Ørlög, and the rest are all there.
 

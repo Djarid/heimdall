@@ -134,7 +134,7 @@ What remains true:
 
 ## 7. Next steps
 
-The PoC is complete and successful. Its findings and limits are carried into the live build as `poc/REQUIREMENTS.md`, which maps each proven guarantee and each explicit limit onto a design principle, a named component and a build phase.
+The PoC is complete and successful. Its findings and limits are carried into the live build as `NEUROSYMBOLIC_FILTER_INVARIANTS.md` (repo root), which states each invariant the filter must hold, marks it PROVEN, DEMONSTRATED or NOT YET TESTED, and maps it onto a design principle, a named component and a build phase. The ontology (classification coverage, reasoner soundness and flow-to-sink action-critical status) is recorded there as the largest untested dependency.
 
 Remaining exercises that would further harden the PoC itself, if wanted before moving to the live build:
 
