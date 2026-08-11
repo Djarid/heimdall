@@ -45,6 +45,9 @@ The [**Action-Critical Set Sizing**](HEIMDALL.md#action-critical-set-sizing--the
 ### 🧪 I want to see the separation actually proven
 A throwaway proof-of-concept tested the core premise (untrusted instructions embedded in data do not cause action) against an adversarial corpus with a real local model. Read [**poc/OUTCOME.md**](poc/OUTCOME.md) for the result and [**poc/SPEC.md**](poc/SPEC.md) for the build brief. The findings and limits are extracted into [**NEUROSYMBOLIC_FILTER_INVARIANTS.md**](NEUROSYMBOLIC_FILTER_INVARIANTS.md), which states each invariant the filter must hold, marks it PROVEN, DEMONSTRATED or NOT YET TESTED, and maps it onto a design principle, a component and a build phase. The ontology (classification coverage and soundness) is recorded there as the largest untested dependency.
 
+### 🌳 I want to understand how the ontology gets built
+The neurosymbolic filter's guarantee is exactly as strong as its ontology's coverage, so how the ontology is built matters as much as the boundary itself. [**ONTOLOGY_CONSTRUCTION.md**](ONTOLOGY_CONSTRUCTION.md) is the construction methodology for Yggdrasil: the layer composition, the substrate recommendation, the Phase-1 seed, the marshalling contract, how coverage grows, and how the ontology is tested. Every choice in it is tracked in [**DECISIONS.md**](DECISIONS.md).
+
 ### 📖 I keep hitting Norse names I don't recognise
 The [**GLOSSARY**](GLOSSARY.md) maps every name to its mythological origin and its architectural role. Heimdall, Bifröst, Fenrir, Nornir, Gjöll, Ørlög, and the rest are all there.
 

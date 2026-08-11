@@ -153,6 +153,8 @@ Its failure mode is not injection reaching the control channel. It is misclassif
 3. **Reasoner soundness.** For a set of asserted facts, every derived fact must be entailed by the ontology's rules. A derived fact that does not follow, especially one that confers trust or in-scope status, fails the suite.
 4. **Flow-to-sink reachability.** Any value that can reach a consequential sink by any path, however many reversible hops intervene, must inherit action-critical status at the point it is written. The state-staging attack (HEIMDALL.md action-critical set sizing) is the mandatory adversarial case: a chain of individually-reversible writes that composes into a consequential action must be caught at the staging write, not missed.
 
+The methodology for building, growing and testing this ontology, including the substrate choice, the layer composition, the marshalling contract and these test obligations in full, is `ONTOLOGY_CONSTRUCTION.md`.
+
 ---
 
 ## 4. Out of scope for this filter
