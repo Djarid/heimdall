@@ -90,9 +90,21 @@ Before committing, run a spike with these pass criteria:
 
 If criterion 3 cannot be met soundly at acceptable cost, that is the signal to reconsider a Datalog engine (for example Soufflé) for the reasoning layer while keeping the property graph for state, and the spike report should say so.
 
-### 3.4 Upper ontology and substrate fit
+### 3.4 Upper ontology and the question of breadth
 
-The upper layer's source (the `SUMO / BFO` choice in HEIMDALL.md) interacts with the substrate, so it is noted here and tracked as a decision. The two candidates differ by roughly three orders of magnitude in size. BFO is about 35 classes: a minimal, rigorous spine designed to be extended, which fits Heimdall's small-and-auditable seed bias and the attach tests in 4.2. SUMO with its domain ontologies is about 25,000 terms and 80,000 axioms: broad and richly axiomatised, with ready-made communications and finance domain ontologies, but heavy to load, prune and reason over deterministically. The lean is toward BFO for the Phase 1 seed, confirmed by a Phase 2 spike, choosing SUMO only if a domain needs its ready-made breadth. One substrate note in SUMO's favour if it is chosen: SUMO already publishes a Neo4j translation of both its upper level and its full ontology, which drops into a property-graph substrate without a triple-store conversion step. BFO would be loaded as a small hand-curated set of nodes and relations either way.
+The upper layer's source (the `SUMO / BFO` choice in HEIMDALL.md) interacts with the substrate, so it is decided here. The two candidates differ by roughly three orders of magnitude: BFO is about 35 classes, a minimal rigorous spine designed to be extended; SUMO with its domain ontologies is about 25,000 terms and 80,000 axioms, broad and richly axiomatised, with ready-made communications, finance, government, law and media domain ontologies.
+
+The decision hinges on breadth, and the naive reading is the wrong way round. With LLM agents reading open web and social-media content, the subject-matter surface is effectively unbounded, so more coverage sounds like exactly what is wanted, and SUMO's breadth sounds like an asset. It is not, for three reasons specific to this system.
+
+First, coverage that is not tested is not trusted. Under invariant 3.11 every classification rule is part of the trust boundary and must be validated against a ground-truth corpus. Adopting SUMO wholesale means either testing 25,000 terms' worth of classification behaviour to that standard, or carrying most of the ontology as unaudited surface. Untested breadth in a trust boundary is a liability, not an asset. BFO's 35 classes are auditable; the whole of SUMO is not.
+
+Second, the filter needs typed inertness, not semantic richness. Its job is to classify untrusted content into typed, provenance-stamped, mostly-inert assertions, not to reason deeply about the world. A web page about a political event needs to type as an untrusted document with extracted entities; it does not need SUMO's axioms about politics. SUMO's breadth is depth-of-meaning, which is largely orthogonal to what a taint-typing classifier uses.
+
+Third, coverage should grow demand-driven, not be front-loaded. The growth model (section 7) is that `UNCLASSIFIED` accumulates and coverage is extended where real traffic demands it. Loading all of SUMO front-loads coverage speculatively, most of which the actual traffic never exercises, while still owing the full test burden on all of it.
+
+So the answer to "why not use SUMO's breadth" is: not because breadth is unwanted, but because loaded breadth is untested trust-boundary surface, semantic richness the classifier does not use, and speculative coverage the growth model does not want. The decision is **BFO as the loaded spine**, confirmed by a Phase 2 spike.
+
+SUMO's breadth is kept as a reference library, not loaded. When coverage is extended for a newly-common `UNCLASSIFIED` pattern (section 7), SUMO's relevant domain ontology is a source to import and prune from rather than authoring types from nothing. That captures the value of the breadth (a head start on domain types) without its cost (untested surface, speculative loading). If it is ever used this way, note that SUMO already publishes a Neo4j translation, so importing a pruned subset into a property-graph substrate needs no triple-store conversion.
 
 ---
 
