@@ -51,6 +51,9 @@ The neurosymbolic filter's guarantee is exactly as strong as its ontology's cove
 ### 📖 I keep hitting Norse names I don't recognise
 The [**GLOSSARY**](GLOSSARY.md) maps every name to its mythological origin and its architectural role. Heimdall, Bifröst, Fenrir, Nornir, Gjöll, Ørlög, and the rest are all there.
 
+### ✍️ I'm writing or reviewing docs for this project
+The [**style guide**](reference/style_guide.md) governs all prose here: British English, no Oxford comma, no em dashes, and the AI-writing tells to avoid. Every document in this repository is written to it.
+
 ---
 
 ## The core ideas in one screen
