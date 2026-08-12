@@ -63,14 +63,16 @@ This log records every material decision taken across the premise PoC and the de
 | D20 | Ontology holds action/constraint **vocabulary** only; per-agent **binding** lives in Himinbjörg's control surface | SETTLED | Correction to an earlier error: action and constraint spaces are agent-specific in binding, shared in vocabulary (HEIMDALL.md principle 5) | `ONTOLOGY_CONSTRUCTION.md` section 2.3 |
 | D21 | Two orthogonal axes of variation: by-domain (in Yggdrasil), by-agent (in the control surface) | SETTLED | An agent spans domains; a domain is touched by many agents; coupling them fragments the design | section 2.1 |
 | D22 | Domains are subject-matter, not medium; parser sets taint class, domain layer sets type | SETTLED | Medium-blindness requires the same fact to type identically regardless of source medium | section 2.4 |
+| D22a | Threat surface is any external content an LLM agent reads (web, social media, documents, tool output), not email; email is only the Phase 1 staging medium | SETTLED | Correction: the PoC used email but web and social content are the larger, less-structured attack surface; framing the ontology around email biases the design | section 2.4, section 4 |
 | D23 | Domain layers extend the shared upper ontology; never redefine general types | SETTLED | Cross-domain facts relate through common ancestors; prevents dialect drift | section 2.2 |
 | D24 | Action-critical status is agent-scoped, computed against a given agent's reachable sink set | SETTLED | Follows from D20; a value can be action-critical for one agent and inert for another | section 2.5, section 8.4 |
 | D25 | Substrate: property graph (Memgraph) for store and reasoning | SPIKE-GATED | Flow-to-sink reachability favours write-time incremental labels over authorisation-time SPARQL path queries | section 3; spike criteria in 3.3; Phase 2 |
 | D26 | Coverage growth: hand-authored now, Odin-proposed later | SETTLED | Sound and auditable early; automated scaling later, gated | section 7 |
 | D27 | Odin's proposal path is provenance-gated: proposals are untrusted until human ratification, never auto-apply | SETTLED | Odin's proposals derive from tainted content; the ontology is the classifier; ungated this reintroduces the injectable-classifier problem one level up | section 7.2 |
 | D28 | Marshalling: grammar derived from ontology types; interpretive tasks become single opaque `INTERPRETIVE_SUMMARY`; no second LLM pass | SETTLED | A second model reading the first's output reopens the injection surface | section 5 |
-| D29 | Phase-1 ontology built to pass an attach test: a second domain attaches without editing the first or the spine | SETTLED | If attaching a second domain forces a change to the first, the layering is wrong | section 4.2 |
+| D29 | Phase-1 ontology built to pass two attach tests: a second medium feeds existing types, and a second subject-matter domain attaches without editing the first or the spine | SETTLED | If either extension forces a change to what exists, the layering is wrong; the medium attach test is the one most easily forgotten because email arrives first | section 4.2 |
 | D30 | Flow-to-sink tests are agent-scoped and cross-domain; state-staging across a domain boundary is mandatory | SETTLED | Reachability is global across domains and parameterised by agent permission | section 8.4 |
+| D38 | Upper ontology: BFO leaning, choice tracked and confirmed by a Phase 2 spike | SPIKE-GATED | BFO is ~35 classes, a minimal rigorous spine that fits the small-auditable-seed bias and the attach tests; SUMO is ~25,000 terms / ~80,000 axioms, broad but heavy, and ships a Neo4j translation that suits the property-graph substrate. Choose BFO unless a domain needs SUMO's ready-made breadth | `ONTOLOGY_CONSTRUCTION.md` section 4.1; Phase 2 |
 
 ---
 
@@ -91,10 +93,11 @@ This log records every material decision taken across the premise PoC and the de
 
 Recorded so the design can be audited against itself. Re-run these when a decision changes.
 
-1. **No SETTLED conflict.** D20 (vocabulary in ontology, binding in control surface) and D24 (agent-scoped action-critical) are mutually consistent: agent scoping is the reason binding is not in the ontology. No conflict found.
+1. **No SETTLED conflict.** D20 (vocabulary in ontology, binding in control surface) and D24 (agent-scoped action-critical) are mutually consistent: agent scoping is the reason binding is not in the ontology. D22 (subject-matter not medium) and D22a (threat surface is all external content, not email) reinforce each other: both say the medium is not the type. No conflict found.
 2. **Every acceptance obligation has an owner.** The four obligations in invariant 3.11 map to D25/D32 (substrate and retraction), D26/D27 (growth), D28 (marshalling) and D30 (flow-to-sink testing), all with owning phases in `ONTOLOGY_CONSTRUCTION.md` section 9. No orphan obligation.
-3. **Every NOT YET TESTED invariant has a construction path.** Invariants 3.6 (action-critical half), 3.9 (coverage bound) and 3.11 trace to D20 to D30 and to the phase mapping. No untested invariant lacks a build route.
-4. **Every DEFERRED and OPEN item has a trigger.** D31 to D36 each record a trigger or owning phase. None is deferred without a condition that forces it.
+3. **Every NOT YET TESTED invariant has a construction path.** Invariants 3.6 (action-critical half), 3.9 (coverage bound) and 3.11 trace to D20 to D30, D38 and the phase mapping. No untested invariant lacks a build route.
+4. **Every DEFERRED and OPEN item has a trigger.** D31 to D36 each record a trigger or owning phase, and the SPIKE-GATED items D25 and D38 have Phase 2 spikes. None is deferred without a condition that forces it.
 5. **The PoC decisions carry into invariants.** D02 to D13 each map to an invariant (3.1 to 3.10). No proven PoC property is dropped.
+6. **Threat surface is not narrowed by the staging choice.** D22a records that starting with email (a staging decision) does not narrow the threat model to email; D29's medium attach test enforces that web and social media attach as media feeding existing types, so the ontology cannot silently become email-shaped. Checked against `ONTOLOGY_CONSTRUCTION.md` sections 2.4 and 4.
 
 **Known residual risk this log makes explicit:** the strongest live guarantee (structural separation, D02 to D09) is fully proven, but the guarantee's *extent* depends on ontology coverage (D25 to D30), which is NOT YET TESTED and gated on Phase 2/3 work. The design is sound in mechanism and unproven in coverage. That is the honest state.
