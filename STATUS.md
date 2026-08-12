@@ -24,8 +24,8 @@ architecture and `README.md` for the orientation paths.
 
 ## 2. Where we are now
 
-**The premise is proven; the coverage is untested.** That one sentence is the
-state of the project.
+**The premise is proven; the substrate is ratified; the coverage is untested.**
+That is the state of the project.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -33,10 +33,17 @@ state of the project.
   unless a wiring is proven safe by provenance. Demonstrated on an adversarial
   corpus with a real local model, at decoding temperatures 0.0 and 0.7. See
   `poc/OUTCOME.md`.
-- **Not yet tested (the ontology).** The live guarantee is exactly as strong as
-  the ontology's coverage, and the ontology does not meaningfully exist yet. The
-  PoC used a flat four-field schema, not an ontology. This is the largest open
-  dependency. See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
+- **Ratified (the substrate).** The Phase 2 substrate spike settled D25 and D38:
+  a property graph maintains the flow-to-sink action-critical label incrementally,
+  with sound edge-deletion retraction (D32), without an authorisation-time
+  traversal. All four criteria of `ONTOLOGY_CONSTRUCTION.md` 3.3 pass, including
+  the mandatory cross-domain state-staging case. The spike is substrate-neutral,
+  so binding the proven algorithm to the live Memgraph store is the residual. See
+  `spike/substrate/OUTCOME.md`.
+- **Not yet tested (the ontology coverage).** The live guarantee is exactly as
+  strong as the ontology's coverage, and the ontology does not meaningfully exist
+  yet. The PoC used a flat four-field schema, not an ontology. This is the largest
+  open dependency. See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
 
 ---
 
@@ -49,10 +56,11 @@ state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 42 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 45 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
+| `spike/` | Throwaway ratification spikes; `substrate/` settled the D25/D38 substrate decision |
 | `ontology/` | The nascent Yggdrasil tree: BFO loaded, SUMO reference, layers stubbed |
 | `reference/style_guide.md` | The writing style guide all prose is written to |
 
@@ -67,6 +75,9 @@ then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, with
 - **PoC** (`poc/`): `symbolic.py`, `neural.py`, `harness.py`, `sinks.py`, a
   31-case corpus, an external-jailbreak adapter. Runs in a venv via `mlx-lm` on
   Apple silicon. All cases pass both assertions at temp 0.0 and 0.7.
+- **Substrate spike** (`spike/substrate/`): `reachability.py` and `harness.py`, a
+  substrate-neutral test of the flow-to-sink action-critical label. 23 checks, all
+  pass. Ratifies D25/D38 and resolves D32. Throwaway per 3.3, kept as evidence.
 - **Ontology scaffold** (`ontology/`): BFO 2020 fetched and loaded
   (`upper/bfo`, CC BY 4.0); SUMO fetched as unloaded GPL reference
   (`reference/sumo`); the authored layers (`spine`, `domain`, `media`, `rules`)
@@ -83,31 +94,35 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 
 | Item | Kind | Trigger / phase |
 |------|------|-----------------|
-| D25 substrate (Memgraph) | SPIKE-GATED | Phase 2 spike, criteria in `ONTOLOGY_CONSTRUCTION.md` 3.3 |
-| D38 upper ontology (BFO) | SPIKE-GATED | Phase 2 spike confirms load-and-extend |
 | D31 domain governance (curated vs federated) | DEFERRED | Forced by a second domain (Phase 4) |
-| D32 edge-deletion label retraction | OPEN (research) | Substrate spike pass criterion |
 | D33 constrained decomposition grammar | OPEN (research) | If opaque summaries prove too coarse |
 | D34 Huginn discriminating features | OPEN (research) | Needed for classification-correctness testing |
 | D35 Odin self-modification | OPEN (research) | Currently excluded |
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
+| D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring obligation: watch for large dense cycles in a future domain |
+
+D25, D32 and D38 were resolved by the substrate spike (now SETTLED). D43 and D44
+record the algorithm and its live default; D45 records the one carried caveat.
 
 ---
 
 ## 6. Recommended next step
 
-**Run the D25 / D38 substrate spike** (Phase 2). It is the highest-leverage next
-action because the substrate decision gates the entire ontology layer, and it
-carries the real technical risk: edge-deletion label retraction in the
-flow-to-sink reachability graph (D32). The spike is throwaway and time-boxed,
-with pass criteria already written in `ONTOLOGY_CONSTRUCTION.md` section 3.3:
-write-time label maintenance, authorisation-time read, edge-deletion retraction,
-and scale. The outcome ratifies or overturns D25, and the code is then binned.
+The substrate spike is done and D25/D38/D32 are settled, so the next step is to
+build on the ratified substrate. Two candidates, in leverage order:
 
-Other viable directions, lower leverage: author the Phase-1 communications seed
-domain on BFO; build the ontology test harness so coverage becomes measurable;
-or feed the external jailbreak corpus through `poc/corpus/adapter.py` (a PoC
-loose end).
+1. **Author the Phase 1 communications seed domain on BFO** (`ONTOLOGY_CONSTRUCTION.md`
+   section 4). This is now the critical path to making the coverage bound
+   (invariant 3.9) measurable for the first time. It also exercises the two attach
+   tests (D29): a second medium feeds existing types, a second domain attaches
+   without editing the first or the spine.
+2. **Bind the proven reachability algorithm to a live Memgraph store** and re-check
+   the four criteria against the real substrate (the spike's residual, now
+   low-risk). This needs Docker or a hosted Memgraph, neither installed yet.
+
+Lower leverage: build the ontology test harness so coverage becomes measurable; or
+feed the external jailbreak corpus through `poc/corpus/adapter.py` (a PoC loose
+end).
 
 ---
 
