@@ -18,6 +18,8 @@ The ontology framework takes the name **Yggdrasil**, reserved in the glossary fo
 
 Yggdrasil is not a component that acts. It is the type structure that two components consume. Nornir reasons over it. Mímisbrunnr stores typed nodes whose types come from it. Neither is the ontology itself.
 
+The tree lives on disk under `ontology/`, with each layer as a directory and its own README. The sources are already fetched: BFO 2020 (loaded, CC BY 4.0) under `ontology/upper/bfo`, and SUMO (reference only, GPL, never loaded) under `ontology/reference/sumo`. See `ontology/README.md` for the map and the loaded-versus-reference split, which is also the licence boundary (decisions D39 and D40).
+
 ---
 
 ## 2. What Yggdrasil holds, and what it does not
