@@ -30,6 +30,9 @@ This repository is a **specification and design document. There is no code yet.*
 
 Pick the path that fits why you're here.
 
+### 📍 I want to know where the project stands right now
+[**STATUS.md**](STATUS.md) is the "you are here" page: what is proven, what is open, and the recommended next step. Start there if you are picking the work up cold.
+
 ### 🧭 I just want the gist
 You've basically had it above. For the one-page version of the argument, read the [**Problem Statement**](HEIMDALL.md#problem-statement) and the [**Design Principles**](HEIMDALL.md#design-principles) in the spec. The [**architecture diagram**](heimdall_architecture.png) shows how the pieces fit.
 
