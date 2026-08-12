@@ -49,8 +49,9 @@ state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 40 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 42 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
+| `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
 | `ontology/` | The nascent Yggdrasil tree: BFO loaded, SUMO reference, layers stubbed |
 | `reference/style_guide.md` | The writing style guide all prose is written to |
@@ -71,7 +72,8 @@ then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, with
   (`reference/sumo`); the authored layers (`spine`, `domain`, `media`, `rules`)
   and the test suite (`tests`) are stubbed with intent-stating READMEs.
 - **The documentation spine**: invariants, ontology methodology, decision log,
-  status page, style guide, all committed.
+  status page, style guide, and `AGENTS.md` (the standing currency rule), all
+  committed.
 
 ---
 

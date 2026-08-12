@@ -6,6 +6,13 @@
 **Status:** living log of design and build decisions
 **Reads with:** `HEIMDALL.md`, `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, `ONTOLOGY_CONSTRUCTION.md`, `poc/OUTCOME.md`
 
+> **Maintenance (for any agent or author):** this log must be kept current. At
+> the end of any session that changes the design or build, add each new decision
+> with the next `D` identifier, its status, rationale and a realisation
+> reference or trigger, and re-run the consistency checks in section 6. A
+> decision that lives only in a chat is a decision that will be lost. See
+> `AGENTS.md`.
+
 ---
 
 ## 1. Purpose
@@ -53,6 +60,8 @@ This log records every material decision taken across the premise PoC and the de
 | D17 | Ontology framework named Yggdrasil, framed as Phase-1 seed only | SETTLED | The glossary reserves Yggdrasil for exactly this; the myth mirrors the role; marked future so no overclaim | `ONTOLOGY_CONSTRUCTION.md` |
 | D18 | Ontology construction methodology is its own root doc, referenced by invariant 3.11 | SETTLED | Invariants are the what; construction is the how; keep them separate | `ONTOLOGY_CONSTRUCTION.md`, invariant 3.11 |
 | D19 | This decision log exists and is maintained | SETTLED | Track choices for consistency and ownership | this file |
+| D41 | A root `STATUS.md` is the single cold-start entry point (state, what is proven/open, next step, read order) | SETTLED | The decisions were tracked but nothing stated current state and next step; a fresh session had to reconstruct it from git log and five docs | `STATUS.md` |
+| D42 | A root `AGENTS.md` carries the standing currency rule, auto-loaded by opencode; `STATUS.md` and `DECISIONS.md` headers restate it so the instruction travels with the files | SETTLED | The currency instruction previously lived only in `STATUS.md` section 7, which an agent reads only if it opens that file; `AGENTS.md` is auto-loaded every session | `AGENTS.md`; `DECISIONS.md` header; `STATUS.md` sections 6-7 |
 
 ---
 
@@ -102,5 +111,6 @@ Recorded so the design can be audited against itself. Re-run these when a decisi
 5. **The PoC decisions carry into invariants.** D02 to D13 each map to an invariant (3.1 to 3.10). No proven PoC property is dropped.
 6. **Threat surface is not narrowed by the staging choice.** D22a records that starting with email (a staging decision) does not narrow the threat model to email; D29's medium attach test enforces that web and social media attach as media feeding existing types, so the ontology cannot silently become email-shaped. Checked against `ONTOLOGY_CONSTRUCTION.md` sections 2.4 and 4.
 7. **Licence boundary coincides with the trust boundary.** D39 and D40: the loaded ontology (`ontology/upper`, `spine`, `domain`, `media`, `rules`) is BFO-derived and Heimdall-authored (CC BY 4.0 and CC-BY-SA-4.0, compatible); GPL SUMO is confined to `ontology/reference` and never loaded. The directory split enforces both the D38 reference-only rule and the licence separation at once. No GPL content in loaded layers.
+8. **Currency is enforced, not just requested.** D41 and D42: the cold-start entry point (`STATUS.md`) and the standing currency rule (`AGENTS.md`, auto-loaded, and restated in the `STATUS.md` and `DECISIONS.md` headers) mean a fresh session is told to read the state first and to keep this log and the status page current. The instruction no longer lives only in one file's final section.
 
 **Known residual risk this log makes explicit:** the strongest live guarantee (structural separation, D02 to D09) is fully proven, but the guarantee's *extent* depends on ontology coverage (D25 to D30), which is NOT YET TESTED and gated on Phase 2/3 work. The design is sound in mechanism and unproven in coverage. That is the honest state.
