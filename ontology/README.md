@@ -65,22 +65,27 @@ Fetched and present:
 - BFO 2020, loaded upper layer (`upper/bfo`)
 - SUMO core, MILO, communications and finance, reference only (`reference/sumo`)
 
-Stubbed, not yet authored:
+Authored (Phase 2), as a runnable property-graph-native package in `yggdrasil/`
+with the reasoner in `nornir/`:
 
-- The Heimdall-authored spine (`spine/action`, `spine/constraint`, `spine/trust`)
-- The communications seed domain (`domain/communications`)
-- Media taint-class bindings (`media`)
-- Nornir's rules (`rules`)
-- The test suite and corpora (`tests`)
+- The Heimdall-authored spine (`yggdrasil/spine/{trust,action,constraint}.py`)
+- The communications seed domain (`yggdrasil/domain/communications.py`)
+- The UNCLASSIFIED fail-safe (`yggdrasil/unclassified.py`)
+- Media taint-class bindings (`yggdrasil/media.py`)
+- The dormant per-agent control surface (`yggdrasil/control_surface.py`, D20)
+- Nornir's four rule kinds and engine (`nornir/`)
+- The test suite and ground-truth corpus (`tests/`), passing obligations 8.1-8.4
 
-These are Phase 2 build work, scoped in `ONTOLOGY_CONSTRUCTION.md` section 9. The
-substrate they load into (property graph, Memgraph leaning) is decision D25,
-spike-gated for Phase 2.
+The layer directories (`spine`, `domain`, `media`, `rules`, `tests`) hold each
+layer's intent and map; the `yggdrasil` and `nornir` packages hold the loaded
+nodes, relations and rules. The substrate they map onto is a property graph
+(D25, ratified by the spike); binding to a live Memgraph store is the residual.
+See `ontology/OUTCOME.md`.
 
 ## Format note
 
 BFO ships as OWL (RDF/XML and Turtle). SUMO ships as SUO-KIF. The
-Heimdall-authored layers are not yet committed to a serialisation, because that
-follows the substrate spike (D25): if the store is a property graph, the loaded
-layers are authored as graph nodes and relations, not as OWL. The stubs here are
-format-neutral placeholders until that spike settles.
+Heimdall-authored layers are authored as graph nodes and relations, not OWL,
+because the substrate spike (D25) ratified a property graph. The `yggdrasil`
+package records each type as a node and each subtype or BFO anchor as a relation,
+substrate-neutral now and mapping onto Memgraph at binding time.

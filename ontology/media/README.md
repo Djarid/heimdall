@@ -25,5 +25,7 @@ adding a parser and taint class here that feed the existing domain types,
 without adding medium-specific types. If a new medium forces new types, the
 domain layer has leaked medium assumptions and must be corrected.
 
-Nascent: stub. Parser bindings are Bifröst build work; this directory records
-the taint-class-to-type discipline the parsers must honour.
+Authored (Phase 2): the taint-class-to-type bindings' runnable form is
+`yggdrasil/media.py` (media nodes, taint-class nodes, BINDS_TAINT edges). Parser
+bindings themselves remain Bifröst build work; this layer records the
+taint-class-to-type discipline the parsers must honour. See `ontology/OUTCOME.md`.

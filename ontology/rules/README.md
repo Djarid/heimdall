@@ -18,5 +18,8 @@ Four kinds:
   sinks to every value that can reach them, agent-scoped (decisions D24, D30).
   Authored once over the shared structure, not per domain.
 
-Nascent: stub. Authoring and the substrate that runs the rules are Phase 2/3
-(D25 substrate spike; section 9 phase mapping).
+Authored (Phase 2): the runnable rules and the deterministic engine that applies
+them live in the `nornir` package (`nornir/rules.py`, `nornir/engine.py`). The
+flow-to-sink reachability reproduces the algorithm the substrate spike proved
+(D43). This directory records the four rule kinds and the trust-boundary
+discipline; the package holds the code. See `ontology/OUTCOME.md`.

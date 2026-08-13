@@ -18,3 +18,7 @@ When authoring a new domain, SUMO's matching domain ontology in
 `../reference/sumo` may be read as a starting point, but types are re-expressed
 in Heimdall's own vocabulary, never copied (GPL; see the reference licence
 notice).
+
+Authored (Phase 2): the communications seed's runnable form is
+`yggdrasil/domain/communications.py`, promoting the four PoC fields into a typed
+hierarchy anchored to BFO. See `ontology/OUTCOME.md`.

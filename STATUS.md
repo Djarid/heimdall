@@ -24,8 +24,8 @@ architecture and `README.md` for the orientation paths.
 
 ## 2. Where we are now
 
-**The premise is proven; the substrate is ratified; the coverage is untested.**
-That is the state of the project.
+**The premise is proven; the substrate is ratified; the seed ontology is built
+and tested; full coverage is still untested.** That is the state of the project.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -40,10 +40,17 @@ That is the state of the project.
   the mandatory cross-domain state-staging case. The spike is substrate-neutral,
   so binding the proven algorithm to the live Memgraph store is the residual. See
   `spike/substrate/OUTCOME.md`.
-- **Not yet tested (the ontology coverage).** The live guarantee is exactly as
-  strong as the ontology's coverage, and the ontology does not meaningfully exist
-  yet. The PoC used a flat four-field schema, not an ontology. This is the largest
-  open dependency. See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
+- **Built and tested on a seed (the ontology).** The Phase 1 communications seed
+  domain is authored on BFO as a runnable property-graph-native package, with a
+  deterministic Nornir (classifier, reasoner, flow-to-sink) and a ground-truth
+  corpus. All four test obligations of invariant 3.11 pass: coverage is measured
+  (88.2% on the corpus), classification correctness has no downgrade or fail-safe
+  breach, the reasoner is sound, and cross-domain state-staging is caught
+  agent-scoped. See `ontology/OUTCOME.md`.
+- **Not yet tested (full coverage, live store).** The guarantee's extent depends
+  on coverage growing beyond the seed, and on binding the proven flow-to-sink
+  algorithm to a live Memgraph store. These are the remaining open dependencies.
+  See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
 
 ---
 
@@ -56,17 +63,18 @@ That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 45 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 49 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
 | `spike/` | Throwaway ratification spikes; `substrate/` settled the D25/D38 substrate decision |
-| `ontology/` | The nascent Yggdrasil tree: BFO loaded, SUMO reference, layers stubbed |
+| `ontology/` | Yggdrasil: BFO loaded, SUMO reference; the seed ontology authored as the `yggdrasil` package, the reasoner as `nornir`, tests passing (`ontology/OUTCOME.md`) |
 | `reference/style_guide.md` | The writing style guide all prose is written to |
 
 Read order for a cold start: this page, then `poc/OUTCOME.md`,
-then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, with
-`DECISIONS.md` as the running record of why each choice was made.
+then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, then
+the two Phase 2 outcomes (`spike/substrate/OUTCOME.md`, `ontology/OUTCOME.md`),
+with `DECISIONS.md` as the running record of why each choice was made.
 
 ---
 
@@ -78,10 +86,13 @@ then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, with
 - **Substrate spike** (`spike/substrate/`): `reachability.py` and `harness.py`, a
   substrate-neutral test of the flow-to-sink action-critical label. 23 checks, all
   pass. Ratifies D25/D38 and resolves D32. Throwaway per 3.3, kept as evidence.
-- **Ontology scaffold** (`ontology/`): BFO 2020 fetched and loaded
-  (`upper/bfo`, CC BY 4.0); SUMO fetched as unloaded GPL reference
-  (`reference/sumo`); the authored layers (`spine`, `domain`, `media`, `rules`)
-  and the test suite (`tests`) are stubbed with intent-stating READMEs.
+- **Seed ontology and Nornir** (`ontology/yggdrasil/`, `ontology/nornir/`): the
+  Phase 1 communications domain on BFO as a runnable property-graph package (45
+  nodes), the deterministic classifier and reasoner (no model), and the test
+  harness (`ontology/tests/`) with a 17-case ground-truth corpus. All four
+  obligations of 3.11 pass; coverage measured at 88.2%. See `ontology/OUTCOME.md`.
+- **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
+  SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
   status page, style guide, and `AGENTS.md` (the standing currency rule), all
   committed.
@@ -101,28 +112,31 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring obligation: watch for large dense cycles in a future domain |
 
-D25, D32 and D38 were resolved by the substrate spike (now SETTLED). D43 and D44
-record the algorithm and its live default; D45 records the one carried caveat.
+D25, D32 and D38 were resolved by the substrate spike; D43 to D45 record the
+algorithm, its live default and the caveat. D46 to D49 record the seed ontology,
+Nornir, the conservative classification ruling and the test-corpus provenance.
 
 ---
 
 ## 6. Recommended next step
 
-The substrate spike is done and D25/D38/D32 are settled, so the next step is to
-build on the ratified substrate. Two candidates, in leverage order:
+The substrate is ratified and the seed ontology is built and passing its tests.
+Next steps, in leverage order:
 
-1. **Author the Phase 1 communications seed domain on BFO** (`ONTOLOGY_CONSTRUCTION.md`
-   section 4). This is now the critical path to making the coverage bound
-   (invariant 3.9) measurable for the first time. It also exercises the two attach
-   tests (D29): a second medium feeds existing types, a second domain attaches
-   without editing the first or the spine.
+1. **Grow coverage beyond the seed.** Coverage is 88.2% on a 17-case corpus; that
+   is a start, not a claim. Extend the ground-truth corpus and the classification
+   rules where real traffic (or new adversarial cases) demand it, hand-authored and
+   human-curated (D26). This raises the measured guarantee (invariant 3.9) and
+   sharpens the classification-correctness corpus that D34 (honest vs
+   injection-induced error) needs.
 2. **Bind the proven reachability algorithm to a live Memgraph store** and re-check
-   the four criteria against the real substrate (the spike's residual, now
-   low-risk). This needs Docker or a hosted Memgraph, neither installed yet.
+   the four spike criteria against the real substrate (the spike's residual, now
+   low-risk). Needs Docker or a hosted Memgraph, neither installed yet.
+3. **Attach a second domain** (scheduling or finance) to exercise the domain attach
+   test (D29) for real and force the domain-governance decision (D31).
 
-Lower leverage: build the ontology test harness so coverage becomes measurable; or
-feed the external jailbreak corpus through `poc/corpus/adapter.py` (a PoC loose
-end).
+The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
+is not currently available.
 
 ---
 

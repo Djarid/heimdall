@@ -13,5 +13,8 @@ the per-agent binding lives in Himinbjörg's control surface (decision D20).
 - `trust/` the trust lattice: TAINTED, VOUCHED, TRUSTED, CANONICAL, and the
   promotion relations between them.
 
-Nascent: these are stubs. Authoring is Phase 2 work
-(`ONTOLOGY_CONSTRUCTION.md` sections 4.1, 6, 9).
+Authored (Phase 2). The runnable form lives in the `yggdrasil` package:
+`yggdrasil/spine/trust.py`, `yggdrasil/spine/action.py`,
+`yggdrasil/spine/constraint.py`. These directories hold the layer's intent and
+map; the package holds the loaded nodes and relations, authored as a property
+graph per D25. See `ontology/OUTCOME.md`.

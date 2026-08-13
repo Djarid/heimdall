@@ -22,5 +22,7 @@ coverage. Building the ontology and testing it are the same activity.
 classification-correctness corpus is new: the PoC injection corpus has no
 ground-truth type labels, so it cannot serve here (section 8.2).
 
-Nascent: stub. This is Phase 2/3 work and cannot run before the ontology and
-substrate exist.
+Authored (Phase 2): `harness.py` runs all four obligations against the seed and
+the ground-truth corpus in `corpora/communications_ground_truth.json`. Run it
+with `poc/.venv/bin/python -m ontology.tests.harness` from the repo root. The
+first coverage figure and correctness result are in `ontology/OUTCOME.md`.
