@@ -121,9 +121,14 @@ def register(onto: Ontology) -> None:
     )
 
     # Subtypes of requested_action. The classification-correctness distinctions.
-    # informational_statement: the message asks nothing consequential (a newsletter,
-    # an FYI). The safe default a laundering attack tries to force onto a real
-    # request.
+    # informational_statement: the message is POSITIVELY informational (it reports,
+    # announces or describes) AND carries no imperative. Inertness must be EARNED by a
+    # positive informational signal, not granted by default: an eager catch-all that
+    # types any unrecognised message as informational fails open, silently sending an
+    # evasively-phrased request (gift-card fraud, "our banking has changed") to an
+    # inert type so it skips Gjoll. See comms:unrecognised_request for the fail-closed
+    # default. This split closes that gap without a blacklist: we do not enumerate bad
+    # phrasings, we require a good (informational) one to earn the inert label.
     _domain_type(
         "comms:informational_statement",
         "informational statement",
@@ -131,7 +136,26 @@ def register(onto: Ontology) -> None:
         parent="comms:requested_action",
         onto=onto,
         risk="low",
-        description="the content is informational and asks nothing consequential",
+        description="the content is positively informational (reports, announces, "
+        "describes) and carries no imperative; the only inert communications type",
+    )
+    # unrecognised_request: a communication that is NOT positively informational and
+    # matched no known high-risk type. This is the fail-closed default: rather than
+    # assume an unclassified message is harmless, route it to human review. It is not
+    # inert and not a known high-risk type; it is "we could not confirm this is safe,
+    # so a human looks". This is what makes the classifier fail closed against novel
+    # phrasings without chasing them with keywords (invariant 3.5: you cannot secure a
+    # boundary by enumerating malicious content).
+    _domain_type(
+        "comms:unrecognised_request",
+        "unrecognised request",
+        anchor=None,
+        parent="comms:requested_action",
+        onto=onto,
+        risk="review",
+        route="human_review",
+        description="a communication carrying an unclassified imperative or request; "
+        "not confirmed informational, so routed to review rather than assumed inert",
     )
     # payment_request: the content asks for money to move. High-risk: the value it
     # carries (an amount, an account) is exactly what must be action-critical if it

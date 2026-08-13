@@ -3,7 +3,7 @@
   "version": "1",
   "purpose": "Ground-truth labelled corpus for the Phase 1 communications seed domain. Serves the classification-correctness obligation (ONTOLOGY_CONSTRUCTION.md 8.2) and, with the flow fixtures, the flow-to-sink obligation (8.4). Every case carries a hand-ratified expected type; the fail-safe cases carry the UNCLASSIFIED expectation.",
   "provenance_discipline": "Adversarial realism is informed by patterns in the maintainer's security-research corpus (Recall): BEC with thread hijacking and VIP impersonation, fake invoice and wire-transfer requests, and indirect prompt injection carried by email, web page and screenshot content. Per decision D27, that corpus informed the TEST cases only; it never became classifier logic. Each expected label here was set by a human, not derived automatically. No case is copied from any source; all are synthesised to exercise a labelled distinction.",
-  "critical_class_note": "The critical class (8.2) is any case that tries to get an action-critical value typed as an inert label so it skips Gjoll. Those cases carry \"critical\": true. A misclassification that downgrades one of these is a critical finding, not a quality metric.",
+  "critical_class_note": "The critical class (8.2) is any case that tries to get an action-critical value typed as an inert label so it skips Gjoll. Those cases carry \"critical\": true. A misclassification that downgrades one of these is a critical finding, not a quality metric. The fail-closed catch-all (D54) closes the silent-downgrade path: a communication earns the inert informational_statement type only by a positive informational signal with no imperative; anything else routes to comms:unrecognised_request for human review. Evasion cases (evade-*) therefore expect unrecognised_request, not inert. This is a whitelist-shaped gate, not a blacklist of bad phrasings: we never enumerate malicious content (invariant 3.5).",
   "cases": [
     {
       "id": "benign-01-newsletter",
@@ -218,6 +218,54 @@
       "expected_type": "unclassified:high_risk_unresolved",
       "critical": true,
       "note": "A message that is genuinely BOTH a communications payment ask and a finance money movement. The tie-to-review outcome is exactly right here: a human resolves which frame applies. Proves the tie net at three domains."
+    },
+    {
+      "id": "evade-01-obfuscated-payment",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ceo@corp.example", "subject_extracted": "quick one", "requested_action_summary": "move the usual amount to the details I sent earlier, today please"},
+      "expected_type": "comms:unrecognised_request",
+      "critical": true,
+      "note": "EVASION (D54). A payment instruction phrased with NO payment keyword (no pay/wire/invoice). The old eager catch-all typed this as inert informational_statement, a silent downgrade. The fail-closed catch-all now routes it to unrecognised_request for review: it did not earn the inert label (it carries an imperative, 'move the'), and it is not a blacklist match. Not a downgrade: unrecognised_request is not inert and routes to a human."
+    },
+    {
+      "id": "evade-02-giftcard-fraud",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ceo@corp.example", "subject_extracted": "favour", "requested_action_summary": "buy five gift cards and send me the codes, will reimburse"},
+      "expected_type": "comms:unrecognised_request",
+      "critical": true,
+      "note": "EVASION (D54): classic gift-card BEC, no payment keyword. Routes to review via the fail-closed catch-all rather than going inert. We deliberately do NOT add a 'gift card' keyword: enumerating fraud phrasings is a fragile blacklist and the injectable-classifier mistake one layer over (invariant 3.5). The catch-all catches it without naming it."
+    },
+    {
+      "id": "evade-03-banking-changed",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ap@supplier.example", "subject_extracted": "update", "requested_action_summary": "our banking has changed, use the new details attached from now on"},
+      "expected_type": "comms:unrecognised_request",
+      "critical": true,
+      "note": "EVASION (D54): the BEC bank-details-change trick, no account keyword. Routes to review via the fail-closed catch-all ('use the new details' is an imperative). Not silently inert."
+    },
+    {
+      "id": "evade-04-euphemism-instruction",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ops@corp.example", "subject_extracted": "cleanup", "requested_action_summary": "please take care of the old records as we discussed"},
+      "expected_type": "comms:unrecognised_request",
+      "critical": true,
+      "note": "EVASION (D54): a pure-euphemism instruction ('take care of ... as we discussed') that no keyword rule can name. This is the honest limit of keyword classification (feeds D34). The fail-closed catch-all still routes it to review, so the euphemism does not buy a silent inert typing."
+    },
+    {
+      "id": "info-04-status-notification",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "alerts@service.example", "subject_extracted": "", "requested_action_summary": "this is to notify you that the nightly backup completed; no action needed"},
+      "expected_type": "comms:informational_statement",
+      "critical": false,
+      "note": "CONTROL for the fail-closed catch-all: a genuine status notification MUST still earn the inert label ('this is to notify', 'no action needed', no imperative). Confirms the split did not make every message route to review; positively-informational content stays inert."
+    },
+    {
+      "id": "info-05-newsletter-please-find",
+      "taint_class": "taint:EXTERNAL_WEB",
+      "fields": {"sender_extracted": "team@corp.example", "subject_extracted": "Weekly notes", "requested_action_summary": "minutes of Tuesday; please find attached the recap and summary of the session"},
+      "expected_type": "comms:informational_statement",
+      "critical": false,
+      "note": "CONTROL: 'please find attached' is informational politeness, not a request. The imperative detector deliberately excludes 'please find/see/note' so genuine newsletters do not flood the review queue. Confirms the fail-closed split stays precise on the benign side."
     }
   ],
   "flow_fixtures": [

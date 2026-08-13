@@ -52,9 +52,23 @@ from .assertions import ClassifiedAssertion, MarshalledAssertion
 
 class RiskTier:
     """Risk tiers, higher number is higher risk. A higher tier always wins the
-    classification contest, so nothing is masked down to inert. INERT is the
-    lowest-risk covered type (a benign communication, a calendar entry)."""
+    classification contest, so nothing is masked down to inert.
 
+    FALLBACK is the lowest tier: the fail-closed default (`comms:unrecognised_request`)
+    that fires only when NO positive rule of any domain matched. It sits BELOW inert
+    so that a positive inert classification from any domain (a calendar entry, a
+    financial statement, a genuine informational statement) wins over "nothing
+    matched, so review". This is subtle but important: unrecognised_request is not
+    competing on content merit, it is the last resort, so it must lose to any positive
+    match. It still routes to human review, so an evasive request that matches no
+    positive rule lands in review rather than being assumed harmless.
+
+    INERT is a positively-classified low-risk type (an informational statement that
+    earned it, a calendar entry, a financial statement). HIGH is a known
+    consequential type. There is no REVIEW tier between them: a communication either
+    earns a positive type or falls to the FALLBACK last resort."""
+
+    FALLBACK = -100
     INERT = 0
     HIGH = 100
 

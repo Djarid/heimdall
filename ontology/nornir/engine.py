@@ -83,6 +83,14 @@ class Nornir:
                 tie_candidates=outcome.tie_candidates,
             )
         if outcome.type_name is not None:
+            # Honour a type's declared route: a type may carry route="human_review"
+            # in the ontology (e.g. comms:unrecognised_request, the fail-closed
+            # default). Read it from the node rather than hardcoding, so a domain that
+            # adds a review-routed type does not need an engine change.
+            node = self.onto.nodes.get(outcome.type_name)
+            route = "normal"
+            if node is not None and node.attrs.get("route") == "human_review":
+                route = "human_review"
             return ClassifiedAssertion(
                 assertion_id=a.assertion_id,
                 type_name=outcome.type_name,
@@ -92,6 +100,7 @@ class Nornir:
                 trust_level="trust:TAINTED",
                 taint_class=a.taint_class,
                 fields=dict(a.fields),
+                route=route,
                 matched_rule=outcome.matched_rule,
             )
         # No rule matched: the fail-safe. Never a guess, never trusted or actionable.
