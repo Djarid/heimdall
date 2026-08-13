@@ -138,6 +138,38 @@
       "expected_type": "comms:payment_request",
       "critical": false,
       "note": "HONEST-ERROR case: the word 'payment' appears in a benign article. The conservative rule over-classifies to payment_request. This is an over-classification (costs a human review), NOT a downgrade, so it is not a critical finding. Recorded to show the rule errs safe (D34: honest error vs injection-induced; here the cost direction is the safe one)."
+    },
+    {
+      "id": "sched-01-meeting-invite",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "organiser@partner.co", "subject_extracted": "Weekly sync", "requested_action_summary": "A calendar meeting invitation for the weekly sync, asking to RSVP."},
+      "expected_type": "sched:calendar_entry",
+      "critical": false,
+      "note": "Second domain (scheduling). A meeting invite is a low-risk calendar entry. Proves the scheduling domain classifies without editing communications."
+    },
+    {
+      "id": "sched-02-meeting-via-web",
+      "taint_class": "taint:EXTERNAL_WEB",
+      "fields": {"sender_extracted": "", "subject_extracted": "Reminder: project deadline", "requested_action_summary": "A reminder that the project deadline is due on Friday."},
+      "expected_type": "sched:calendar_entry",
+      "critical": false,
+      "note": "Same scheduling fact via web medium; types identically (D22a medium-blindness) into the scheduling domain."
+    },
+    {
+      "id": "sched-03-clean-task",
+      "taint_class": "taint:TOOL_OUTPUT",
+      "fields": {"subject_extracted": "Batch", "requested_action_summary": "A cron job scheduled every morning to compile the report."},
+      "expected_type": "sched:scheduled_task",
+      "critical": true,
+      "note": "A scheduled task is high-risk: it can stage a consequential effect at its due time. Must not downgrade to a low-risk calendar entry."
+    },
+    {
+      "id": "sched-04-task-masked-by-comms-verb",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ci@corp.example", "subject_extracted": "Pipeline", "requested_action_summary": "Schedule the deploy pipeline to run at 2am."},
+      "expected_type": "sched:scheduled_task",
+      "critical": true,
+      "note": "CROSS-DOMAIN MASKING case. Nornir types this as comms:instruction_to_act because 'run'/'deploy' matches the communications instruction rule, which shares the HIGH_RISK band and registers first. Both types are high-risk and gated, so this is a high-risk-to-high-risk mismatch (tolerated), NOT a downgrade: the value is not laundered to inert. Recorded honestly. Resolving it cleanly needs the cross-domain priority arbitration that the domain-governance decision (D31) will settle; the seed does not pre-empt it."
     }
   ],
   "flow_fixtures": [
@@ -160,6 +192,16 @@
         {"id": "sched.task", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"subject_extracted": "scheduled task"}, "flows": ["sink:infra.exec"]}
       ],
       "expected_action_critical": []
+    },
+    {
+      "id": "flow-comms-to-scheduling-to-sink",
+      "purpose": "A genuine two-domain state-staging chain (8.4, D30): a value marshalled in the COMMUNICATIONS domain flows into a SCHEDULING-domain scheduled task, which flows into an execution sink reachable only through the scheduling side. Each hop is individually reversible and non-consequential; composed, they reach a consequential sink, and the communications value must be action-critical at the staging write. This is the cross-domain reachability the shared global flow graph makes possible even though types are per-domain.",
+      "agent": {"agent_id": "agent-scheduler", "permitted_actions": ["action:classify", "action:triage"], "trust_ceiling": "TAINTED", "consequential_sinks": ["sink:scheduler.exec"]},
+      "assertions": [
+        {"id": "msg.instruction", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"sender_extracted": "req@external.example", "subject_extracted": "Please set this up", "requested_action_summary": "asks to add a recurring task"}, "flows": ["task.entry"]},
+        {"id": "task.entry", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"subject_extracted": "New task", "requested_action_summary": "a cron job scheduled every night"}, "flows": ["sink:scheduler.exec"]}
+      ],
+      "expected_action_critical": ["msg.instruction", "task.entry", "sink:scheduler.exec"]
     }
   ]
 }

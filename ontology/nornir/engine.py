@@ -23,12 +23,13 @@ from ..yggdrasil.core import Ontology
 from ..yggdrasil.control_surface import AgentContext, resolve
 from .assertions import ClassifiedAssertion, MarshalledAssertion
 from .rules import (
-    CLASSIFICATION_RULES,
     DERIVATION_RULES,
     Violation,
     action_critical_set,
     check_constraints,
+    classification_rules,
 )
+from . import domain_rules
 from ..yggdrasil.unclassified import UNCLASSIFIED
 
 
@@ -56,9 +57,14 @@ class NornirResult:
 class Nornir:
     def __init__(self, ontology: Ontology) -> None:
         self.onto = ontology
+        # Load every domain's classification and derivation rules into the shared
+        # registries. Each domain registers its own; adding a domain is a new sibling
+        # module here, never an edit to another domain's rules (the D29 attach test
+        # for rules). Idempotent, so constructing Nornir twice does not duplicate.
+        domain_rules.register_all()
 
     def _classify_one(self, a: MarshalledAssertion) -> ClassifiedAssertion:
-        for rule in CLASSIFICATION_RULES:
+        for rule in classification_rules():
             if rule.test(a):
                 node = self.onto.nodes.get(rule.type_name)
                 return ClassifiedAssertion(

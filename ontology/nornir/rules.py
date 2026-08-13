@@ -48,9 +48,10 @@ class ClassificationRule:
     version: str = "1"
 
 
-def _text(a: MarshalledAssertion) -> str:
-    """The concatenated extracted text the rules match against, lower-cased. Reading
-    it is describing untrusted content, not obeying it."""
+def text_of(a: MarshalledAssertion) -> str:
+    """The concatenated extracted text a rule matches against, lower-cased. Reading
+    it is describing untrusted content, not obeying it. Exposed for domain rule
+    modules so every domain matches over the same field set consistently."""
     parts = []
     for key in ("subject_extracted", "requested_action_summary"):
         v = a.fields.get(key)
@@ -59,51 +60,36 @@ def _text(a: MarshalledAssertion) -> str:
     return " ".join(parts).lower()
 
 
-# Keyword sets for the high-risk requested-action subtypes. Deliberately broad: an
-# over-match costs a human review, an under-match risks a downgrade (a critical
-# finding), so the rules err toward the higher-risk type.
-_PAYMENT = re.compile(
-    r"\b(payment|invoice|wire|transfer|remit|pay|bank details|account number|"
-    r"iban|swift|sort code|settle|outstanding balance|purchase order)\b"
-)
-_INSTRUCTION = re.compile(
-    r"\b(run|execute|install|configure|change the|update the|forward|delete|"
-    r"disable|grant|approve|click|download|open the attachment|reset|deploy)\b"
-)
-_CREDENTIAL = re.compile(
-    r"\b(password|passphrase|credential|mfa|2fa|one-time code|otp|verification code|"
-    r"token|api key|access code|log ?in to|sign in to|authenticate)\b"
-)
+# The classification-rule registry. Domain rule modules append their rules here at
+# import time through `register_classification_rule`, in priority order. This is what
+# makes the domain attach test (D29) hold for rules as well as for types: a new domain
+# contributes a sibling rule module that registers its rules; it never edits another
+# domain's rules or a shared central list. Rules are tried in registration order and
+# the first match wins, so higher-risk and more specific rules register first.
+#
+# Priority discipline across domains: each rule carries an integer `priority` (lower
+# runs first). Domains choose priorities in documented bands so cross-domain ordering
+# is deliberate, not an accident of import order. See `nornir/priorities.py`.
+_CLASSIFICATION_REGISTRY: list[tuple[int, int, ClassificationRule]] = []
+_REG_SEQ = 0  # tie-breaker preserving registration order within a priority
 
 
-def _is_payment(a: MarshalledAssertion) -> bool:
-    return bool(_PAYMENT.search(_text(a)))
+def register_classification_rule(rule: ClassificationRule, priority: int) -> None:
+    """Register a domain classification rule at a given priority (lower runs first).
+    Called from a domain rule module's `register_rules()`. Idempotent per rule name:
+    re-registering the same name replaces the earlier entry, so a reload in a test
+    does not duplicate rules."""
+    global _REG_SEQ
+    _CLASSIFICATION_REGISTRY[:] = [
+        entry for entry in _CLASSIFICATION_REGISTRY if entry[2].name != rule.name
+    ]
+    _CLASSIFICATION_REGISTRY.append((priority, _REG_SEQ, rule))
+    _REG_SEQ += 1
 
 
-def _is_instruction(a: MarshalledAssertion) -> bool:
-    return bool(_INSTRUCTION.search(_text(a)))
-
-
-def _is_credential(a: MarshalledAssertion) -> bool:
-    return bool(_CREDENTIAL.search(_text(a)))
-
-
-def _is_communication(a: MarshalledAssertion) -> bool:
-    """Anything with a sender or subject is at least a communication. This is the
-    broad catch that keeps genuine messages inside the domain rather than falling to
-    the fail-safe; the fail-safe is for content that is not recognisably a
-    communication at all."""
-    return bool(a.fields.get("sender_extracted") or a.fields.get("subject_extracted"))
-
-
-# Ordered: high-risk subtypes first, then the informational default, then the bare
-# communication, then (implicitly) the fail-safe if nothing matches.
-CLASSIFICATION_RULES: tuple[ClassificationRule, ...] = (
-    ClassificationRule("payment_request", "comms:payment_request", _is_payment),
-    ClassificationRule("credential_request", "comms:credential_request", _is_credential),
-    ClassificationRule("instruction_to_act", "comms:instruction_to_act", _is_instruction),
-    ClassificationRule("informational_statement", "comms:informational_statement", _is_communication),
-)
+def classification_rules() -> tuple[ClassificationRule, ...]:
+    """The registered rules in effective order (by priority, then registration)."""
+    return tuple(rule for _, _, rule in sorted(_CLASSIFICATION_REGISTRY, key=lambda e: (e[0], e[1])))
 
 
 # --- 2. Derivation rules -------------------------------------------------------
@@ -118,13 +104,29 @@ class DerivationRule:
     version: str = "1"
 
 
+# High-risk type registry. Each domain declares which of its types are high-risk by
+# calling `register_high_risk_types`; the shared derivation rule reads this set. This
+# keeps the derivation rule authored once over the shared structure
+# (`ONTOLOGY_CONSTRUCTION.md` section 6, flow-to-sink is authored once, not per
+# domain), while letting each domain contribute its own high-risk types without
+# editing the rule. A domain attaches by adding to this set, not by editing here.
+_HIGH_RISK_TYPES: set[str] = set()
+
+
+def register_high_risk_types(*type_names: str) -> None:
+    _HIGH_RISK_TYPES.update(type_names)
+
+
+def high_risk_types() -> frozenset[str]:
+    return frozenset(_HIGH_RISK_TYPES)
+
+
 def _derive_high_risk(c: ClassifiedAssertion) -> list:
-    """A high-risk requested-action subtype derives a `needs_review` fact. This is a
-    routing derivation, not a trust promotion: it never confers trust or actionable
-    status (that would violate a constraint). It exists so the reasoner-soundness
-    test has a derived fact to check the chain of."""
-    high_risk = {"comms:payment_request", "comms:credential_request", "comms:instruction_to_act"}
-    if c.type_name in high_risk:
+    """A high-risk type derives a `needs_human_review` fact. This is a routing
+    derivation, not a trust promotion: it never confers trust or actionable status
+    (that would violate a constraint). Authored once over the shared structure; the
+    set of high-risk types is contributed per domain (see `_HIGH_RISK_TYPES`)."""
+    if c.type_name in _HIGH_RISK_TYPES:
         return [("needs_human_review", [c.assertion_id, c.type_name])]
     return []
 

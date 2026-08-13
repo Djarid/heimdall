@@ -42,7 +42,7 @@ def load() -> Ontology:
     """
     from . import core
     from .spine import trust, action, constraint
-    from .domain import communications
+    from .domain import communications, scheduling
     from . import media, unclassified
 
     onto = Ontology()
@@ -50,7 +50,12 @@ def load() -> Ontology:
     trust.register(onto)
     action.register(onto)
     constraint.register(onto)
+    # Domains attach as siblings under the spine (D29). Adding scheduling here is
+    # the whole change on the type side: communications and the spine are
+    # untouched. If attaching a domain forced an edit to either, the layering
+    # would be wrong.
     communications.register(onto)
+    scheduling.register(onto)
     media.register(onto)
     unclassified.register(onto)
     onto.validate()

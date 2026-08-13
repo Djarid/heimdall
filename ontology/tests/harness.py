@@ -44,11 +44,25 @@ CORPUS = Path(__file__).parent / "corpora" / "communications_ground_truth.json"
 # stated explicitly so the check is meaningful rather than vacuous.
 TRUSTED_OR_ACTIONABLE_TYPES: frozenset[str] = frozenset()  # none in Phase 1
 
-# High-risk types: a critical-class value typed BELOW one of these is a downgrade.
-HIGH_RISK_TYPES = frozenset(
-    {"comms:payment_request", "comms:credential_request", "comms:instruction_to_act"}
-)
-INERT_TYPES = frozenset({"comms:informational_statement", UNCLASSIFIED})
+
+def high_risk_types() -> frozenset[str]:
+    """The high-risk types, read from the rule registry, not hardcoded. Each domain
+    declares its own high-risk types (register_high_risk_types), so this stays
+    correct as domains are added: adding scheduling did not require editing the
+    harness. A critical-class value typed BELOW one of these is a downgrade."""
+    from ontology.nornir.rules import high_risk_types as _hr
+    from ontology.nornir import domain_rules
+    domain_rules.register_all()
+    return _hr()
+
+
+def inert_types(onto) -> frozenset[str]:
+    """The inert (low-risk) types: the fail-safe plus any domain type marked
+    risk=low. A critical value landing here is a downgrade; a benign value landing
+    here is correct. Derived from the ontology so new low-risk domain types are
+    included without editing the harness."""
+    low = {n.name for n in onto.nodes.values() if n.attrs.get("risk") == "low"}
+    return frozenset(low | {UNCLASSIFIED})
 
 
 class Report:
@@ -65,7 +79,8 @@ class Report:
         print("\n".join(self.lines))
 
 
-def run_classification(nornir: Nornir, cases: list[dict], rep: Report) -> None:
+def run_classification(nornir: Nornir, cases: list[dict], rep: Report,
+                       HIGH_RISK_TYPES: frozenset, INERT_TYPES: frozenset) -> None:
     rep.line("=== 8.1 Coverage and 8.2 Classification correctness ===")
     assertions = [
         MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
@@ -145,7 +160,8 @@ def run_classification(nornir: Nornir, cases: list[dict], rep: Report) -> None:
     rep.line("")
 
 
-def run_soundness(nornir: Nornir, cases: list[dict], rep: Report) -> None:
+def run_soundness(nornir: Nornir, cases: list[dict], rep: Report,
+                  HIGH_RISK_TYPES: frozenset) -> None:
     rep.line("=== 8.3 Reasoner soundness ===")
     assertions = [
         MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
@@ -215,14 +231,17 @@ def main() -> int:
 
     onto = load()
     nornir = Nornir(onto)
+    hr = high_risk_types()
+    inert = inert_types(onto)
+    domains = sorted({n.attrs.get("domain") for n in onto.nodes.values() if n.attrs.get("domain")})
 
     rep = Report()
     rep.line("Heimdall ontology test harness: invariant 3.11, obligations 8.1-8.4")
-    rep.line(f"Seed: communications domain on BFO; {len(onto.nodes)} ontology nodes; "
+    rep.line(f"Seed: {', '.join(domains)} domains on BFO; {len(onto.nodes)} ontology nodes; "
              f"{len(cases)} labelled cases, {len(fixtures)} flow fixtures\n")
 
-    run_classification(nornir, cases, rep)
-    run_soundness(nornir, cases, rep)
+    run_classification(nornir, cases, rep, hr, inert)
+    run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
 
     rep.dump()
