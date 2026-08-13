@@ -74,13 +74,13 @@ The PoC's first input check verified a string the model never actually received,
 
 ### 3.5 Do not detect injection by inspecting content
 
-**PROVEN by counter-example, and it saved the design from a real mistake.** Maps to principle 1.
+**Output path PROVEN by counter-example; classification path DEMONSTRATED by a fail-closed property test.** It has now saved the design from the same mistake twice, once on each path. Maps to principle 1.
 
 The PoC tried to strengthen the output check by scanning the extraction for directive-like text (n-gram overlap with the payload, imperative phrasing). It failed 11 cases including a clean control, because a faithful summary of any text must share words with that text. Content scanning cannot tell describing a directive from obeying one, and a classifier placed there is itself injectable, the same mistake as putting a model in the symbolic layer, one layer over.
 
-**Invariant.** No component may decide safety by pattern-matching untrusted or model-derived content for malicious wording. This applies to the output path specifically: the safety of a model's output is never a function of what the output says. Semantic detection (Huginn) may observe and alert, but must never be the gate that authorises action.
+**Invariant.** No component may decide safety by pattern-matching untrusted or model-derived content for malicious wording. This applies on two paths. On the **output path**: the safety of a model's output is never a function of what the output says. On the **classification path**: the classifier must not decide a value's risk (inert versus consequential) by matching untrusted content against enumerated malicious wording. A blacklist of bad phrasings is the same mistake one layer over, and it fails open on the next phrasing. Instead, inertness is earned by a positive signal and the classifier fails closed: content that matches no positive rule routes to review, never to an inert type by default (see 3.11, decision D54). Semantic detection (Huginn) may observe and alert, but must never be the gate that authorises action.
 
-**Acceptance.** Any proposed content-based safety check on the action path is rejected in review. Detection and authorisation are separate concerns; detection informs humans, structure authorises action.
+**Acceptance.** Any proposed content-based safety check on the action path, and any classification rule that enumerates malicious phrasings to catch an attack, is rejected in review. The classification-path half is also enforced automatically: the classification fail-closed property in `ontology/tests/harness.py` asserts that a request matching no positive rule never receives an inert type, and it fails loudly against an eager (fail-open) catch-all (decision D55). Detection and authorisation are separate concerns; detection informs humans, structure authorises action.
 
 ### 3.6 Model output is inert until explicitly and safely wired to a sink
 

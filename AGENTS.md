@@ -71,6 +71,19 @@ cheap; a lost decision is expensive.
 - **The symbolic layer never contains a language model.** This is invariant 3.1
   and the load-bearing rule of the whole architecture. Never introduce a model
   call into a classification, trust-assignment or boundary path.
+- **Classification fails closed and is never a blacklist.** Inert or low-risk
+  types must be earned by a positive signal (this content looks informational),
+  never granted by default. Content that matches no positive rule routes to
+  review, so an unrecognised request cannot silently become inert. Never grow
+  coverage by adding keyword rules that enumerate malicious phrasings (gift
+  cards, "banking has changed" and the like) to catch an attack: that is a
+  blacklist, it fails open on the next phrasing, and it is invariant 3.5's
+  mistake one layer over (the same error as putting a model in the symbolic
+  layer). Grow coverage with fail-closed types, not blacklists. The rule is
+  enforced by the classification fail-closed property in
+  `ontology/tests/harness.py`; run it after any classification-rule change. See
+  invariant 3.5, decisions D54 and D55, and the authoring checklist in
+  `ONTOLOGY_CONSTRUCTION.md` section 6.
 - **Python runs in a venv.** The PoC uses `poc/.venv` with `mlx-lm` on Apple
   silicon. Do not install into the system interpreter.
 - **Licence boundary.** `ontology/reference/sumo` is GPL and reference-only:

@@ -149,6 +149,16 @@ Nornir's rules are deterministic and human-authored. No model authors them and n
 
 Rules are versioned, reviewed and tested like code. A change to a classification or constraint rule is a change to the trust boundary and is treated with the same seriousness as a change to Bifröst.
 
+### 6.1 Authoring a classification rule: the checklist
+
+Before adding or changing a classification rule, work through this. It exists because the project nearly walked into a blacklist once (decision D54): the temptation is to catch an attack by adding keywords for it, which fails open on the next phrasing and is invariant 3.5's mistake one layer over.
+
+- **Is inertness earned, or granted by default?** A low-risk or inert type (an informational statement, a calendar entry, a financial statement) must be positively signalled, not assigned to anything that matched nothing else. An eager catch-all that types unrecognised content as inert is fail-open: an evasively-phrased request silently skips Gjöll. Inert is earned.
+- **Am I enumerating malicious phrasings?** If the rule is a list of bad words (gift cards, "banking has changed", specific fraud phrasings) meant to catch an attack, stop. That is a blacklist. It rots on the next phrasing and puts a content classifier on the action path (invariant 3.5). Grow coverage with a fail-closed type instead: route the unrecognised request to review, do not name the bad thing.
+- **Does an unmatched request still fail closed?** Confirm that content carrying a request or imperative that matches no positive rule routes to review (the fallback type), never to inert. This is checked automatically by the classification fail-closed property in `ontology/tests/harness.py`; run the harness after the change.
+- **Does the new rule err to the higher-risk type?** When in doubt between two types, the more conservative (higher-risk, or review) is correct: a downgrade is a critical finding, an over-classification only costs a human review (decision D48).
+- **Did I touch another domain's rules or the spine?** A new domain registers its own rules as a sibling module; it must not edit another domain's rules or the shared spine (the attach test, decision D29).
+
 ---
 
 ## 7. How coverage grows

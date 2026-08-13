@@ -74,6 +74,7 @@ class Report:
         self.critical_failures = 0
         self.soundness_failures = 0
         self.flow_failures = 0
+        self.property_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -163,6 +164,88 @@ def run_classification(nornir: Nornir, cases: list[dict], rep: Report,
     rep.line("")
 
 
+def run_failclosed_property(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None:
+    """Obligation 8.2b: the classification fail-closed property (invariant 3.5,
+    classification path; D54, D55).
+
+    This is a PROPERTY test, not a case test. The corpus (8.2) proves the classifier
+    types KNOWN cases correctly; it cannot prove the classifier fails safe on content
+    it has never seen, which is exactly where a blacklist-shaped classifier rots. This
+    test asserts the structural property directly: a communication that carries a
+    request/imperative but matches NO positive rule must never receive an inert type.
+    It must route to review (the fail-closed default) or to a high-risk type.
+
+    The inputs are generated from neutral request scaffolding combined with NOVEL
+    nonsense tokens, deliberately avoiding every positive keyword the rules use, so
+    they exercise the fail-closed DEFAULT rather than any keyword's coverage. The test
+    itself scans no content for malicious wording (that would be the very mistake
+    invariant 3.5 forbids); it only checks where an unmatched request lands.
+
+    Against the pre-D54 eager catch-all these inputs classified as inert
+    `informational_statement` and this property fails loudly. Against the fail-closed
+    catch-all they route to review and it passes. So the guardrail catches a
+    regression that reopens the silent-downgrade path, with no human needing to spot
+    it in review.
+    """
+    rep.line("=== 8.2b Classification fail-closed property (invariant 3.5, D54/D55) ===")
+
+    # Neutral request scaffolding: imperative shapes that carry NO positive keyword
+    # from any domain rule (not payment/credential/instruction/schedule/finance, and
+    # not an informational signal). The nonsense object tokens guarantee novelty: the
+    # rules have never seen them, so only the fail-closed default or a high-risk rule
+    # can fire.
+    scaffolds = [
+        "please handle the {x} for me",
+        "can you sort out the {x} today",
+        "need you to look at the {x} before noon",
+        "kindly deal with the {x} as we agreed",
+        "make sure the {x} is taken care of",
+        "would you see to the {x} right away",
+        "get back to me about the {x}",
+        "the {x} needs your attention, please",
+    ]
+    nonce = ["wibbleflux", "quorndle", "zaptfenn", "morblatt", "grintwash", "yulvex"]
+    generated = []
+    i = 0
+    for s in scaffolds:
+        for n in nonce:
+            generated.append(
+                MarshalledAssertion(
+                    f"prop-{i}", "taint:EXTERNAL_COMMS",
+                    {"sender_extracted": "someone@external.example",
+                     "subject_extracted": "",
+                     "requested_action_summary": s.format(x=n)},
+                )
+            )
+            i += 1
+
+    result = nornir.run(generated)
+    exercised = 0        # inputs that were genuinely unmatched-by-positive-rule
+    inert_leaks = 0
+    for c in result.classified:
+        # An input "exercises" the property only if it is not a high-risk positive
+        # match; if a high-risk rule happened to fire, the value is gated anyway, so
+        # skip it (the property is about the fail-closed default, not keyword recall).
+        # What must never happen: an unmatched request lands in an INERT type.
+        if c.type_name in INERT_TYPES:
+            inert_leaks += 1
+            rep.property_failures += 1
+            rep.line(
+                f"  [CRITICAL] {c.assertion_id}: an unmatched request classified INERT "
+                f"({c.type_name}); the catch-all is fail-open (blacklist/eager regression)"
+            )
+        else:
+            exercised += 1
+
+    rep.line(f"  Generated unmatched requests: {len(generated)}; "
+             f"routed to review or high-risk (fail-closed): {exercised}; "
+             f"inert leaks: {inert_leaks} (must be 0).")
+    if inert_leaks == 0:
+        rep.line("  [PASS] no unmatched request received an inert type; the classifier "
+                 "fails closed, not open.")
+    rep.line("")
+
+
 def run_soundness(nornir: Nornir, cases: list[dict], rep: Report,
                   HIGH_RISK_TYPES: frozenset) -> None:
     rep.line("=== 8.3 Reasoner soundness ===")
@@ -239,29 +322,33 @@ def main() -> int:
     domains = sorted({n.attrs.get("domain") for n in onto.nodes.values() if n.attrs.get("domain")})
 
     rep = Report()
-    rep.line("Heimdall ontology test harness: invariant 3.11, obligations 8.1-8.4")
+    rep.line("Heimdall ontology test harness: invariant 3.11 (obligations 8.1-8.4) "
+             "and the 3.5 classification fail-closed property")
     rep.line(f"Seed: {', '.join(domains)} domains on BFO; {len(onto.nodes)} ontology nodes; "
              f"{len(cases)} labelled cases, {len(fixtures)} flow fixtures\n")
 
     run_classification(nornir, cases, rep, hr, inert)
+    run_failclosed_property(nornir, rep, inert)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
 
     rep.dump()
 
-    fatal = rep.critical_failures + rep.soundness_failures + rep.flow_failures
+    fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
+             + rep.property_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
         print("guarantee is stated with its coverage figure, never unqualified (3.9).")
         print("No action-critical value was downgraded, no fail-safe breach, the")
+        print("classifier fails closed (an unmatched request never goes inert), the")
         print("reasoner is sound on this corpus, and cross-domain state-staging is")
         print("caught agent-scoped. This is the Phase 1 seed proven on this corpus,")
         print("not a claim of complete coverage.")
         return 0
     print(f"SUITE FAIL: {fatal} critical finding(s). Detail above. A downgrade, a")
-    print("fail-safe breach, an unsound derivation or a missed action-critical value")
-    print("is a boundary failure, not a quality metric.")
+    print("fail-safe breach, an unmatched request going inert, an unsound derivation")
+    print("or a missed action-critical value is a boundary failure, not a quality metric.")
     return 1
 
 
