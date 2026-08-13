@@ -215,9 +215,17 @@ The mandatory adversarial case is state staging (HEIMDALL.md action-critical set
 
 Stated so they are not mistaken for settled.
 
-### 10.1 Deferred, not forced yet
+### 10.1 Domain ontology governance (settled: single-curated, with a cross-domain priority principle)
 
-- **Domain ontology governance: single curated modules versus federated.** How per-domain ontologies are owned and composed as domains multiply. Single-curated keeps one repository of truth with namespaced domain modules and one ratifying owner: coherent, collision-free, slower to extend. Federated gives each domain a separate owner, all required to import and extend the shared spine, with a conformance harness to catch collisions and drift: scales to many teams, more machinery up front. The decision is not forced while Phase 1 to 2 has a single domain. It becomes forced when a second domain arrives (Phase 4), or sooner if a second owning team appears. Recorded now with its criteria and trigger so it is taken deliberately rather than by accident.
+**Governance model: single-curated now, federated deferred to a second owning team** (decision D31). One owning author holds one repository of truth with namespaced domain modules (`comms:`, `sched:`), all extending the shared BFO spine, composed by one loader. This is coherent and collision-free, and it matches the current reality: one author, one repository. Federated ownership, where each domain has a separate owner and a conformance harness catches collisions and drift, is more machinery than a single team needs. The trigger for federated is not merely a second domain (two now exist) but a second owning **team**. Until then, single-curated stands.
+
+**Cross-domain classification priority principle.** A second domain surfaced a concrete question single-curated governance must answer (D51): when two domains share vocabulary and more than one classification rule matches, which wins? Priority by registration order was an accident. The principle, in order:
+
+1. **Risk tier.** The highest-risk matching type wins. A value is never masked down to a lower-risk or inert type. This is the load-bearing safety property: a high-risk value always beats an inert one, so nothing is laundered by a broad rule matching first.
+2. **Specificity.** Within the top risk tier, a rule matching a narrower, stronger signal beats a broad one. A scheduling signal (`cron`, `scheduled to`, `run at 2am`) is more specific than a bare action verb, so a genuine scheduled task types as `sched:scheduled_task` rather than being masked as a communications instruction.
+3. **Tie to human review.** If two rules sit in the top tier with equal specificity and name different types, that is a genuine tie. Nornir does not silently pick one; it routes the assertion to `HIGH_RISK_UNRESOLVED`, a distinct high-risk fail-safe that stays gated (action-critical if it can reach a sink) and goes to a human. Never guess on a true tie.
+
+This replaces registration order, which is no longer load-bearing. It is realised in `ontology/nornir/rules.py` (the `classify_assertion` function and `RiskTier`), the per-domain rule modules (which declare `risk_tier` and `specificity`), and `ontology/yggdrasil/unclassified.py` (the `HIGH_RISK_UNRESOLVED` tie outcome). The test corpus exercises both the resolved masking case and a genuine tie.
 
 ### 10.2 Carried-forward open questions
 

@@ -27,10 +27,10 @@ from .rules import (
     Violation,
     action_critical_set,
     check_constraints,
-    classification_rules,
+    classify_assertion,
 )
 from . import domain_rules
-from ..yggdrasil.unclassified import UNCLASSIFIED
+from ..yggdrasil.unclassified import UNCLASSIFIED, HIGH_RISK_UNRESOLVED
 
 
 @dataclass
@@ -64,20 +64,36 @@ class Nornir:
         domain_rules.register_all()
 
     def _classify_one(self, a: MarshalledAssertion) -> ClassifiedAssertion:
-        for rule in classification_rules():
-            if rule.test(a):
-                node = self.onto.nodes.get(rule.type_name)
-                return ClassifiedAssertion(
-                    assertion_id=a.assertion_id,
-                    type_name=rule.type_name,
-                    # A tainted assertion is never actionable (constraint), and Phase
-                    # 1 marks nothing actionable regardless.
-                    actionable=False,
-                    trust_level="trust:TAINTED",
-                    taint_class=a.taint_class,
-                    fields=dict(a.fields),
-                    matched_rule=rule.name,
-                )
+        # Apply the D31 cross-domain priority principle: highest risk tier wins, then
+        # specificity, and a genuine tie routes to review rather than guessing.
+        outcome = classify_assertion(a)
+        if outcome.tie:
+            # A genuine tie between high-risk types. Route to review as a distinct,
+            # high-risk-gated outcome; never silently pick one. Not a downgrade: the
+            # HIGH_RISK_UNRESOLVED type is high-risk, so the value is still gated.
+            return ClassifiedAssertion(
+                assertion_id=a.assertion_id,
+                type_name=HIGH_RISK_UNRESOLVED,
+                actionable=False,
+                trust_level="trust:TAINTED",
+                taint_class=a.taint_class,
+                fields=dict(a.fields),
+                route="human_review",
+                matched_rule="",
+                tie_candidates=outcome.tie_candidates,
+            )
+        if outcome.type_name is not None:
+            return ClassifiedAssertion(
+                assertion_id=a.assertion_id,
+                type_name=outcome.type_name,
+                # A tainted assertion is never actionable (constraint), and Phase 1
+                # marks nothing actionable regardless.
+                actionable=False,
+                trust_level="trust:TAINTED",
+                taint_class=a.taint_class,
+                fields=dict(a.fields),
+                matched_rule=outcome.matched_rule,
+            )
         # No rule matched: the fail-safe. Never a guess, never trusted or actionable.
         return ClassifiedAssertion(
             assertion_id=a.assertion_id,

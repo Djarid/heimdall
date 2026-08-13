@@ -25,6 +25,16 @@ from .core import NodeKind, Ontology, Relation, RelationKind, TypeNode
 
 UNCLASSIFIED = "unclassified:data_assertion"
 
+# A distinct fail-safe for a genuine cross-domain classification tie (D31): two
+# top-tier rules of equal specificity named different high-risk types, so Nornir
+# routes to human review rather than guessing. It is NOT the same as UNCLASSIFIED:
+# UNCLASSIFIED is "no rule matched" (low information), whereas this is "more than one
+# high-risk type matched equally" (high information, high risk). It is high-risk and
+# gated, so a value here is still treated as action-critical if it can reach a sink;
+# it fails safe to review, never to an inert or trusted type. `risk=high` so the
+# harness recognises it as a non-downgrade outcome.
+HIGH_RISK_UNRESOLVED = "unclassified:high_risk_unresolved"
+
 
 def register(onto: Ontology) -> None:
     onto.add_node(
@@ -42,4 +52,21 @@ def register(onto: Ontology) -> None:
     )
     onto.add_relation(
         Relation(UNCLASSIFIED, RelationKind.ANCHORS_TO, "bfo:generically_dependent_continuant")
+    )
+    onto.add_node(
+        TypeNode(
+            name=HIGH_RISK_UNRESOLVED,
+            kind=NodeKind.FAILSAFE,
+            label="HIGH_RISK_UNRESOLVED",
+            attrs={
+                "actionable": False,
+                "route": "human_review",
+                "risk": "high",
+                "description": "a genuine cross-domain classification tie between high-risk "
+                "types (D31); routed to review, gated, never silently typed or downgraded",
+            },
+        )
+    )
+    onto.add_relation(
+        Relation(HIGH_RISK_UNRESOLVED, RelationKind.ANCHORS_TO, "bfo:generically_dependent_continuant")
     )

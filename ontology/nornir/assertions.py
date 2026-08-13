@@ -54,7 +54,12 @@ class ClassifiedAssertion:
     trust_level: str               # trust:TAINTED in Phase 1
     taint_class: str
     fields: dict
-    route: str = "normal"          # "human_review" for the fail-safe
+    route: str = "normal"          # "human_review" for the fail-safe and for ties
     action_critical: bool = False  # set by flow-to-sink, agent-scoped
     inferred: list = field(default_factory=list)   # derived facts, each with a chain
-    matched_rule: str = ""         # which classification rule fired ("" = fail-safe)
+    matched_rule: str = ""         # which classification rule fired ("" = fail-safe/tie)
+    # A genuine cross-domain tie (D31): two top-tier rules of equal specificity named
+    # different types. The value is routed to review rather than silently typed. The
+    # tied candidates are recorded for the audit trail and so the harness can confirm
+    # the tie is a safe (still-gated) outcome, not a downgrade.
+    tie_candidates: tuple = ()

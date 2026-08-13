@@ -164,12 +164,20 @@
       "note": "A scheduled task is high-risk: it can stage a consequential effect at its due time. Must not downgrade to a low-risk calendar entry."
     },
     {
-      "id": "sched-04-task-masked-by-comms-verb",
+      "id": "sched-04-task-with-action-verb",
       "taint_class": "taint:EXTERNAL_COMMS",
       "fields": {"sender_extracted": "ci@corp.example", "subject_extracted": "Pipeline", "requested_action_summary": "Schedule the deploy pipeline to run at 2am."},
       "expected_type": "sched:scheduled_task",
       "critical": true,
-      "note": "CROSS-DOMAIN MASKING case. Nornir types this as comms:instruction_to_act because 'run'/'deploy' matches the communications instruction rule, which shares the HIGH_RISK band and registers first. Both types are high-risk and gated, so this is a high-risk-to-high-risk mismatch (tolerated), NOT a downgrade: the value is not laundered to inert. Recorded honestly. Resolving it cleanly needs the cross-domain priority arbitration that the domain-governance decision (D31) will settle; the seed does not pre-empt it."
+      "note": "Formerly the cross-domain MASKING case. Now resolved by the D31 priority principle: the scheduling signal ('schedule', 'run at 2am') has higher specificity than the broad communications instruction verb, so the scheduled_task rule wins the high-risk tier deterministically. No longer an accident of registration order, and an exact match."
+    },
+    {
+      "id": "tie-01-payment-and-credential",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "urgent@corp.example", "subject_extracted": "Action needed", "requested_action_summary": "please wire the payment and also send your one-time code to verify"},
+      "expected_type": "unclassified:high_risk_unresolved",
+      "critical": true,
+      "note": "GENUINE TIE case (D31): matches both payment_request and credential_request at equal risk tier and equal specificity, naming different high-risk types. Nornir does not silently pick one; it routes to HIGH_RISK_UNRESOLVED for human review. High-risk and gated (still action-critical if it can reach a sink), so it is a safe tie resolution, NOT a downgrade. Proves the tie-to-review path."
     }
   ],
   "flow_fixtures": [

@@ -18,11 +18,11 @@ import re
 from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
+    RiskTier,
     register_classification_rule,
     register_high_risk_types,
     text_of,
 )
-from . import priorities
 
 
 # A scheduled TASK: something that will cause an action to run at a time. High-risk.
@@ -47,15 +47,22 @@ def _is_calendar_entry(a: MarshalledAssertion) -> bool:
 
 
 def register_rules() -> None:
-    # High-risk: a scheduled task that will run. In the HIGH_RISK band.
+    # High-risk: a scheduled task that will run. Risk tier HIGH, and specificity 2:
+    # HIGHER than the communications instruction rule (specificity 0), because a
+    # scheduling signal (cron, scheduled to, run at 2am, every night) is a narrower,
+    # stronger indicator than a bare action verb. Under the D31 principle this means a
+    # genuine scheduled task wins the tier over the broad comms instruction rule,
+    # resolving the D51 masking: the task is typed as sched:scheduled_task, not
+    # comms:instruction_to_act. Where the text is genuinely ambiguous and BOTH match
+    # at the same specificity, the tie routes to review; that cannot happen here
+    # because the specificities differ, which is the point of ranking them.
     register_classification_rule(
-        ClassificationRule("scheduled_task", "sched:scheduled_task", _is_scheduled_task),
-        priorities.HIGH_RISK,
+        ClassificationRule("scheduled_task", "sched:scheduled_task", _is_scheduled_task,
+                           risk_tier=RiskTier.HIGH, specificity=2)
     )
-    # Domain-specific low-risk catch: a calendar entry. In the DOMAIN_SPECIFIC band,
-    # so it runs after all high-risk rules but before any catch-all.
+    # Domain-specific low-risk catch: a calendar entry. Inert tier.
     register_classification_rule(
-        ClassificationRule("calendar_entry", "sched:calendar_entry", _is_calendar_entry),
-        priorities.DOMAIN_SPECIFIC,
+        ClassificationRule("calendar_entry", "sched:calendar_entry", _is_calendar_entry,
+                           risk_tier=RiskTier.INERT, specificity=1)
     )
     register_high_risk_types("sched:scheduled_task")

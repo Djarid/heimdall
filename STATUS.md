@@ -44,11 +44,13 @@ and tested; full coverage is still untested.** That is the state of the project.
   communications and scheduling domains are authored on BFO as a runnable
   property-graph-native package, with a deterministic Nornir (classifier,
   reasoner, flow-to-sink) and a ground-truth corpus. All four test obligations of
-  invariant 3.11 pass: coverage is measured (90.5%, up from 88.2% on one domain),
-  classification correctness has no downgrade or fail-safe breach, the reasoner is
-  sound, and cross-domain state-staging is caught agent-scoped. The domain attach
-  test (D29) is demonstrated: scheduling attached without editing communications
-  or the spine. See `ontology/OUTCOME.md`.
+  invariant 3.11 pass: coverage is measured (90.9%), classification correctness
+  has no downgrade or fail-safe breach, the reasoner is sound, and cross-domain
+  state-staging is caught agent-scoped. The domain attach test (D29) is
+  demonstrated: scheduling attached without editing communications or the spine.
+  Domain governance (D31) is settled: single-curated, with a cross-domain
+  classification priority principle (D52, risk-then-specificity-then-tie-to-review)
+  that resolves the earlier masking. See `ontology/OUTCOME.md`.
 - **Not yet tested (full coverage, live store).** The guarantee's extent depends
   on coverage growing beyond the seed, and on binding the proven flow-to-sink
   algorithm to a live Memgraph store. These are the remaining open dependencies.
@@ -65,7 +67,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 51 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 52 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -92,9 +94,9 @@ with `DECISIONS.md` as the running record of why each choice was made.
   Phase 1 communications and scheduling domains on BFO as a runnable
   property-graph package (49 nodes), the deterministic classifier and reasoner (no
   model, per-domain rule registry), and the test harness (`ontology/tests/`) with
-  a 21-case ground-truth corpus and 3 flow fixtures. All four obligations of 3.11
-  pass; coverage measured at 90.5%; domain attach test demonstrated. See
-  `ontology/OUTCOME.md`.
+  a 22-case ground-truth corpus and 3 flow fixtures. All four obligations of 3.11
+  pass; coverage measured at 90.9%; domain attach test demonstrated; cross-domain
+  priority governed by principle (D52). See `ontology/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -109,40 +111,38 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 
 | Item | Kind | Trigger / phase |
 |------|------|-----------------|
-| D31 domain governance (curated vs federated) | DEFERRED (pressure rising) | A second domain now exists; D51 gives it a concrete cross-domain priority question to answer |
 | D33 constrained decomposition grammar | OPEN (research) | If opaque summaries prove too coarse |
 | D34 Huginn discriminating features | OPEN (research) | Needed for classification-correctness testing |
 | D35 Odin self-modification | OPEN (research) | Currently excluded |
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
-| D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring obligation: watch for large dense cycles in a future domain |
-| D51 cross-domain classification masking | SETTLED (limit) | Recorded as safe; resolving cleanly forces D31 |
+| D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
 
-D25, D32 and D38 were resolved by the substrate spike; D43 to D45 record the
-algorithm, its live default and the caveat. D46 to D51 record the seed ontology,
-Nornir, the conservative classification ruling, the test-corpus provenance, the
-per-domain rule registry (attach test demonstrated) and the cross-domain masking
-limit.
+D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
+now settled single-curated, with its cross-domain priority principle D52; D51 (the
+masking) is resolved by D52. D46 to D52 record the seed ontology, Nornir, the
+classification ruling, the test-corpus provenance, the per-domain rule registry
+(attach test demonstrated), and the cross-domain priority principle. The only items
+still open are the research questions D33 to D36.
 
 ---
 
 ## 6. Recommended next step
 
-The substrate is ratified and the seed ontology is built across two domains and
-passing its tests. Next steps, in leverage order:
+The substrate is ratified, the seed ontology is built across two domains with a
+principled cross-domain priority rule, and the tests pass. Next steps, in leverage
+order:
 
-1. **Grow coverage beyond the seed.** Coverage is 90.5% on a 21-case corpus; that
+1. **Grow coverage beyond the seed.** Coverage is 90.9% on a 22-case corpus; that
    is a start, not a claim. Extend the ground-truth corpus and the classification
    rules where real traffic (or new adversarial cases) demand it, hand-authored and
    human-curated (D26). This raises the measured guarantee (invariant 3.9) and
    sharpens the classification-correctness corpus that D34 (honest vs
    injection-induced error) needs.
-2. **Take the domain-governance decision (D31).** A second domain and the D51
-   cross-domain masking case now give it a concrete question: how classification
-   priority is arbitrated between domains that share vocabulary. This is the
-   cleanest decision to force next while the example is fresh.
-3. **Bind the proven reachability algorithm to a live Memgraph store** and re-check
+2. **Bind the proven reachability algorithm to a live Memgraph store** and re-check
    the four spike criteria against the real substrate (the spike's residual, now
    low-risk). Needs Docker or a hosted Memgraph, neither installed yet.
+3. **Attach a third domain (finance)** to pressure-test the D52 specificity scale
+   across more overlapping vocabulary and confirm the tie-to-review net holds.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.

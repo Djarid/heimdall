@@ -49,11 +49,14 @@ def high_risk_types() -> frozenset[str]:
     """The high-risk types, read from the rule registry, not hardcoded. Each domain
     declares its own high-risk types (register_high_risk_types), so this stays
     correct as domains are added: adding scheduling did not require editing the
-    harness. A critical-class value typed BELOW one of these is a downgrade."""
+    harness. A critical-class value typed BELOW one of these is a downgrade. The
+    HIGH_RISK_UNRESOLVED tie outcome (D31) is high-risk too: a value routed there is
+    gated, not downgraded, so it counts as high-risk for the downgrade check."""
     from ontology.nornir.rules import high_risk_types as _hr
     from ontology.nornir import domain_rules
+    from ontology.yggdrasil.unclassified import HIGH_RISK_UNRESOLVED
     domain_rules.register_all()
-    return _hr()
+    return _hr() | {HIGH_RISK_UNRESOLVED}
 
 
 def inert_types(onto) -> frozenset[str]:

@@ -18,11 +18,11 @@ import re
 from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
+    RiskTier,
     register_classification_rule,
     register_high_risk_types,
     text_of,
 )
-from . import priorities
 
 
 _PAYMENT = re.compile(
@@ -59,24 +59,30 @@ def _is_communication(a: MarshalledAssertion) -> bool:
 
 
 def register_rules() -> None:
-    # High-risk requested-action subtypes, in the HIGH_RISK band so they beat any
-    # domain's catch-all. Registration order sets the tie-break within the band.
+    # High-risk requested-action subtypes. Risk tier HIGH so they beat any inert
+    # catch-all (D31). Specificity 1: these match a specific high-risk vocabulary. A
+    # broad instruction verb is deliberately LESS specific (specificity 0) so a
+    # domain rule matching a narrower, stronger signal can outrank it within the tier.
     register_classification_rule(
-        ClassificationRule("payment_request", "comms:payment_request", _is_payment),
-        priorities.HIGH_RISK,
+        ClassificationRule("payment_request", "comms:payment_request", _is_payment,
+                           risk_tier=RiskTier.HIGH, specificity=1)
     )
     register_classification_rule(
-        ClassificationRule("credential_request", "comms:credential_request", _is_credential),
-        priorities.HIGH_RISK,
+        ClassificationRule("credential_request", "comms:credential_request", _is_credential,
+                           risk_tier=RiskTier.HIGH, specificity=1)
     )
+    # The instruction rule matches broad action verbs (run, deploy, configure...).
+    # It is high-risk but LOW specificity, because those verbs also appear in other
+    # domains' content (a scheduled task "runs"). Low specificity lets a domain with a
+    # stronger, narrower signal win the tier; where none does, this still gates.
     register_classification_rule(
-        ClassificationRule("instruction_to_act", "comms:instruction_to_act", _is_instruction),
-        priorities.HIGH_RISK,
+        ClassificationRule("instruction_to_act", "comms:instruction_to_act", _is_instruction,
+                           risk_tier=RiskTier.HIGH, specificity=0)
     )
-    # The catch-all: a bare communication is informational.
+    # The catch-all: a bare communication is informational. Inert tier.
     register_classification_rule(
-        ClassificationRule("informational_statement", "comms:informational_statement", _is_communication),
-        priorities.CATCH_ALL,
+        ClassificationRule("informational_statement", "comms:informational_statement",
+                           _is_communication, risk_tier=RiskTier.INERT, specificity=0)
     )
     # Declare which communications types are high-risk (drives the shared derivation
     # rule and the harness's downgrade check).

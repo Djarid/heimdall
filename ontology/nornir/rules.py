@@ -35,16 +35,42 @@ from .assertions import ClassifiedAssertion, MarshalledAssertion
 
 
 # --- 1. Classification rules ---------------------------------------------------
+#
+# Cross-domain classification priority principle (decision D31, resolving D51):
+# when more than one rule matches, the winner is chosen by, in order,
+#   1. RISK TIER: the highest-risk matching type wins. This guarantees a value is
+#      never masked DOWN to a lower-risk or inert type, which is the load-bearing
+#      safety property (invariant 3.11). A high-risk value always beats an inert one.
+#   2. SPECIFICITY: within the top tier, a rule matching a narrower, stronger signal
+#      beats a broad one (higher `specificity` wins).
+#   3. TIE -> HUMAN REVIEW: if two rules are in the top tier with equal specificity
+#      and name DIFFERENT types, that is a genuine tie. Nornir does not silently pick
+#      one; it routes to human review. Never guess on a true tie.
+# This replaces the earlier "first registered wins", which made cross-domain order an
+# accident of import order (D51). Registration order is no longer load-bearing.
+
+
+class RiskTier:
+    """Risk tiers, higher number is higher risk. A higher tier always wins the
+    classification contest, so nothing is masked down to inert. INERT is the
+    lowest-risk covered type (a benign communication, a calendar entry)."""
+
+    INERT = 0
+    HIGH = 100
+
 
 @dataclass(frozen=True)
 class ClassificationRule:
-    """A named, ordered classification rule. `test` returns True if the assertion is
-    of `type_name`. Rules are tried in order; the first match wins, so more specific
-    and higher-risk rules come first. `version` tracks the rule as code."""
+    """A classification rule. `test` returns True if the assertion is of `type_name`.
+    `risk_tier` and `specificity` drive the cross-domain priority principle (D31):
+    higher risk wins, then higher specificity, then a genuine tie routes to review.
+    `version` tracks the rule as code."""
 
     name: str
     type_name: str
     test: Callable[[MarshalledAssertion], bool]
+    risk_tier: int = RiskTier.INERT
+    specificity: int = 0
     version: str = "1"
 
 
@@ -61,35 +87,72 @@ def text_of(a: MarshalledAssertion) -> str:
 
 
 # The classification-rule registry. Domain rule modules append their rules here at
-# import time through `register_classification_rule`, in priority order. This is what
-# makes the domain attach test (D29) hold for rules as well as for types: a new domain
-# contributes a sibling rule module that registers its rules; it never edits another
-# domain's rules or a shared central list. Rules are tried in registration order and
-# the first match wins, so higher-risk and more specific rules register first.
-#
-# Priority discipline across domains: each rule carries an integer `priority` (lower
-# runs first). Domains choose priorities in documented bands so cross-domain ordering
-# is deliberate, not an accident of import order. See `nornir/priorities.py`.
-_CLASSIFICATION_REGISTRY: list[tuple[int, int, ClassificationRule]] = []
-_REG_SEQ = 0  # tie-breaker preserving registration order within a priority
+# import time through `register_classification_rule`. This is what makes the domain
+# attach test (D29) hold for rules as well as for types: a new domain contributes a
+# sibling rule module that registers its rules; it never edits another domain's rules
+# or a shared central list. Order of registration no longer decides the winner (D31):
+# the risk-tier / specificity / tie-to-review principle does.
+_CLASSIFICATION_REGISTRY: list[ClassificationRule] = []
 
 
-def register_classification_rule(rule: ClassificationRule, priority: int) -> None:
-    """Register a domain classification rule at a given priority (lower runs first).
-    Called from a domain rule module's `register_rules()`. Idempotent per rule name:
-    re-registering the same name replaces the earlier entry, so a reload in a test
-    does not duplicate rules."""
-    global _REG_SEQ
+def register_classification_rule(rule: ClassificationRule, priority: int | None = None) -> None:
+    """Register a domain classification rule. `priority` is accepted for backward
+    compatibility but is no longer load-bearing (D31): risk_tier and specificity on
+    the rule decide the winner. Idempotent per rule name: re-registering the same name
+    replaces the earlier entry, so a reload in a test does not duplicate rules."""
     _CLASSIFICATION_REGISTRY[:] = [
-        entry for entry in _CLASSIFICATION_REGISTRY if entry[2].name != rule.name
+        r for r in _CLASSIFICATION_REGISTRY if r.name != rule.name
     ]
-    _CLASSIFICATION_REGISTRY.append((priority, _REG_SEQ, rule))
-    _REG_SEQ += 1
+    _CLASSIFICATION_REGISTRY.append(rule)
 
 
 def classification_rules() -> tuple[ClassificationRule, ...]:
-    """The registered rules in effective order (by priority, then registration)."""
-    return tuple(rule for _, _, rule in sorted(_CLASSIFICATION_REGISTRY, key=lambda e: (e[0], e[1])))
+    """All registered rules. Order is not significant; the classify function applies
+    the D31 priority principle over the full matching set."""
+    return tuple(_CLASSIFICATION_REGISTRY)
+
+
+# The outcome of classification: a chosen type, or a tie that must go to review.
+@dataclass(frozen=True)
+class ClassificationOutcome:
+    type_name: str | None      # the winning type, or None if a genuine tie
+    matched_rule: str          # the winning rule name, or "" for tie / no match
+    tie: bool = False          # True if two top-tier rules disagreed
+    tie_candidates: tuple = ()  # the tied type names, for the audit trail
+
+
+def classify_assertion(a: MarshalledAssertion) -> ClassificationOutcome:
+    """Apply the D31 cross-domain priority principle to one assertion.
+
+    Collect every matching rule, then choose by (risk tier desc, specificity desc).
+    If the single top candidate is unambiguous, it wins. If two or more top
+    candidates (equal top risk tier and equal top specificity) name different types,
+    it is a genuine tie and the outcome routes to human review rather than guessing.
+    No match at all returns type_name=None with tie=False (the caller applies the
+    UNCLASSIFIED fail-safe)."""
+    matches = [r for r in _CLASSIFICATION_REGISTRY if r.test(a)]
+    if not matches:
+        return ClassificationOutcome(type_name=None, matched_rule="")
+
+    top_tier = max(r.risk_tier for r in matches)
+    tier_matches = [r for r in matches if r.risk_tier == top_tier]
+    top_spec = max(r.specificity for r in tier_matches)
+    winners = [r for r in tier_matches if r.specificity == top_spec]
+
+    distinct_types = {r.type_name for r in winners}
+    if len(distinct_types) == 1:
+        w = winners[0]
+        return ClassificationOutcome(type_name=w.type_name, matched_rule=w.name)
+
+    # Genuine tie at the top: equal risk tier, equal specificity, different types.
+    # Route to human review; never silently pick. The value keeps the top risk tier,
+    # so it is still gated, and a human resolves which type it is.
+    return ClassificationOutcome(
+        type_name=None,
+        matched_rule="",
+        tie=True,
+        tie_candidates=tuple(sorted(distinct_types)),
+    )
 
 
 # --- 2. Derivation rules -------------------------------------------------------
