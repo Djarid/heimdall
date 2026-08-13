@@ -17,7 +17,8 @@ from __future__ import annotations
 
 
 def register_all() -> None:
-    from . import communications, scheduling
+    from . import communications, scheduling, finance
 
     communications.register_rules()
     scheduling.register_rules()
+    finance.register_rules()

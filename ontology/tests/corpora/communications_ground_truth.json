@@ -178,6 +178,46 @@
       "expected_type": "unclassified:high_risk_unresolved",
       "critical": true,
       "note": "GENUINE TIE case (D31): matches both payment_request and credential_request at equal risk tier and equal specificity, naming different high-risk types. Nornir does not silently pick one; it routes to HIGH_RISK_UNRESOLVED for human review. High-risk and gated (still action-critical if it can reach a sink), so it is a safe tie resolution, NOT a downgrade. Proves the tie-to-review path."
+    },
+    {
+      "id": "fin-01-account-reference",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ap@supplier.example", "subject_extracted": "Updated bank details", "requested_action_summary": "remit to new IBAN GB29NWBK60161331926819 going forward"},
+      "expected_type": "finance:account_reference",
+      "critical": true,
+      "note": "Third domain (finance). An explicit account identifier is the narrowest high-risk finance signal (specificity 3), so it wins the tier over a generic payment mention. This is the value BEC substitutes (the new-bank-details trick, Recall)."
+    },
+    {
+      "id": "fin-02-statement",
+      "taint_class": "taint:EXTERNAL_WEB",
+      "fields": {"sender_extracted": "bank@bank.example", "subject_extracted": "Your March statement", "requested_action_summary": "your monthly account balance statement is ready to view"},
+      "expected_type": "finance:financial_statement",
+      "critical": false,
+      "note": "A balance statement records money but asks nothing consequential: inert finance type. Same fact via web medium types identically (D22a)."
+    },
+    {
+      "id": "fin-03-receipt",
+      "taint_class": "taint:EXTERNAL_DOCUMENT",
+      "fields": {"subject_extracted": "Receipt", "requested_action_summary": "a receipt showing the year-end reconciliation ledger"},
+      "expected_type": "finance:financial_statement",
+      "critical": false,
+      "note": "A receipt/ledger record. Inert finance type, arriving as a document medium."
+    },
+    {
+      "id": "fin-04-transaction-ties-with-comms",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "treasury@corp.example", "subject_extracted": "Settlement", "requested_action_summary": "execute the payment and disburse the funds to the vendor"},
+      "expected_type": "unclassified:high_risk_unresolved",
+      "critical": true,
+      "note": "CROSS-DOMAIN OVERLAP (D52 pressure test). A money movement expressed as 'execute the payment' matches both comms:payment_request and finance:financial_transaction at equal specificity, so it ties to HIGH_RISK_UNRESOLVED for review. This is expected and safe: finance and communications share payment vocabulary by design, so transaction-like content routinely ties. The cost is review-queue volume, recorded honestly (D53); the safety property (gated, no downgrade) holds."
+    },
+    {
+      "id": "fin-05-genuine-both",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {"sender_extracted": "ap@corp.example", "subject_extracted": "Invoice 88", "requested_action_summary": "please pay invoice 88; wire transfer the funds to the supplier account"},
+      "expected_type": "unclassified:high_risk_unresolved",
+      "critical": true,
+      "note": "A message that is genuinely BOTH a communications payment ask and a finance money movement. The tie-to-review outcome is exactly right here: a human resolves which frame applies. Proves the tie net at three domains."
     }
   ],
   "flow_fixtures": [
@@ -210,6 +250,16 @@
         {"id": "task.entry", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"subject_extracted": "New task", "requested_action_summary": "a cron job scheduled every night"}, "flows": ["sink:scheduler.exec"]}
       ],
       "expected_action_critical": ["msg.instruction", "task.entry", "sink:scheduler.exec"]
+    },
+    {
+      "id": "flow-comms-to-finance-to-payment-sink",
+      "purpose": "A three-domain-aware state-staging chain crossing FINANCE (8.4, D30): a communications value (an emailed instruction carrying an account) flows into a finance-domain transaction record, which flows into a payment execution sink reachable only through the finance side. The communications value must be action-critical the moment the composed path to the payment sink exists, however many reversible hops intervene. This is the BEC end state: an emailed 'new bank details' becomes a staged transfer that reaches a payment actuator.",
+      "agent": {"agent_id": "agent-treasury", "permitted_actions": ["action:classify"], "trust_ceiling": "TAINTED", "consequential_sinks": ["sink:payments.execute"]},
+      "assertions": [
+        {"id": "email.newdetails", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"sender_extracted": "ap@supplier.example", "subject_extracted": "Updated bank details", "requested_action_summary": "remit to new IBAN going forward"}, "flows": ["ledger.txn"]},
+        {"id": "ledger.txn", "taint_class": "taint:EXTERNAL_COMMS", "fields": {"subject_extracted": "Pending transfer", "requested_action_summary": "wire transfer the funds to the supplier account"}, "flows": ["sink:payments.execute"]}
+      ],
+      "expected_action_critical": ["email.newdetails", "ledger.txn", "sink:payments.execute"]
     }
   ]
 }

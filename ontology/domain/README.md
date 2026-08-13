@@ -21,9 +21,11 @@ notice).
 
 Authored (Phase 2): the communications seed's runnable form is
 `yggdrasil/domain/communications.py`, promoting the four PoC fields into a typed
-hierarchy anchored to BFO. A second domain, `yggdrasil/domain/scheduling.py`, was
-attached to demonstrate the domain attach test (D29, D50): it extends the spine
-and registers its own rules without editing communications or the spine,
-confirmed by `git diff`. Both domains share the BFO `generically dependent
-continuant` root, so they relate through their common ancestor. See
-`ontology/OUTCOME.md`.
+hierarchy anchored to BFO. Two further domains were attached to demonstrate the
+domain attach test (D29) for real: `yggdrasil/domain/scheduling.py` (D50) and
+`yggdrasil/domain/finance.py`. Each extends the spine and registers its own rules
+without editing the existing domains or the spine, confirmed by `git diff`. All
+three share the BFO `generically dependent continuant` root, so they relate through
+their common ancestor. Finance was chosen as the third because it shares payment
+vocabulary with communications, which pressure-tests the cross-domain priority
+principle (D52) and measures its review-queue cost (D53). See `ontology/OUTCOME.md`.
