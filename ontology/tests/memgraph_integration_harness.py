@@ -87,6 +87,62 @@ def main() -> int:
                    (not decision.authorised) and (not decision.fired) and not actuator.action_effects,
                    str(decision.reasons[:1])))
 
+    # --- Cross-batch state staging (D64): the attack the per-batch backend misses ---
+    # An attacker stages a value across TWO separate Nornir batches: batch 1 writes
+    # comms.value -> ledger.txn with no sink in view; batch 2 writes ledger.txn ->
+    # payment sink. Only the composed, cross-batch path reaches the sink. A per-batch
+    # backend forgets batch 1, so it never marks comms.value action-critical. The
+    # persistent store accumulates the graph, so the label propagates back to
+    # comms.value when batch 2 completes the path.
+    stager_agent = AgentContext(
+        "agent-treasury", permitted_actions=frozenset({"action:classify"}),
+        trust_ceiling="TAINTED", consequential_sinks=frozenset({"sink:pay"}),
+    )
+    batch1 = [MarshalledAssertion("comms.value", "taint:EXTERNAL_COMMS",
+                                  {"sender_extracted": "x@y", "subject_extracted": "ticket",
+                                   "requested_action_summary": "please note the new supplier account"},
+                                  flows=("ledger.txn",))]
+    batch2 = [MarshalledAssertion("ledger.txn", "taint:EXTERNAL_COMMS",
+                                  {"subject_extracted": "transfer",
+                                   "requested_action_summary": "wire transfer the funds"},
+                                  flows=("sink:pay",))]
+
+    # Per-batch backend (the current default over the store): run the two batches; the
+    # staged value must NOT be marked critical, demonstrating the gap.
+    perbatch = MemgraphFlowBackend(driver)  # persist=False
+    n_perbatch = Nornir(onto, flow_backend=perbatch)
+    n_perbatch.run(batch1, agent=stager_agent)
+    n_perbatch.run(batch2, agent=stager_agent)
+    perbatch_misses = not perbatch.is_action_critical("comms.value")  # no accumulated graph
+    checks.append(("per-batch backend MISSES cross-batch staging (documents the gap)",
+                   perbatch_misses, "comms.value not tracked across batches"))
+
+    # Persistent backend (D64): same two batches, accumulated. The staged value MUST
+    # become action-critical once batch 2 completes the path.
+    persistent = MemgraphFlowBackend(driver, persist=True)
+    persistent.reset()
+    n_persist = Nornir(onto, flow_backend=persistent)
+    n_persist.run(batch1, agent=stager_agent)
+    n_persist.run(batch2, agent=stager_agent)
+    staged_caught = persistent.is_action_critical("comms.value")
+    checks.append(("persistent backend CATCHES cross-batch staging (D64)",
+                   staged_caught, "comms.value action-critical after the path completes across batches"))
+
+    # And the gate blocks it: re-read the staged value's label from the store at
+    # action time and gate an action on it.
+    actuator2 = Actuator()
+    from ontology.nornir.assertions import ClassifiedAssertion
+    staged_view = ClassifiedAssertion(
+        assertion_id="comms.value", type_name="comms:instruction_to_act", actionable=False,
+        trust_level="trust:TAINTED", taint_class="taint:EXTERNAL_COMMS", fields={},
+        action_critical=persistent.is_action_critical("comms.value"),
+    )
+    prop2 = ActionProposal("pay", "sink:pay", {"comms.value": CONSUME_ACTION}, declared_safe=False)
+    d2 = enforce(prop2, {"comms.value": staged_view}, stager_agent.consequential_sinks, actuator2)
+    checks.append(("gate blocks the cross-batch-staged value before firing",
+                   (not d2.authorised) and (not d2.fired) and not actuator2.action_effects,
+                   str(d2.reasons[:1])))
+
     # Cleanup.
     try:
         with driver.session() as s:
@@ -107,9 +163,10 @@ def main() -> int:
     if ok:
         print("INTEGRATION PASS: Nornir computes the action-critical set over a live")
         print("Memgraph store, matching the in-memory oracle, and the Gjoll gate blocks")
-        print("an unsafe wiring on those store-computed labels before it fires. The last")
-        print("integration the spike (D57) and the gate (D58) left unproven, that they")
-        print("run together through Nornir, is now demonstrated.")
+        print("an unsafe wiring on those store-computed labels before it fires. With a")
+        print("persistent store (D64) it also catches CROSS-BATCH state staging that the")
+        print("per-batch backend misses: a value staged across two separate batches")
+        print("becomes action-critical once the path completes, and the gate blocks it.")
         return 0
     print("INTEGRATION FAIL: the store-backed run diverged. Detail above.")
     return 1

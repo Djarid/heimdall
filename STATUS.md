@@ -40,10 +40,11 @@ and tested; full coverage is still untested.** That is the state of the project.
   `ONTOLOGY_CONSTRUCTION.md` 3.3 pass, including the mandatory cross-domain
   state-staging case. The spike's residual is resolved (D57): the proven algorithm
   is bound to a live Memgraph store (via podman) and matches the in-memory reference
-  exactly across fuzzed sequences. And Nornir with the Gjoll gate now runs over that
-  store via an injectable backend (D63), matching the in-memory oracle, so the
-  substrate and the gate are proven together, not just as separate pieces. See
-  `spike/substrate/OUTCOME.md`.
+  exactly across fuzzed sequences. Nornir with the Gjoll gate now runs over that
+  store via an injectable backend (D63), matching the in-memory oracle, and a
+  persistent store catches CROSS-BATCH state staging that the per-batch path misses
+  (D64): a value staged across separate turns becomes action-critical when the path
+  completes, and the gate blocks it. See `spike/substrate/OUTCOME.md`.
 - **Built and tested on a four-domain seed (the ontology).** The Phase 1
   communications, scheduling, finance and publication domains are authored on BFO
   as a runnable property-graph-native package, with a deterministic Nornir
@@ -81,7 +82,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 63 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 64 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -179,11 +180,17 @@ real deployment to be more than guesswork. Candidate next steps, in leverage ord
    report (D60) names what to extend.
 2. **Tune the finance/communications boundary demand-driven (D53)** once real traffic
    shows which payment overlaps actually occur.
-3. **Persistent-store Nornir: accumulate the flow graph across batches.** The store
-   backend (D63) wipes per batch, matching in-memory semantics. A persistent mode
-   (drop the wipe, maintain the label incrementally across batches) is the real
-   value of the store, and is the natural next store-side step when cross-batch
-   staging matters.
+3. **Exercise persistent-store Nornir under load / edge deletion across batches.**
+   The persistent mode (D64) accumulates the flow graph and catches cross-batch
+   staging; the natural follow-ons are edge-deletion (retraction) across batches at
+   scale, and a persistent-store differential fuzz against the in-memory oracle, both
+   of which want a longer-running store than a test spins up.
+
+Honest note on the frontier: the mechanism is now proven end to end on the seed, over
+the real substrate, and across batches. The remaining items (coverage breadth,
+boundary tuning) genuinely want real traffic to be more than guesswork, and the
+persistent-store hardening wants a real deployment. There is no unblocked
+mechanism-level gap left to close on the synthetic seed.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.

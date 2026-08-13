@@ -50,9 +50,15 @@ class MemgraphFlowBackend:
     dependency.
     """
 
-    def __init__(self, driver, wipe: bool = True) -> None:
+    def __init__(self, driver, persist: bool = False) -> None:
         self._driver = driver
-        self._wipe = wipe
+        # persist=False (default): per-batch semantics, matching the in-memory
+        # backend. Each call starts from a clean graph, so a batch sees only its own
+        # edges. persist=True: the flow graph ACCUMULATES across calls, so a value
+        # written in one batch that reaches a sink via an edge written in a LATER
+        # batch is caught (cross-batch state staging, D64). The store holds the graph
+        # either way; the difference is whether we wipe it between calls.
+        self._persist = persist
         # The proven store binding lives in the spike tree; import it lazily and by
         # path so the core package keeps no dependency on it.
         spike = Path(__file__).resolve().parents[2] / "spike" / "substrate"
@@ -60,6 +66,32 @@ class MemgraphFlowBackend:
             sys.path.insert(0, str(spike))
         from memgraph_store import MemgraphReachability  # noqa: E402
         self._Store = MemgraphReachability
+        # In persist mode we keep one store over the accumulated graph and remember
+        # what has already been written, so a repeated batch does not double-add
+        # parallel edges (which would corrupt the support counts).
+        self._store = None
+        self._known_sinks: set[str] = set()
+        self._known_edges: set[tuple[str, str]] = set()
+        if self._persist:
+            self._store = self._Store(driver, wipe=True)  # start clean once, then accumulate
+
+    def reset(self) -> None:
+        """Wipe the accumulated persistent graph and start fresh. No-op in per-batch
+        mode. Used to isolate tests, and available operationally to clear state."""
+        if self._persist and self._store is not None:
+            self._store = self._Store(self._driver, wipe=True)
+            self._known_sinks.clear()
+            self._known_edges.clear()
+
+    def is_action_critical(self, node: str) -> bool:
+        """Query the current action-critical label of any node in the accumulated
+        graph. In per-batch mode there is no persistent graph to query, so this only
+        answers meaningfully in persist mode; it exists so a gate can re-read a value's
+        label at action time, which is the whole point of persistence (a value staged
+        earlier is already labelled when a later action touches it)."""
+        if self._store is None:
+            return False
+        return self._store.is_action_critical(node)
 
     @staticmethod
     def connect(uri: str = "bolt://localhost:7687"):
@@ -77,16 +109,27 @@ class MemgraphFlowBackend:
             return None
 
     def __call__(self, flow_edges: list[tuple[str, str]], sinks: frozenset[str]) -> set[str]:
-        store = self._Store(self._driver, wipe=self._wipe)
-        # Declare the agent's consequential sinks, then write every flow edge. The
-        # store maintains the action-critical label incrementally as edges are added
-        # (the write-time labelling the spike proved), so after loading, the label is
-        # already correct and reading it back is a property read, not a traversal.
-        for s in sinks:
-            store.mark_sink(s)
-        for u, v in flow_edges:
-            store.add_edge(u, v)
-        # Read back the labelled set. Restrict to nodes that appear in this batch's
-        # graph plus the sinks, matching the in-memory backend's node universe.
+        if self._persist:
+            store = self._store
+            # Add only the delta, so accumulated parallel edges are not double-added.
+            for s in sinks:
+                if s not in self._known_sinks:
+                    store.mark_sink(s)
+                    self._known_sinks.add(s)
+            for u, v in flow_edges:
+                if (u, v) not in self._known_edges:
+                    store.add_edge(u, v)
+                    self._known_edges.add((u, v))
+        else:
+            # Per-batch: a clean graph each call, matching the in-memory backend.
+            store = self._Store(self._driver, wipe=True)
+            for s in sinks:
+                store.mark_sink(s)
+            for u, v in flow_edges:
+                store.add_edge(u, v)
+        # Read back the labelled set for THIS batch's node universe (so Nornir sets
+        # action_critical on this batch's assertions). In persist mode the label is
+        # computed over the whole accumulated graph, so a node here reads critical if
+        # it reaches a sink via any edge ever written, not only this batch's.
         nodes = {u for u, _ in flow_edges} | {v for _, v in flow_edges} | set(sinks)
         return {n for n in nodes if store.is_action_critical(n)}
