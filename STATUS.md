@@ -58,11 +58,15 @@ and tested; full coverage is still untested.** That is the state of the project.
   realistic BEC evasions no longer silently go inert, closed without a keyword
   blacklist. That discipline is now enforced structurally, not by review alone
   (D55): a fail-closed property test in the harness, a standing rule in `AGENTS.md`,
-  an authoring checklist, and a sharpened invariant 3.5. See `ontology/OUTCOME.md`.
-- **Not yet tested (full coverage, live store).** The guarantee's extent depends
-  on coverage growing beyond the seed, and on binding the proven flow-to-sink
-  algorithm to a live Memgraph store. These are the remaining open dependencies.
-  See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
+  an authoring checklist, and a sharpened invariant 3.5. And Gjoll's action-critical
+  gate (invariant 3.6, D58) is demonstrated: a consequential action is blocked before
+  it fires when a parameter is an untrusted-derived, action-critical value, including
+  when that value reaches the sink through a multi-hop cross-domain chain, with the
+  mandatory safe-plus-unsafe control. See `ontology/OUTCOME.md`.
+- **Not yet tested (full coverage).** The guarantee's extent depends on coverage
+  growing beyond the seed. The substrate, the classifier, the reasoner and the gate
+  are all demonstrated on the seed; what remains is coverage breadth. See
+  `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
 
 ---
 
@@ -75,7 +79,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 57 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 58 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -105,10 +109,11 @@ with `DECISIONS.md` as the running record of why each choice was made.
   (`ontology/tests/`) with a 33-case ground-truth corpus and 4 flow fixtures. All
    four obligations of 3.11 pass, plus a classification fail-closed property test
    (obligation 8.2b, D55) that catches a blacklist/fail-open regression
-   automatically, and a strengthened reasoner-soundness check with a negative
-   control (D56); coverage measured at 93.9%; domain attach test demonstrated twice;
-   cross-domain priority governed by principle (D52); inert classification fails
-   closed (D54). See `ontology/OUTCOME.md`.
+   automatically, a strengthened reasoner-soundness check with a negative control
+   (D56), and the Gjoll action-critical gate (obligation 3.6, D58) that blocks an
+   unsafe wiring before it fires while passing a safe one; coverage measured at
+   93.9%; domain attach test demonstrated twice; cross-domain priority governed by
+   principle (D52); inert classification fails closed (D54). See `ontology/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -145,9 +150,11 @@ inert gate. The only items still open are the research questions D33 to D36.
 
 ## 6. Recommended next step
 
-The substrate is ratified, the seed ontology is built across three domains with a
-principled, cost-measured cross-domain priority rule, and the tests pass. Next
-steps, in leverage order:
+The substrate is ratified and bound to a live store, the seed ontology is built
+across three domains with a principled cross-domain priority rule, the classifier
+fails closed, the reasoner is soundness-tested with a control, and Gjoll's
+action-critical gate is demonstrated. The mechanism is now largely proven on the
+seed; what is left is breadth and persistence. Next steps, in leverage order:
 
 1. **Grow coverage beyond the seed.** Coverage is 93.9% on a 33-case corpus; that
    is a start, not a claim. Extend the ground-truth corpus and the classification
@@ -158,14 +165,11 @@ steps, in leverage order:
 2. **Tune the finance/communications boundary demand-driven (D53)** once real
    traffic shows which payment overlaps actually occur, to bring down the 15% tie
    rate without losing the tie-to-review safety net.
-3. **Wire Nornir's live flow-to-sink to the Memgraph binding.** The binding is
-   built and verified against the reference (D57); the natural follow-on is to run
-   Nornir itself over the store rather than the in-memory graph, when persistence or
-   scale beyond a single batch is wanted.
-
-The substrate binding to a live Memgraph store is done (D57): the earlier "needs
-Docker, infra-blocked" note was a stale mischaracterisation. Memgraph runs locally
-via podman, and the proven algorithm matches the reference on the real store.
+3. **Wire Nornir's live flow-to-sink and the Gjoll gate to the Memgraph binding.**
+   The binding is verified against the reference (D57) and the gate is proven over
+   the in-memory graph (D58); the natural follow-on is to run both over the store
+   rather than the per-batch in-memory graph, when persistence or cross-batch scale
+   is wanted.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.

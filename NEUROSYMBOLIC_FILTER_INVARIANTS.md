@@ -84,7 +84,7 @@ The PoC tried to strengthen the output check by scanning the extraction for dire
 
 ### 3.6 Model output is inert until explicitly and safely wired to a sink
 
-**The provenance gate is PROVEN; the determination of what is action-critical is NOT YET TESTED.** Maps to principle 3, principle 12 (action-critical values gated at action time), principle 10 and Gjöll.
+**The provenance gate is PROVEN; the action-critical determination and its wiring to the gate are DEMONSTRATED on the seed.** Maps to principle 3, principle 12 (action-critical values gated at action time), principle 10 and Gjöll.
 
 Every field a model produces from untrusted input is untrusted-derived. The PoC tagged all extraction fields as such, wired a mock actuator and enforced a provenance gate: a sink that consumes an untrusted-derived field as an action fails the assertion, structurally, before the actuator can fire. A safe sink (consuming fields only as inert data) passed on every case; an unsafe control sink (a payment actuator mis-wired to the extracted summary) was caught on every case including clean controls, because the wiring is unsafe by construction regardless of the payload.
 
@@ -92,7 +92,7 @@ The PoC's gate decided action-critical status from a per-sink label: the sink de
 
 **Invariant.** Gjöll enforces, at action time, that no consequential action is parameterised by an untrusted-derived value without passing a gate. Consuming an untrusted-derived value as an action without passing Gjöll fails closed. Whether a value is action-critical is a property of its transitive flow to a consequential sink, declared in the ontology and computed by reachability, not a self-asserted per-sink label. The provenance gate is a property of the wiring, checked structurally, never of the value's content.
 
-**Acceptance.** Two layers. The provenance gate (PROVEN): the Phase 3 deliberate-friction test uses exactly the PoC's shape, one real consequential capability, a safe wiring that passes and an unsafe control wiring that must be caught before it fires; a green board with only safe wirings is insufficient, the unsafe control is mandatory, exactly as clean controls are mandatory for the extraction test. The action-critical determination (NOT YET TESTED): validated by the flow-to-sink reachability obligation in 3.11, including the state-staging adversarial case.
+**Acceptance.** Two layers. The provenance gate (PROVEN): the Phase 3 deliberate-friction test uses exactly the PoC's shape, one real consequential capability, a safe wiring that passes and an unsafe control wiring that must be caught before it fires; a green board with only safe wirings is insufficient, the unsafe control is mandatory, exactly as clean controls are mandatory for the extraction test. The action-critical determination (DEMONSTRATED on the seed, decision D58): the Gjoll gate (`ontology/nornir/gjoll.py`) authorises a consequential action only if no parameter it consumes as an action is an untrusted-derived, action-critical value, where action-critical is computed by flow-to-sink reachability, not a per-sink label. The harness obligation runs the PoC's safe-plus-unsafe-control shape over the ontology build, catches the unsafe control before it fires including when the value is staged through a multi-hop cross-domain chain, and confirms a non-action-critical value is not gated. It remains bounded by ontology coverage (the reachability graph must be correct) and by sink-wiring honesty (see 4).
 
 ### 3.7 Boundary guarantees are per model family, not universal
 
