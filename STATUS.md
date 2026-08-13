@@ -64,9 +64,9 @@ and tested; full coverage is still untested.** That is the state of the project.
   when that value reaches the sink through a multi-hop cross-domain chain, with the
   mandatory safe-plus-unsafe control. See `ontology/OUTCOME.md`.
 - **Not yet tested (full coverage).** The guarantee's extent depends on coverage
-  growing beyond the seed. The substrate, the classifier, the reasoner and the gate
-  are all demonstrated on the seed; what remains is coverage breadth. See
-  `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
+  growing beyond the seed. The substrate, the classifier, the reasoner, the gate and
+  the marshalling seam to the real model (D62) are all demonstrated on the seed; what
+  remains is coverage breadth. See `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.11.
 
 ---
 
@@ -79,7 +79,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 61 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 62 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -111,11 +111,15 @@ with `DECISIONS.md` as the running record of why each choice was made.
   property test (obligation 8.2b, D55) that catches a blacklist/fail-open regression
   automatically, a strengthened reasoner-soundness check with a negative control
   (D56), the Gjoll action-critical gate (obligation 3.6, D58) that blocks an unsafe
-  wiring before it fires while passing a safe one, and a coverage-gap capture that
-  reports the review queue by reason to drive demand-driven growth (D60); coverage
-  measured at 94.7%; domain attach test demonstrated three times (D59); cross-domain
-  priority governed by principle (D52, refined for inert ties D61); inert
-  classification fails closed (D54). See `ontology/OUTCOME.md`.
+  wiring before it fires while passing a safe one, a coverage-gap capture that
+  reports the review queue by reason to drive demand-driven growth (D60), and a
+  marshalling-contract check (D62) proving the PoC extraction envelope becomes a
+  typed assertion; coverage measured at 94.7%; domain attach test demonstrated three
+  times (D59); cross-domain priority governed by principle (D52, refined for inert
+  ties D61); inert classification fails closed (D54). An optional end-to-end harness
+  (`ontology/tests/e2e_harness.py`) runs the real mlx model through
+  marshal-classify-gate: an injected directive is extracted and blocked before firing
+  (D62). See `ontology/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,

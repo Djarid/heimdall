@@ -204,6 +204,46 @@ def run_coverage_gaps(nornir: Nornir, cases: list[dict], rep: Report) -> None:
     rep.line("")
 
 
+def run_marshalling(nornir: Nornir, rep: Report) -> None:
+    """The marshalling-contract obligation (D28), deterministic half. Proves the seam
+    between a Fenrir/PoC extraction envelope and a typed assertion holds without a
+    model: a PoC-shaped envelope marshals into a MarshalledAssertion the classifier
+    accepts with provenance intact, and a provenance breach (a field claiming to be
+    anything other than untrusted-derived) fails closed. The real-model half is the
+    optional end-to-end harness (`ontology/tests/e2e_harness.py`)."""
+    from ontology.nornir.marshalling import marshal, POC_PROVENANCE_UNTRUSTED_DERIVED
+
+    rep.line("=== Marshalling contract (D28), deterministic half ===")
+
+    extraction = {
+        "sender_extracted": "it@corp",
+        "subject_extracted": "Fix",
+        "requested_action_summary": "download and run the attached script",
+        "entities": ["corp"],
+    }
+    prov = {k: POC_PROVENANCE_UNTRUSTED_DERIVED for k in extraction}
+    a = marshal("marshal-test", extraction, prov)
+    c = nornir.run([a]).classified[0]
+    ok_taint = c.trust_level == "trust:TAINTED"
+    ok_type = c.type_name != UNCLASSIFIED  # a run-a-script envelope should classify
+    rep.line(f"  [{'PASS' if ok_taint else 'FAIL'}] real-shaped envelope marshals TAINTED "
+             f"and classifies ({c.type_name})")
+    if not (ok_taint and ok_type):
+        rep.critical_failures += 1
+
+    # Fail-closed: a field claiming non-untrusted provenance must raise, not be trusted.
+    breached = False
+    try:
+        marshal("bad", extraction, {"sender_extracted": "TRUSTED"})
+    except ValueError:
+        breached = True
+    rep.line(f"  [{'PASS' if breached else 'CRITICAL'}] provenance breach fails closed "
+             f"(a field claiming non-untrusted origin is rejected)")
+    if not breached:
+        rep.critical_failures += 1
+    rep.line("")
+
+
 def run_failclosed_property(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None:
     """Obligation 8.2b: the classification fail-closed property (invariant 3.5,
     classification path; D54, D55).
@@ -522,6 +562,7 @@ def main() -> int:
 
     run_classification(nornir, cases, rep, hr, inert)
     run_coverage_gaps(nornir, cases, rep)
+    run_marshalling(nornir, rep)
     run_failclosed_property(nornir, rep, inert)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
