@@ -89,9 +89,12 @@ Ratified:
 - **D38.** With the substrate confirmed as a property graph, BFO as the loaded spine composes cleanly: the loaded layers are authored as graph nodes and relations rather than OWL, as `ontology/README.md` anticipated. Nothing in the spike contradicts the load-and-extend assumption. The BFO load-and-extend itself is a separate, smaller check still to run against the real store.
 - **D32.** Edge-deletion label retraction is solved, with a sound-and-cheap default (conservative) and an exact fallback, and the price of each is measured.
 
+Resolved after the spike:
+
+- **The live-store binding is done (D57).** The proven algorithm is bound to a live Memgraph store in `memgraph_store.py`, reproducing the conservative-mode semantics, and a differential test (`memgraph_harness.py`) drives the same random add/delete sequences through both the in-memory reference and the Memgraph binding, comparing labels after every operation. It matches exactly across 1800 fuzzed operations with zero unsound operations, and the add, delete-survivor and delete-cycle cases hold. The binding test is optional and skips cleanly when Memgraph is not reachable, so the core suite stays dependency-free (D01). Note: an earlier version of this document and of `STATUS.md` called the binding infra-blocked; that was a stale mischaracterisation (a single `which docker` check), corrected here. Memgraph runs locally via podman.
+
 Left open, and unchanged by the spike:
 
-- The spike is substrate-neutral, so it does not exercise Memgraph's own triggers, transaction semantics or persistence. Binding the algorithm to Memgraph and re-checking the four criteria against the live store is the next substrate step, now low-risk because the algorithm is proven.
 - The dense-cycle caveat (section 5) is a monitoring obligation, not a resolved question.
 - Everything downstream of the substrate in `ONTOLOGY_CONSTRUCTION.md` section 9 (the seed ontology, the marshalling contract wired to Fenrir, the coverage and correctness corpora) is untouched by this spike and remains Phase 2 work.
 

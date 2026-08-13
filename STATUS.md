@@ -33,12 +33,14 @@ and tested; full coverage is still untested.** That is the state of the project.
   unless a wiring is proven safe by provenance. Demonstrated on an adversarial
   corpus with a real local model, at decoding temperatures 0.0 and 0.7. See
   `poc/OUTCOME.md`.
-- **Ratified (the substrate).** The Phase 2 substrate spike settled D25 and D38:
-  a property graph maintains the flow-to-sink action-critical label incrementally,
-  with sound edge-deletion retraction (D32), without an authorisation-time
-  traversal. All four criteria of `ONTOLOGY_CONSTRUCTION.md` 3.3 pass, including
-  the mandatory cross-domain state-staging case. The spike is substrate-neutral,
-  so binding the proven algorithm to the live Memgraph store is the residual. See
+- **Ratified and bound to a live store (the substrate).** The Phase 2 substrate
+  spike settled D25 and D38: a property graph maintains the flow-to-sink
+  action-critical label incrementally, with sound edge-deletion retraction (D32),
+  without an authorisation-time traversal. All four criteria of
+  `ONTOLOGY_CONSTRUCTION.md` 3.3 pass, including the mandatory cross-domain
+  state-staging case. The spike's residual is now also resolved (D57): the proven
+  algorithm is bound to a live Memgraph store (via podman) and matches the
+  in-memory reference exactly across fuzzed sequences. See
   `spike/substrate/OUTCOME.md`.
 - **Built and tested on a three-domain seed (the ontology).** The Phase 1
   communications and scheduling domains are authored on BFO as a runnable
@@ -73,7 +75,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 56 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 57 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -153,12 +155,17 @@ steps, in leverage order:
    human-curated (D26). This raises the measured guarantee (invariant 3.9) and
    sharpens the classification-correctness corpus that D34 (honest vs
    injection-induced error) needs.
-2. **Bind the proven reachability algorithm to a live Memgraph store** and re-check
-   the four spike criteria against the real substrate (the spike's residual, now
-   low-risk). Needs Docker or a hosted Memgraph, neither installed yet.
-3. **Tune the finance/communications boundary demand-driven (D53)** once real
+2. **Tune the finance/communications boundary demand-driven (D53)** once real
    traffic shows which payment overlaps actually occur, to bring down the 15% tie
    rate without losing the tie-to-review safety net.
+3. **Wire Nornir's live flow-to-sink to the Memgraph binding.** The binding is
+   built and verified against the reference (D57); the natural follow-on is to run
+   Nornir itself over the store rather than the in-memory graph, when persistence or
+   scale beyond a single batch is wanted.
+
+The substrate binding to a live Memgraph store is done (D57): the earlier "needs
+Docker, infra-blocked" note was a stale mischaracterisation. Memgraph runs locally
+via podman, and the proven algorithm matches the reference on the real store.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.
