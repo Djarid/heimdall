@@ -38,9 +38,11 @@ and tested; full coverage is still untested.** That is the state of the project.
   action-critical label incrementally, with sound edge-deletion retraction (D32),
   without an authorisation-time traversal. All four criteria of
   `ONTOLOGY_CONSTRUCTION.md` 3.3 pass, including the mandatory cross-domain
-  state-staging case. The spike's residual is now also resolved (D57): the proven
-  algorithm is bound to a live Memgraph store (via podman) and matches the
-  in-memory reference exactly across fuzzed sequences. See
+  state-staging case. The spike's residual is resolved (D57): the proven algorithm
+  is bound to a live Memgraph store (via podman) and matches the in-memory reference
+  exactly across fuzzed sequences. And Nornir with the Gjoll gate now runs over that
+  store via an injectable backend (D63), matching the in-memory oracle, so the
+  substrate and the gate are proven together, not just as separate pieces. See
   `spike/substrate/OUTCOME.md`.
 - **Built and tested on a four-domain seed (the ontology).** The Phase 1
   communications, scheduling, finance and publication domains are authored on BFO
@@ -79,7 +81,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 62 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 63 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -160,27 +162,28 @@ only items still open are the research questions D33 to D36.
 
 ## 6. Recommended next step
 
-The substrate is ratified and bound to a live store, the seed ontology is built
-across four domains with a principled cross-domain priority rule, the classifier
-fails closed, the reasoner is soundness-tested with a control, Gjoll's action-critical
-gate is demonstrated, and coverage growth is now demand-driven off a captured
-gap signal (D60). The mechanism is largely proven on the seed; what is left is
-breadth and persistence. Next steps, in leverage order:
+The substrate is ratified, bound to a live store and now run through Nornir with the
+gate (D63); the seed ontology is built across four domains with a principled
+cross-domain priority rule; the classifier fails closed; the reasoner is
+soundness-tested with a control; Gjoll's action-critical gate is demonstrated in
+memory and over the store; the marshalling seam is proven end to end with a real
+model (D62); and coverage growth is demand-driven off a captured gap signal (D60).
+The mechanism is now proven end to end on the seed. What genuinely remains is
+coverage BREADTH and cross-batch PERSISTENCE, both of which want real traffic or a
+real deployment to be more than guesswork. Candidate next steps, in leverage order:
 
-1. **Grow coverage from the captured gaps.** Coverage is 94.7% on a 38-case corpus;
-   the gap-capture report (D60) now names what is in the review queue by reason, so
-   extension is driven by real signal rather than a manual probe. Extend the corpus
-   and rules where the gap report shows thinness, hand-authored and human-curated
-   (D26). This raises the measured guarantee (invariant 3.9) and sharpens the
-   classification-correctness corpus that D34 (honest vs injection-induced) needs.
-2. **Tune the finance/communications boundary demand-driven (D53)** once real
-   traffic shows which payment overlaps actually occur, to bring down the tie rate
-   without losing the tie-to-review safety net.
-3. **Wire Nornir's live flow-to-sink and the Gjoll gate to the Memgraph binding.**
-   The binding is verified against the reference (D57) and the gate is proven over
-   the in-memory graph (D58); the natural follow-on is to run both over the store
-   rather than the per-batch in-memory graph, when persistence or cross-batch scale
-   is wanted.
+1. **Grow coverage from the captured gaps, once there is real traffic.** Coverage is
+   94.7% on a 38-case corpus; on the synthetic corpus the review queue is all
+   intentional (fail-safe, evasions, genuine ties), so further growth here is padding
+   or blacklisting. The honest trigger is real traffic (D26): then the gap-capture
+   report (D60) names what to extend.
+2. **Tune the finance/communications boundary demand-driven (D53)** once real traffic
+   shows which payment overlaps actually occur.
+3. **Persistent-store Nornir: accumulate the flow graph across batches.** The store
+   backend (D63) wipes per batch, matching in-memory semantics. A persistent mode
+   (drop the wipe, maintain the label incrementally across batches) is the real
+   value of the store, and is the natural next store-side step when cross-batch
+   staging matters.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.

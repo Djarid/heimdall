@@ -25,7 +25,6 @@ from .assertions import ClassifiedAssertion, MarshalledAssertion
 from .rules import (
     DERIVATION_RULES,
     Violation,
-    action_critical_set,
     check_constraints,
     classify_assertion,
 )
@@ -95,8 +94,15 @@ class NornirResult:
 
 
 class Nornir:
-    def __init__(self, ontology: Ontology) -> None:
+    def __init__(self, ontology: Ontology, flow_backend=None) -> None:
         self.onto = ontology
+        # The flow-to-sink backend computes the agent-scoped action-critical set from
+        # the batch's flow edges and the agent's sinks. It defaults to the proven
+        # in-memory backward reachability (dependency-free, D01). A caller may inject
+        # a MemgraphFlowBackend to run the same determination over a live store (D57,
+        # D63); nothing about the store leaks into the default path.
+        from .flow_backends import in_memory
+        self.flow_backend = flow_backend or in_memory
         # Load every domain's classification and derivation rules into the shared
         # registries. Each domain registers its own; adding a domain is a new sibling
         # module here, never an edit to another domain's rules (the D29 attach test
@@ -175,7 +181,10 @@ class Nornir:
         for a in assertions:
             for target in a.flows:
                 flow_edges.append((a.assertion_id, target))
-        critical = action_critical_set(flow_edges, ctx.consequential_sinks)
+        # Compute the action-critical set via the configured backend. In-memory by
+        # default; a Memgraph-backed backend runs the same determination over the live
+        # store (D63). Both return the same set for the same input.
+        critical = self.flow_backend(flow_edges, ctx.consequential_sinks)
         for c in classified:
             c.action_critical = c.assertion_id in critical
 
