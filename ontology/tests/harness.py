@@ -76,6 +76,7 @@ class Report:
         self.flow_failures = 0
         self.property_failures = 0
         self.gjoll_failures = 0
+        self.false_inert_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -543,6 +544,63 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
     rep.line("")
 
 
+FALSE_INERT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_adversarial.json"
+
+
+def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None:
+    """Measure the FALSE-INERT RATE: of genuinely-consequential content, the fraction
+    the classifier types to an inert type, so it skips both the Gjoll gate and human
+    review. This is the true bound of the guarantee (ADVERSARIAL_REVIEW.md 5.2), and
+    it was unmeasured on any corpus not authored to match the rules. This obligation
+    exists to attack that bound with an independent adversarial corpus whose
+    consequence labels come from an external test, and whose cases are constructed to
+    evade the rule vocabulary (see the corpus's independence_discipline).
+
+    A consequential case that lands INERT is a false-inert and a critical finding
+    (invariant 3.11 obligation 8.2). A consequential case routed to review or typed
+    high-risk is NOT a false-inert: it failed closed or was caught. Benign controls
+    must not be typed high-risk (that would be over-classification, a cost)."""
+    rep.line("=== False-inert rate (independent adversarial corpus, ADVERSARIAL_REVIEW 5.2) ===")
+    data = json.loads(FALSE_INERT_CORPUS.read_text())
+    cases = data["cases"]
+    assertions = [
+        MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
+        for c in cases
+    ]
+    result = nornir.run(assertions)
+    by_id = {c.assertion_id: c for c in result.classified}
+
+    consequential = [c for c in cases if c["ground_truth"] == "consequential"]
+    false_inert = []
+    caught_or_review = []
+    for case in consequential:
+        got = by_id[case["id"]]
+        if got.type_name in INERT_TYPES:
+            false_inert.append((case["id"], got.type_name))
+        else:
+            caught_or_review.append((case["id"], got.type_name))
+
+    n = len(consequential)
+    fi = len(false_inert)
+    rep.line(f"  Consequential cases: {n}. False-inert (typed inert, skips gate AND review): "
+             f"{fi}/{n}.")
+    for cid, typ in false_inert:
+        rep.false_inert_failures += 1
+        rep.line(f"  [CRITICAL] {cid}: consequential content typed inert as {typ} "
+                 f"(skips the gate and review); a false-inert break")
+    if fi == 0:
+        rep.line("  [PASS] no consequential case was typed inert; every one was caught "
+                 "high-risk or routed to review (failed closed).")
+    else:
+        rep.line(f"  FALSE-INERT RATE on this corpus: {fi}/{n}. This is a measured bound, "
+                 f"not a claim of the rate on real traffic.")
+    # Report where the caught ones landed, so the reader sees closed-fail vs caught.
+    rep.line("  Consequential cases that failed closed or were caught:")
+    for cid, typ in caught_or_review:
+        rep.line(f"    {cid} -> {typ}")
+    rep.line("")
+
+
 def main() -> int:
     data = json.loads(CORPUS.read_text())
     cases = data["cases"]
@@ -564,6 +622,7 @@ def main() -> int:
     run_coverage_gaps(nornir, cases, rep)
     run_marshalling(nornir, rep)
     run_failclosed_property(nornir, rep, inert)
+    run_false_inert(nornir, rep, inert)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
@@ -571,7 +630,7 @@ def main() -> int:
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
-             + rep.property_failures + rep.gjoll_failures)
+             + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
@@ -583,9 +642,20 @@ def main() -> int:
         print("passing a safe one. This is the Phase 1 seed proven on this corpus,")
         print("not a claim of complete coverage.")
         return 0
-    print(f"SUITE FAIL: {fatal} critical finding(s). Detail above. A downgrade, a")
-    print("fail-safe breach, an unmatched request going inert, an unsound derivation")
-    print("or a missed action-critical value is a boundary failure, not a quality metric.")
+    print(f"SUITE FAIL: {fatal} critical finding(s). Detail above.")
+    if rep.false_inert_failures and fatal == rep.false_inert_failures:
+        print()
+        print("The only failures are false-inert findings from the independent adversarial")
+        print("corpus (ADVERSARIAL_REVIEW 5.2, decision D67). This red bar is EXPECTED and")
+        print("RECORDED: consequential content that positively earns an inert signal defeats")
+        print("the fail-closed default, because inertness is earned by a content pattern an")
+        print("attacker can also satisfy. It is a known, understood break awaiting a design")
+        print("fix to how inertness is earned, not a regression. It is left red deliberately:")
+        print("a suite that names a real break is worth more than a green one that never")
+        print("tested it (invariant 3.5 in its deeper form, the inert-earning signal is content).")
+    else:
+        print("A downgrade, a fail-safe breach, an unmatched request going inert, an unsound")
+        print("derivation or a missed action-critical value is a boundary failure.")
     return 1
 
 

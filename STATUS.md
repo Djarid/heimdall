@@ -24,8 +24,14 @@ architecture and `README.md` for the orientation paths.
 
 ## 2. Where we are now
 
-**The premise is proven; the substrate is ratified; the seed ontology is built
-and tested; full coverage is still untested.** That is the state of the project.
+**The premise is proven; the substrate is ratified; the seed ontology is built;
+and an adversarial measurement has found a real classification break, so the test
+suite is deliberately RED.** That is the state of the project. The break (D67): an
+independent adversarial corpus measures a false-inert rate of 3/12, consequential
+content that positively earns an inert signal skips both the gate and review. It is
+left red and named, not patched, because a suite that names a real break is worth
+more than a green one that never tested it; the fix is an open design problem
+(D67-fix), not more keywords.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -83,7 +89,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 66 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 67 tracked decisions (D67 the false-inert break) plus the open D67-fix item, with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -111,15 +117,15 @@ with `DECISIONS.md` as the running record of why each choice was made.
   runnable property-graph package (58 nodes), the deterministic classifier and
   reasoner (no model, per-domain rule registry, fail-closed inert gate), and the
   test harness (`ontology/tests/`) with a 38-case ground-truth corpus and 4 flow
-  fixtures. All four obligations of 3.11 pass, plus a classification fail-closed
-  property test (obligation 8.2b, D55) that catches a blacklist/fail-open regression
-  automatically, a strengthened reasoner-soundness check with a negative control
-  (D56), the Gjoll action-critical gate (obligation 3.6, D58) that blocks an unsafe
-  wiring before it fires while passing a safe one, a coverage-gap capture that
-  reports the review queue by reason to drive demand-driven growth (D60), and a
-  marshalling-contract check (D62) proving the PoC extraction envelope becomes a
-  typed assertion; coverage measured at 94.7%; domain attach test demonstrated three
-  times (D59); cross-domain priority governed by principle (D52, refined for inert
+  fixtures. The harness runs the four 3.11 obligations plus a classification
+  fail-closed property test (obligation 8.2b, D55), a strengthened reasoner-soundness
+  check with a negative control (D56), the Gjoll action-critical gate (obligation
+  3.6, D58) that blocks an unsafe wiring before it fires while passing a safe one, a
+  coverage-gap capture that reports the review queue by reason (D60), a
+  marshalling-contract check (D62), and the false-inert measurement (D67). The suite
+  is currently RED: the false-inert measurement finds 3/12 (a real break, left red
+  and named); the other checks pass. Coverage measured at 36/38; domain attach test
+  demonstrated three times (D59); cross-domain priority governed by principle (D52, refined for inert
   ties D61); inert classification fails closed (D54). An optional end-to-end harness
   (`ontology/tests/e2e_harness.py`) runs the real mlx model through
   marshal-classify-gate: an injected directive is extracted and blocked before firing
@@ -157,41 +163,43 @@ surface), D60 the coverage-gap capture process, D61 the inert-tie refinement. D4
 D61 record the seed ontology, Nornir, the classification rulings, the test-corpus
 provenance, the per-domain rule registry (attach test demonstrated three times), the
 cross-domain priority principle and its cost, the fail-closed inert gate, the
-substrate binding, the action-critical gate, and demand-driven coverage growth. The
-only items still open are the research questions D33 to D36.
+substrate binding, the action-critical gate, and demand-driven coverage growth. Open
+items: the false-inert fix (D67-fix, forced now, the suite is red) and the research
+questions D33 to D36.
 
 ---
 
 ## 6. Recommended next step
 
-The substrate is ratified, bound to a live store and now run through Nornir with the
-gate (D63); the seed ontology is built across four domains with a principled
-cross-domain priority rule; the classifier fails closed; the reasoner is
-soundness-tested with a control; Gjoll's action-critical gate is demonstrated in
-memory and over the store; the marshalling seam is proven end to end with a real
-model (D62); and coverage growth is demand-driven off a captured gap signal (D60).
-The mechanism is now proven end to end on the seed. What genuinely remains is
-coverage BREADTH and cross-batch PERSISTENCE, both of which want real traffic or a
-real deployment to be more than guesswork. Candidate next steps, in leverage order:
+The structural half is proven and the mechanism is demonstrated on the seed, but the
+suite is RED: the false-inert measurement (D67) found a real classification break.
+That is now the top of the list.
 
-1. **Grow coverage from the captured gaps, once there is real traffic.** Coverage is
-   94.7% on a 38-case corpus; on the synthetic corpus the review queue is all
-   intentional (fail-safe, evasions, genuine ties), so further growth here is padding
-   or blacklisting. The honest trigger is real traffic (D26): then the gap-capture
-   report (D60) names what to extend.
-2. **Tune the finance/communications boundary demand-driven (D53)** once real traffic
-   shows which payment overlaps actually occur.
-3. **Exercise persistent-store Nornir under load / edge deletion across batches.**
-   The persistent mode (D64) accumulates the flow graph and catches cross-batch
-   staging; the natural follow-ons are edge-deletion (retraction) across batches at
-   scale, and a persistent-store differential fuzz against the in-memory oracle, both
-   of which want a longer-running store than a test spins up.
+1. **Close the false-inert break (D67-fix), and it must be a design change, not
+   keywords.** Consequential content that positively earns an inert signal
+   (informational, calendar, publication) is typed inert and skips both gate and
+   review; measured 3/12. The fix changes how inertness is earned so a positive inert
+   signal cannot override a co-present consequence signal, and a keyword blacklist is
+   explicitly forbidden (D54/D55, invariant 3.5). Candidate directions are recorded
+   under D67-fix. After a fix, re-measure the false-inert rate; do not declare it
+   closed on the current 12-case corpus alone.
+2. **Build a genuinely independent adversarial corpus.** The 3/12 is a lower bound
+   because one author wrote both the rules and the corpus (its labels come from an
+   external consequence test, but not third-party judgement). A corpus labelled by
+   someone who has not read the rules would turn the lower bound into an estimate,
+   and is the single highest-information next artefact (ADVERSARIAL_REVIEW 5.2, G2).
+3. **Publish the sink-declaration schema and inventory** so the seam ranked first
+   (ADVERSARIAL_REVIEW 5.1, sink-wiring honesty) becomes attackable by someone other
+   than its author.
 
-Honest note on the frontier: the mechanism is now proven end to end on the seed, over
-the real substrate, and across batches. The remaining items (coverage breadth,
-boundary tuning) genuinely want real traffic to be more than guesswork, and the
-persistent-store hardening wants a real deployment. There is no unblocked
-mechanism-level gap left to close on the synthetic seed.
+Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
+breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
+(D53), and persistent-store hardening under load and cross-batch edge deletion (D64).
+
+Honest note on the frontier: the earlier claim that there was "no unblocked
+mechanism-level gap left" was wrong, and the false-inert measurement is what showed it.
+There is now a named, measured, unblocked mechanism-level break, and closing it is the
+work.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.
