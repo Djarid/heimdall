@@ -39,6 +39,9 @@ You've basically had it above. For the one-page version of the argument, read th
 ### 🔬 I'm evaluating whether the security argument holds
 Start with [**Heimdall does not claim to prevent breach**](HEIMDALL.md#heimdall-does-not-claim-to-prevent-breach) to understand the posture, then go straight to the [**Threat Model**](HEIMDALL.md#threat-model) — adversary assumptions, what's prevented by threat class, and the explicitly-named residual risks. The [**value poisoning**](HEIMDALL.md#gjöll--value-integrity-and-action-time-re-validation) limitation and its containment (Gjöll) is the honest frontier of the design; the [**Fenrir**](HEIMDALL.md#fenrir--sandbox-agent) sandbox and its canary / attempt-introspection mechanisms are the core of the reading-path defence.
 
+### 🗡️ I'm here to break it
+Read [**ADVERSARIAL_REVIEW.md**](ADVERSARIAL_REVIEW.md): a briefing written to be attacked. It states the claims, points at the evidence, and hands you the honest seam list, ordered by where a real finding is most likely, along with how to tell a genuine break from a coverage observation (the design fails closed, so most "the classifier missed X" findings are the fail-safe working, not a break).
+
 ### 🛠️ I want to understand how it would be built
 Read the [**Architecture**](HEIMDALL.md#architecture) overview, then the [**Components**](HEIMDALL.md#components) section top to bottom. The [**Harness Integration**](HEIMDALL.md#harness-integration--pidev-extension-api) section covers how it maps onto an existing agent runtime, [**Build Phases**](HEIMDALL.md#build-phases) lays out the staged path from proof-of-separation to full system, and [**Open Questions**](HEIMDALL.md#open-questions) is where the unresolved engineering lives.
 
