@@ -46,7 +46,8 @@ and tested; full coverage is still untested.** That is the state of the project.
   reasoner, flow-to-sink) and a ground-truth corpus. All four test obligations of
   invariant 3.11 pass: coverage is measured (93.9% across three domains),
   classification correctness has no downgrade or fail-safe breach, the reasoner is
-  sound, and cross-domain state-staging is caught agent-scoped. The domain attach
+  sound (with a chained derivation and a negative control that catches an unsound
+  rule, D56), and cross-domain state-staging is caught agent-scoped. The domain attach
   test (D29) is demonstrated twice (scheduling, then finance) without editing the
   existing domains or the spine. Domain governance (D31) is settled single-curated,
   with a cross-domain priority principle (D52) whose review-queue cost the finance
@@ -72,7 +73,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 55 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 56 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -100,11 +101,12 @@ with `DECISIONS.md` as the running record of why each choice was made.
   property-graph package (55 nodes), the deterministic classifier and reasoner (no
   model, per-domain rule registry, fail-closed inert gate), and the test harness
   (`ontology/tests/`) with a 33-case ground-truth corpus and 4 flow fixtures. All
-  four obligations of 3.11 pass, plus a classification fail-closed property test
-  (obligation 8.2b, D55) that catches a blacklist/fail-open regression
-  automatically; coverage measured at 93.9%; domain attach test demonstrated twice;
-  cross-domain priority governed by principle (D52); inert classification fails
-  closed (D54). See `ontology/OUTCOME.md`.
+   four obligations of 3.11 pass, plus a classification fail-closed property test
+   (obligation 8.2b, D55) that catches a blacklist/fail-open regression
+   automatically, and a strengthened reasoner-soundness check with a negative
+   control (D56); coverage measured at 93.9%; domain attach test demonstrated twice;
+   cross-domain priority governed by principle (D52); inert classification fails
+   closed (D54). See `ontology/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -130,8 +132,9 @@ settled single-curated, with its cross-domain priority principle D52; D51 (maski
 is resolved by D52; D53 records the review-queue cost the finance domain measured;
 D54 makes inert classification fail closed (evasions route to review, no keyword
 blacklist), and D55 enforces that discipline with a property test, AGENTS.md rule,
-authoring checklist and a sharpened invariant 3.5. D46 to D55 record the seed
-ontology, Nornir, the classification rulings,
+authoring checklist and a sharpened invariant 3.5. D56 strengthens reasoner-soundness
+testing (per-rule entailment oracle, a chained derivation, a negative control). D46
+to D56 record the seed ontology, Nornir, the classification rulings,
 the test-corpus provenance, the per-domain rule registry (attach test demonstrated
 twice), the cross-domain priority principle, its measured cost, and the fail-closed
 inert gate. The only items still open are the research questions D33 to D36.

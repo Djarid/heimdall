@@ -173,11 +173,23 @@ def classify_assertion(a: MarshalledAssertion) -> ClassificationOutcome:
 
 @dataclass(frozen=True)
 class DerivationRule:
-    """A forward-chaining rule. `derive` returns a list of (fact, reason) pairs given
-    a classified assertion; each becomes an `inferred` entry carrying its chain."""
+    """A forward-chaining rule. `derive` returns a list of (fact, chain) pairs given a
+    classified assertion (with its flow-to-sink `action_critical` label already set,
+    because derivations run after flow-to-sink). Each pair becomes an `inferred` entry
+    carrying its chain.
+
+    `entails(assertion, fact) -> bool` is the rule's own soundness oracle: it states
+    the condition under which `fact` is legitimately derivable from the assertion. The
+    reasoner-soundness test (obligation 8.3) checks every derived fact against the
+    entailment of the rule that produced it, so soundness is verified per rule rather
+    than by the harness hardcoding knowledge of one fact. A rule whose `derive`
+    produces a fact its own `entails` rejects is caught as unsound. This is what lets
+    a deliberately-unsound rule be caught by the suite (the 8.3 negative control),
+    proving the test bites, in the same spirit as D10 and D55."""
 
     name: str
     derive: Callable[[ClassifiedAssertion], list]
+    entails: Callable[[ClassifiedAssertion, str], bool]
     version: str = "1"
 
 
@@ -198,18 +210,52 @@ def high_risk_types() -> frozenset[str]:
     return frozenset(_HIGH_RISK_TYPES)
 
 
+def _is_high_risk_type(type_name: str) -> bool:
+    """A type is high-risk if a domain declared it so, OR it is the high-risk tie
+    outcome. HIGH_RISK_UNRESOLVED is not in the per-domain registry (it is a fail-safe
+    node), but a value routed there is high-risk and gated, so derivations that key on
+    high-risk must include it."""
+    return type_name in _HIGH_RISK_TYPES or type_name == "unclassified:high_risk_unresolved"
+
+
 def _derive_high_risk(c: ClassifiedAssertion) -> list:
-    """A high-risk type derives a `needs_human_review` fact. This is a routing
-    derivation, not a trust promotion: it never confers trust or actionable status
-    (that would violate a constraint). Authored once over the shared structure; the
-    set of high-risk types is contributed per domain (see `_HIGH_RISK_TYPES`)."""
-    if c.type_name in _HIGH_RISK_TYPES:
+    """A high-risk type derives a `needs_human_review` fact. A routing derivation, not
+    a trust promotion: it never confers trust or actionable status. Authored once over
+    the shared structure; the set of high-risk types is contributed per domain."""
+    if _is_high_risk_type(c.type_name):
         return [("needs_human_review", [c.assertion_id, c.type_name])]
     return []
 
 
+def _entails_high_risk(c: ClassifiedAssertion, fact: str) -> bool:
+    return fact == "needs_human_review" and _is_high_risk_type(c.type_name)
+
+
+def _derive_second_approval(c: ClassifiedAssertion) -> list:
+    """Chained inference (real forward-chaining over two base facts): a value that is
+    BOTH high-risk by type AND action-critical by flow-to-sink reachability derives
+    `needs_second_approval`. The chain records both premises. This is the staging
+    signal that matters: a high-risk value that can actually reach a consequential
+    sink warrants a second approver, not just review. It depends on the flow-to-sink
+    label, which is why derivations run after flow-to-sink. It confers no trust and no
+    actionable status; it raises scrutiny, which always fails safe."""
+    if _is_high_risk_type(c.type_name) and c.action_critical:
+        return [("needs_second_approval", [c.assertion_id, c.type_name, "action_critical"])]
+    return []
+
+
+def _entails_second_approval(c: ClassifiedAssertion, fact: str) -> bool:
+    return (
+        fact == "needs_second_approval"
+        and _is_high_risk_type(c.type_name)
+        and c.action_critical
+    )
+
+
 DERIVATION_RULES: tuple[DerivationRule, ...] = (
-    DerivationRule("high_risk_needs_review", _derive_high_risk),
+    DerivationRule("high_risk_needs_review", _derive_high_risk, _entails_high_risk),
+    DerivationRule("action_critical_needs_second_approval",
+                   _derive_second_approval, _entails_second_approval),
 )
 
 

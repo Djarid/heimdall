@@ -121,19 +121,16 @@ class Nornir:
         agent: AgentContext | None = None,
     ) -> NornirResult:
         ctx = resolve(agent)
+        # 1. Classify.
         classified = [self._classify_one(a) for a in assertions]
 
-        # 2. Derivations.
-        for c in classified:
-            for rule in DERIVATION_RULES:
-                for fact, chain in rule.derive(c):
-                    c.inferred.append({"fact": fact, "chain": chain, "rule": rule.name})
-
-        # 3. Flow-to-sink, agent-scoped. Build the global flow graph from the batch:
+        # 2. Flow-to-sink, agent-scoped. Build the global flow graph from the batch:
         # every assertion's `flows` are edges from the assertion id to the target
         # (another assertion id or a sink name). Reachability is against THIS agent's
         # consequential sink set (D24, D30). Phase 1's default set is empty, so
-        # nothing is action-critical unless the agent context supplies sinks.
+        # nothing is action-critical unless the agent context supplies sinks. This runs
+        # BEFORE derivations so a derivation can chain on the action_critical label
+        # (forward-chaining should see all base facts).
         flow_edges: list[tuple[str, str]] = []
         for a in assertions:
             for target in a.flows:
@@ -141,6 +138,15 @@ class Nornir:
         critical = action_critical_set(flow_edges, ctx.consequential_sinks)
         for c in classified:
             c.action_critical = c.assertion_id in critical
+
+        # 3. Derivations (forward-chaining), now able to key on both the classified
+        # type and the flow-to-sink label. Each derived fact records the rule that
+        # produced it, so the soundness test can check it against that rule's own
+        # entailment oracle (obligation 8.3).
+        for c in classified:
+            for rule in DERIVATION_RULES:
+                for fact, chain in rule.derive(c):
+                    c.inferred.append({"fact": fact, "chain": chain, "rule": rule.name})
 
         # 4. Constraints, including the gating axiom.
         violations = check_constraints(classified)

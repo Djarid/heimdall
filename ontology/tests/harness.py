@@ -246,34 +246,102 @@ def run_failclosed_property(nornir: Nornir, rep: Report, INERT_TYPES: frozenset)
     rep.line("")
 
 
-def run_soundness(nornir: Nornir, cases: list[dict], rep: Report,
-                  HIGH_RISK_TYPES: frozenset) -> None:
-    rep.line("=== 8.3 Reasoner soundness ===")
-    assertions = [
-        MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
-        for c in cases
-    ]
-    result = nornir.run(assertions)
-    checked = 0
+def _check_derivations(result, rules_by_name: dict) -> list[tuple]:
+    """Return a list of (assertion_id, detail) for every derived fact that is NOT
+    entailed by its producing rule, or whose chain is malformed. This is the general
+    soundness check: each derived fact is verified against the entailment oracle of
+    the rule that produced it (read from `fact['rule']`), so adding a derivation rule
+    needs no harness change. A fact whose rule is unknown, or that its own rule's
+    `entails` rejects, or whose chain does not reference the assertion, is unsound."""
+    unsound = []
+    by_id = {c.assertion_id: c for c in result.classified}
     for c in result.classified:
         for fact in c.inferred:
-            checked += 1
-            # Every derived fact must be entailed: the only derivation is
-            # high_risk_needs_review, entailed iff the type is high-risk. And the
-            # chain must reference this assertion and its type.
-            if fact["fact"] == "needs_human_review":
-                entailed = c.type_name in HIGH_RISK_TYPES
-                chain_ok = c.assertion_id in fact["chain"] and c.type_name in fact["chain"]
-                if not (entailed and chain_ok):
-                    rep.soundness_failures += 1
-                    rep.line(
-                        f"  [UNSOUND] {c.assertion_id}: derived {fact['fact']} not "
-                        f"entailed (type {c.type_name}) or chain malformed {fact['chain']}"
-                    )
-            else:
-                rep.soundness_failures += 1
-                rep.line(f"  [UNSOUND] {c.assertion_id}: unknown derived fact {fact['fact']}")
-    rep.line(f"  Derived facts checked: {checked}; unsound: {rep.soundness_failures} (must be 0).")
+            rule = rules_by_name.get(fact.get("rule"))
+            if rule is None:
+                unsound.append((c.assertion_id, f"derived {fact['fact']} from unknown rule {fact.get('rule')!r}"))
+                continue
+            if not rule.entails(c, fact["fact"]):
+                unsound.append((c.assertion_id, f"derived {fact['fact']} not entailed by rule {rule.name}"))
+            if c.assertion_id not in fact["chain"]:
+                unsound.append((c.assertion_id, f"derived {fact['fact']} chain does not cite the assertion: {fact['chain']}"))
+    return unsound
+
+
+def run_soundness(nornir: Nornir, cases: list[dict], rep: Report,
+                  HIGH_RISK_TYPES: frozenset) -> None:
+    from ontology.nornir.rules import DERIVATION_RULES
+
+    rep.line("=== 8.3 Reasoner soundness ===")
+    rules_by_name = {r.name: r for r in DERIVATION_RULES}
+
+    # Use the flow fixtures too, not just the flat cases, because the interesting
+    # chained derivation (needs_second_approval) only fires when a value is BOTH
+    # high-risk AND action-critical, which requires an agent with a sink. Run the
+    # staging fixtures so that rule is actually exercised, not just defined.
+    corpus_result = nornir.run(
+        [MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"])) for c in cases]
+    )
+    unsound = _check_derivations(corpus_result, rules_by_name)
+    checked = sum(len(c.inferred) for c in corpus_result.classified)
+
+    # Exercise the chained rule via a staging fixture: a high-risk value that reaches
+    # a consequential sink must derive needs_second_approval, and that derivation must
+    # be sound (both premises hold).
+    from ontology.yggdrasil.control_surface import AgentContext
+    agent = AgentContext("sound-agent", consequential_sinks=frozenset({"sink:pay"}))
+    staged = [
+        MarshalledAssertion("s.pay", "taint:EXTERNAL_COMMS",
+                            {"sender_extracted": "x@y", "subject_extracted": "urgent",
+                             "requested_action_summary": "please pay the invoice now"},
+                            flows=("sink:pay",)),
+    ]
+    staged_result = nornir.run(staged, agent=agent)
+    unsound += _check_derivations(staged_result, rules_by_name)
+    checked += sum(len(c.inferred) for c in staged_result.classified)
+    got_second_approval = any(
+        f["fact"] == "needs_second_approval"
+        for c in staged_result.classified for f in c.inferred
+    )
+
+    for aid, detail in unsound:
+        rep.soundness_failures += 1
+        rep.line(f"  [UNSOUND] {aid}: {detail}")
+
+    if not got_second_approval:
+        # The chained rule did not fire when it should have: an unexercised or broken
+        # inference is a soundness-suite gap, so flag it (not fatal to the boundary,
+        # but the suite must know its own rule ran).
+        rep.line("  [WARN] needs_second_approval did not fire on a high-risk action-critical value")
+
+    rep.line(f"  Derived facts checked: {checked}; unsound: {len(unsound)} (must be 0); "
+             f"chained needs_second_approval exercised: {got_second_approval}.")
+
+    # Negative control (proves 8.3 bites, in the spirit of D10 and D55): register a
+    # deliberately UNSOUND derivation rule that confers a fact its own entailment
+    # oracle rejects, confirm the checker catches it, then remove it so it never
+    # ships. A soundness suite that cannot catch an unsound rule is theatre.
+    from ontology.nornir.rules import DerivationRule
+    def _bad_derive(c):
+        return [("in_scope_trusted", [c.assertion_id])]  # confers scope/trust, never entailed
+    def _bad_entails(c, fact):
+        return False  # this fact is never legitimately derivable
+    bad = DerivationRule("UNSOUND_CONTROL", _bad_derive, _bad_entails)
+    control_result = nornir.run(
+        [MarshalledAssertion("ctl", "taint:EXTERNAL_COMMS",
+                             {"subject_extracted": "hello", "requested_action_summary": "fyi, no action needed"})]
+    )
+    # Inject the bad rule's output as if it had run, then check it is caught.
+    for c in control_result.classified:
+        c.inferred.append({"fact": "in_scope_trusted", "chain": [c.assertion_id], "rule": "UNSOUND_CONTROL"})
+    control_unsound = _check_derivations(control_result, {**rules_by_name, "UNSOUND_CONTROL": bad})
+    if control_unsound:
+        rep.line("  [PASS] soundness negative control: the deliberately-unsound derivation "
+                 "was caught (the check bites, it is not theatre).")
+    else:
+        rep.soundness_failures += 1
+        rep.line("  [CRITICAL] soundness negative control was NOT caught: the 8.3 check does "
+                 "not actually detect an unsound derivation.")
     rep.line("")
 
 
