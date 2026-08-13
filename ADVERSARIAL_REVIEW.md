@@ -1,113 +1,180 @@
 # Heimdall: Adversarial Review Brief
 
 **Author:** Jason Huxley
-**Version:** 1.0
+**Version:** 2.0
 **Date:** August 2026
-**Status:** a briefing for a hostile reviewer; written to be attacked, not to reassure
-**Reads with:** `HEIMDALL.md` (architecture), `NEUROSYMBOLIC_FILTER_INVARIANTS.md` (the invariants and their proof status), `DECISIONS.md` (the 64 tracked decisions), `ONTOLOGY_CONSTRUCTION.md` (how the ontology is built and tested), `STATUS.md` (current state)
+**Status:** a briefing for a hostile reviewer; revised after a first hostile review found real faults in v1.0 (see the changelog at the end)
+**Reads with:** `HEIMDALL.md` (architecture), `NEUROSYMBOLIC_FILTER_INVARIANTS.md` (the invariants and their proof status), `DECISIONS.md` (the tracked decisions), `ONTOLOGY_CONSTRUCTION.md` (how the ontology is built and tested), `STATUS.md` (current state)
 
 ---
 
-## 1. What this document is for
+## 1. What this document is for, and how v1.0 was wrong
 
-This is a brief for an adversarial reviewer, human or LLM, whose job is to break the design or find where its claims outrun its evidence. It is deliberately not a sales pitch. It states what Heimdall claims, points at the evidence, and then hands you the seams, assumptions and untested surface, because the project's worth is in stating limits plainly and a clearly-found hole is a good outcome.
+This is a brief for an adversarial reviewer, human or LLM, whose job is to break the design or find where its claims outrun its evidence. It is not a sales pitch. It states what Heimdall claims, points at the evidence, and hands you the seams and untested surface.
 
-Your task, if you are the reviewer: assume the claims are overstated somewhere, and find where. The most productive attacks are listed in section 5. If you can make one of the PROVEN invariants fail, or show that a DEMONSTRATED one does not generalise, or find a boundary the threat model misses, that is the result worth reporting.
+Version 1.0 of this brief was itself reviewed adversarially and had two structural faults, both of which flattered the design. They are fixed here and named so you can check the fix rather than trust it:
 
-A rule for the reviewer, because it is the load-bearing one: do not accept "we added a keyword rule to catch that attack" as a fix, and do not propose it as one. Detecting malicious content by pattern-matching is the mistake the whole architecture exists to avoid (invariant 3.5). If your critique reduces to "the classifier missed this phrasing", check first whether the content still fails closed (routes to review, or is gated by flow-to-sink); if it does, you have found a coverage observation, not a break.
+- **v1.0 defined "a real break" in terms of the system's own computed labels.** Since `action-critical` is a label the classifier assigns, a value the classifier wrongly types as inert satisfied no clause of the break definition, so every classifier miss was definitionally a non-break. That is an unfalsifiability construction sitting on top of the one weakness the brief admits is open. Section 6 now states break conditions in terms of real-world consequence and ground-truth labels, not the system's own output.
+- **v1.0's headline said trust is assigned "never by detecting malicious content", full stop.** True of provenance; false of the authorisation decision, which is a conjunction whose second term (criticality) is computed by content-inspecting keyword rules over model-produced text. Section 2 now separates the two.
 
----
-
-## 2. The claim, in one paragraph
-
-Heimdall lets an LLM agent work with untrusted external content (web, email, social, documents, tool output) without that content being able to cause action. Trust is assigned by origin at a single structural boundary, never by detecting malicious content. Untrusted content is quarantined as typed, inert data; the model only ever reads it as data; nothing acts on the model's output unless a wiring is proven safe by provenance and the value is not action-critical. "Action-critical" is not a per-sink label; it is computed by transitive flow-to-sink reachability over a world model, so a value inherits it the moment a path to a consequential sink exists, however many reversible hops intervene. The guarantee is only ever as strong as the ontology's coverage, and that bound is stated, not hidden.
+A rule for the reviewer that survives from v1.0, because it is correct and load-bearing: a keyword rule that enumerates malicious phrasings is not a fix and must not be proposed as one (invariant 3.5). But note the corollary v1.0 abused: the fact that unrecognised content fails closed does not make a misclassification harmless. If a genuinely consequential value is positively typed as inert, it does not fail closed, it fails silently. That is the attack worth mounting, and section 6 now scores it as a break.
 
 ---
 
-## 3. What is claimed as PROVEN, and the evidence
+## 2. The claim, stated so it does not overclaim
 
-These are the structural invariants the premise proof-of-concept established. "Proven" means demonstrated in running code on an adversarial corpus with a real local model, at two decoding temperatures. Evidence: `poc/`, `poc/OUTCOME.md`, invariants 3.1 to 3.10.
+Heimdall lets an LLM agent work with untrusted external content without that content being able to cause action. The guarantee has two parts, and they are different in kind. State them separately, because conflating them is how the design flatters itself:
 
-- **3.1 No language model in the symbolic layer.** The classifier, trust assignment and boundary are deterministic Python, verified by AST inspection each run. Attack surface: if any decision that authorises action consults a model, the guarantee is void.
-- **3.2 Trust by origin at one boundary.** Provenance is stamped before content-sensitive parsing and is immutable. Everything derived from untrusted input is untrusted.
-- **3.3 The data boundary is not forgeable by content.** Two real forgeries were found and closed in the PoC: an in-band string delimiter a payload could contain, and a tokenizer-level control-token forgery. The boundary is now out-of-band (token-id splicing, `split_special_tokens`).
-- **3.4 The input assertion verifies the exact token ids the model received**, not a reconstruction.
-- **3.5 Do not detect injection by inspecting content.** Output path proven by counter-example (an n-gram/imperative heuristic failed 11 cases including a clean control). Classification path demonstrated by a fail-closed property test (3.5 was extended to cover it).
-- **3.6 (provenance gate half) Model output is inert until safely wired.** A safe wiring passes; an unsafe control wiring is caught before it fires, structurally, on every case.
-- **3.9 (model-independence half) Safety holds regardless of model behaviour**, tested at temperature 0.0 and 0.7.
-- **3.10 The harness is an audit artefact**, failures loud, clean and unsafe controls mandatory.
+- **Trust by origin (structural, proven).** Untrusted content is quarantined as typed data at a single boundary, stamped by origin, immutable thereafter. The model only ever reads it as data. This half inspects no content and is independent of what the model says.
+- **Criticality by classification (content-inspecting, measured not proven).** Whether a value is action-critical is decided by classifying it (keyword and shape rules over model-produced text), then propagating that over a flow-to-sink graph. This half does inspect content. The improvement over a naive design is one of polarity, not of removing content inspection: inertness must be positively earned (an allowlist), and unmatched content fails closed to review rather than passing. But the security-critical surface is now the precision of the inert-typing rules, and an inert rule is a capability grant written in keywords.
 
-If you are reviewing, treat these as the strongest part. The PoC is small (31 cases, one model) but the properties are structural, not behavioural, which is why they held at temperature 0.7. The most credible attack on this tier is section 5.1 (the boundary is per model family).
+The gate that authorises a consequential action is the **conjunction**: block if a consumed parameter is both untrusted-derived (structural) and action-critical (classified). So the guarantee is a proven structural property AND a measured classification property, and it is only as strong as the weaker of the two. The flow-to-sink computation does not escape this: it is transitive closure over a graph whose edges and sink semantics are **declarations** (see 5.1), so "computed, not a per-sink label" is one level of indirection over declarations, not a change in kind.
 
 ---
 
-## 4. What is claimed as DEMONSTRATED-on-the-seed, not proven
+## 3. What is PROVEN, on what, and what the D62 seam did to those proofs
 
-This is where the design has moved fastest and where the evidence is thinner. "Demonstrated on the seed" means it runs and passes on a small hand-authored ontology and corpus (four domains, 38 labelled cases, 94.7 percent coverage), with a real model at the marshalling seam, and over a live Memgraph store. It is not proven at production coverage or scale.
+The structural invariants (3.1 to 3.10) were established in the premise proof-of-concept: running code, an adversarial corpus of 31 cases, one local model (`Qwen2.5-7B-Instruct-4bit`), two decoding temperatures. Evidence: `poc/`, `poc/OUTCOME.md`.
 
-- **The ontology (invariant 3.11).** A deterministic classifier over a typed ontology (BFO spine plus communications, scheduling, finance, publication domains), the UNCLASSIFIED fail-safe, forward-chaining derivation, and agent-scoped cross-domain flow-to-sink. Evidence: `ontology/`, `ontology/OUTCOME.md`, `ontology/tests/harness.py`.
-- **3.6 action-critical determination and gate (D58).** Gjoll authorises a consequential action only if no parameter it consumes as an action is an untrusted-derived, action-critical value. Caught with the mandatory safe-plus-unsafe control, including a value staged through a multi-hop cross-domain chain.
-- **Cross-domain priority (D52), fail-closed classification (D54), and its enforcement (D55).** Inert types are earned by a positive signal; unmatched requests route to review; a property test asserts no unmatched request is ever typed inert, verified to fail against a simulated eager catch-all.
-- **Reasoner soundness (D56)** with a negative control: a deliberately-unsound derivation is caught.
-- **Substrate (D57) and live-store integration (D63, D64).** The flow-to-sink algorithm is proven on a live Memgraph store, matching an in-memory oracle across fuzzed sequences, and a persistent store catches state staging spread across separate batches.
-- **Marshalling seam (D62).** Real model extraction is marshalled into a typed assertion and gated end to end; an injected directive extracted from real untrusted content is blocked before firing.
+The strongest details, which you should try hardest to break precisely because they look solid:
+- **3.3 forgery closures.** Two real forgeries found and closed: an in-band delimiter a payload could contain, and a tokenizer-level control-token forgery. The boundary is now out-of-band token-id splicing.
+- **3.5 method.** Content-detection was disproven by building the heuristic and showing it fails 11 cases including a clean control, not by assertion.
+- **Negative controls throughout:** the unsound derivation (D56), the simulated eager catch-all (D54/D55), the unsafe sink wiring (3.6). Passes mean something only because a mandated control would fail.
 
-The honest summary of this tier: the mechanism is demonstrated; the coverage is not. See section 5.
+**The scope caveat v1.0 hid (accept this as a live weakness).** Those proofs were established *before* the marshalling seam (D62) connected the real model pipeline to the ontology. After D62, the classifier's keyword rules run over model-produced text, and the resulting type decides criticality, which decides whether the gate blocks. So **model behaviour now influences the gate outcome through criticality**, even though it does not influence provenance. The honest per-invariant status after the seam:
 
----
+- 3.1, 3.2, 3.3, 3.4: structural, provenance-path, **not** touched by the seam. Still proven in scope.
+- 3.5 output path: proven; classification path: demonstrated, and now the seam feeds it real model text, so its adversarial precision is the open question (5.2).
+- 3.6 provenance-gate half: proven. Action-critical half: demonstrated, and it inherits the classification dependency.
+- 3.9: the invariant doc states it precisely (no safety property depends on model *determinism or good behaviour*; the extent is bounded by ontology coverage, which it marks NOT YET TESTED). That holds post-seam: a mistyped value is caught or not by the *deterministic* classifier and gate, not by the model behaving. But the honest reading the seam sharpens is that the classifier's *input* is now model-produced text, so the coverage bound (already the marked-untested half of 3.9) is where the risk sits, and it is measured only on a self-authored corpus. v1.0's own summary of 3.9 as flatly "safety holds regardless of model behaviour, tested at 0.0 and 0.7" was an oversimplification of what the invariant doc actually claims; the doc is more careful than v1.0 was.
 
-## 5. Where to attack (the honest seam list)
-
-This is the useful part for a reviewer. Ordered by how likely each is to yield a real finding.
-
-### 5.1 Coverage is the guarantee's bound, and it is small
-The whole live guarantee is exactly as strong as the ontology's coverage (invariant 3.11, design principle 10). Coverage is measured at 94.7 percent on a 38-case synthetic corpus across four domains. That is a demonstration, not a claim about the open web. Attacks to try: content whose real-world subject matter none of the four domains covers, and which is phrased to look positively like an inert type it is not. Note the defence before you claim a break: unrecognised content fails closed (routes to review), so to score you must get an action-critical value typed as a genuinely inert type, not merely get something into the review queue.
-
-### 5.2 The classifier is keyword-based and cannot name pure euphemism (D34, open)
-Classification rules are conservative keyword/shape matchers. They cannot distinguish an honest small-model extraction error from an injection-induced one, and they cannot name pure euphemism ("take care of the old records as we discussed"). This is an open research question. The design's answer is that euphemism still fails closed to review rather than to an inert type, so the euphemism buys no silent inert typing. Attack: find content that (a) should be action-critical, (b) is phrased to positively match an inert rule, and (c) therefore skips both review and the gate. If you can only get it to review, that is the fail-closed default working. Do not propose a keyword blacklist as the fix; that is invariant 3.5's mistake and it is explicitly rejected (D54, D55).
-
-### 5.3 Sink-wiring honesty is assumed, not verified (invariant section 4)
-The Gjoll gate proves a declared wiring safe or unsafe. It does not verify that a sink's declaration of how it consumes a field (inert vs action) is truthful. A sink that lies about consuming an action-critical value as inert would pass the gate. The design says consumption must be derived from real data flow, not a per-sink label, and that derivation is future work. Attack: this is a real trust assumption; probe whether anything forces a sink's declaration to match its behaviour. (It does not yet.)
-
-### 5.4 Extraction accuracy is out of scope (invariant section 4)
-A wrong sender, a poisoned entity list, a mis-summarised request all pass, because the extraction is inert. The premise is about action, not correctness. Attack: this is stated as out of scope, so it is not a break, but it is worth pressure-testing the boundary: is there any path where an inaccurate-but-inert value later parameterises an action without passing Gjoll? If yes, that is a real finding; if the value must pass Gjoll on the way to any action, the scope limit holds.
-
-### 5.5 The boundary guarantees are per model family (invariant 3.7)
-The control-token handling and boundary-forgery closures were verified for one tokenizer and chat template (Qwen2.5-7B-Instruct-4bit). A different model family has different control tokens. Attack: the mechanism is claimed general but the specific token ids are not; a model swap without re-deriving the control-token set is a live hole. Check whether model onboarding actually gates on boundary re-verification (it is specified, not yet built as a deployment gate).
-
-### 5.6 Availability and the review queue (invariant section 4, D53)
-Fail-closed routing sends a lot to human review: overlapping high-risk domains tie (about 15 percent of the seed corpus), and unrecognised requests route to review. This is safe but is a denial-of-service and alert-fatigue surface: flood the queue and a human rubber-stamps. Availability under load was not exercised. Attack: reason about whether the review queue is a soft target even though the action path is hard.
-
-### 5.7 State staging, including across turns (D30, D64)
-Action-critical status propagates transitively, and a persistent store now catches staging spread across separate batches. Attack: try to construct a staging chain the reachability graph does not see, for example a value that reaches a sink through a path that is not represented as a flow edge (the flow graph is only as complete as what feeds it, which loops back to sink-wiring honesty, 5.3). The per-batch default backend does NOT catch cross-batch staging; only the persistent mode does, and choosing it is a deployment decision.
-
-### 5.8 The ontology substrate and dense cycles (D45)
-Edge-deletion label retraction is sound but can degrade to near-full-graph work when reachability is one dense strongly-connected component. A realistic flow graph is sparse and mostly acyclic, so this is a monitoring caveat, but a reviewer might construct a workload that forces the degenerate case.
-
-### 5.9 The gap between the PoC and the ontology build
-The PoC (structural separation, proven) and the ontology build (classifier, reasoner, gate, demonstrated) are two bodies of code joined by the marshalling seam (D62). The seam is tested end to end with one real model on two messages. Attack: the seam is the newest joint and the least exercised; probe whether the PoC's provenance stamp and the ontology's TAINTED trust level can ever disagree, and whether a marshalled assertion can carry a field the classifier trusts more than it should.
+A reviewer should still ask for, and the project does not publish, a per-invariant "re-verified after D62" column. Its absence is a real gap.
 
 ---
 
-## 6. What would count as a real break, versus a coverage observation
+## 4. What is DEMONSTRATED on a small, self-authored seed
 
-Because the design fails closed, most "the classifier missed X" findings are coverage observations, not breaks. Calibrate accordingly:
+"Demonstrated" means it runs and passes on a hand-authored ontology and corpus, with a real model at the seam and over a live store. Not proven at production coverage or scale, and the corpus was written by the same author who wrote the classification rules, so it measures internal consistency, not adversarial robustness.
 
-- **A real break:** an untrusted-derived, action-critical value reaches a consequential sink as an action without passing Gjoll; or an unrecognised/uncovered value is typed as a trusted or inert type by default rather than routed to review; or content forges the origin boundary so the model treats it as an instruction; or a model call sits on an action-authorisation path.
-- **A coverage observation (useful, not a break):** content the ontology does not cover, which correctly routes to review; an over-classification to a higher-risk type; a benign message that ties and goes to review. These are the fail-safe working, and the honest response is demand-driven coverage growth, never a blacklist.
-
-The distinction is deliberate and is itself a claim you may attack: if you can show the fail-closed default is not actually closed (something uncovered reaching an inert or trusted type, or the review route being bypassable), that collapses the distinction and is a headline finding.
+- **The ontology (invariant 3.11):** a deterministic classifier over a BFO spine plus four domains (communications, scheduling, finance, publication), the UNCLASSIFIED fail-safe, forward-chaining derivation, agent-scoped cross-domain flow-to-sink. **The ontology and all rules are hand-authored Python, no model output on the authoring path** (verifiable: there is no model call anywhere under `ontology/`). Evidence: `ontology/`, `ontology/OUTCOME.md`.
+- **The gate (D58), fail-closed classification (D54) and its property test (D55), reasoner soundness with a control (D56), the substrate binding (D57), live-store integration and cross-batch staging (D63/D64), the marshalling seam (D62).** Each has a passing check; the cross-batch-staging catch (D64) is real and was absent before.
+- **Coverage: 36 of 38 corpus cases classify to a known type; the other 2 fail safe.** (The harness reports this as "94.7%"; on n=38 that is false precision, the 95 percent Wilson interval is 83 to 99 percent.) Coverage is **not** the bound of the guarantee (see 6); it is a demonstration figure.
 
 ---
 
-## 7. Ground truth to check the claims against
+## 5. Where to attack (re-ranked; the root joint is first)
 
-Do not trust this summary; check it against the artifacts. The repository is designed so a cold reader can reconstruct and re-run everything.
+Ordered by where a real finding is most likely, corrected from v1.0 which under-ranked its own root.
 
-- Run the ontology suite: `poc/.venv/bin/python -m ontology.tests.harness`. It reports coverage, classification correctness (downgrades are critical), the fail-closed property, reasoner soundness with its negative control, flow-to-sink reachability, and the Gjoll gate.
-- Run the substrate spike: `poc/.venv/bin/python spike/substrate/harness.py`.
-- Run the PoC: `cd poc && .venv/bin/python harness.py` (add `--temp 0.7`, and `--sinks unsafe` to see the gate catch the unsafe control).
-- The optional real-model and live-store checks (`ontology/tests/e2e_harness.py`, `ontology/tests/memgraph_integration_harness.py`) skip cleanly if the model or Memgraph is absent, so their passing is not assumed by the core suite.
-- Every claim above traces to a decision in `DECISIONS.md` with a realisation reference, and to an invariant in `NEUROSYMBOLIC_FILTER_INVARIANTS.md` with an explicit PROVEN / DEMONSTRATED / NOT YET TESTED mark. If a claim here is not backed there, that inconsistency is itself a finding.
+### 5.1 Sink and flow declarations are trusted input, and nothing attests them (the root)
+The flow-to-sink graph's edges and each sink's declaration of how it consumes a field (inert vs action) are declarations, not derived facts. The gate proves a *declared* wiring safe or unsafe; it does not verify the declaration against behaviour. A sink that declares it consumes an action-critical value as inert, but actually acts on it, passes the gate. A missing flow edge is a silent hole. Inert-rule precision (5.2), extraction accuracy (5.6) and cross-batch staging (5.5) all reduce to this: labels only mean something if the graph they propagate over is honest. This is the single most load-bearing unverified assumption in the design, and there is currently no integrity control, signing, or behaviour-derivation for it. Attack here first.
 
-The single most honest sentence about the whole project, and the one to test hardest: the premise is proven and the mechanism is demonstrated on a small seed; the guarantee's extent depends on ontology coverage, which is measured, not complete.
+### 5.2 Inert-rule precision under adversarial phrasing (the unmeasured bound)
+Classification is conservative keyword/shape matching over model-produced text. The security-critical number is the **false-inert rate**: the probability that genuinely consequential content positively matches an inert rule and is therefore never marked action-critical, never gated, and never sent to review. This is the actual bound of the guarantee, and it is unmeasured on any independent adversarial corpus (the seed corpus is self-authored, and reports 0 downgrades on cases the author wrote). The obligation to measure it exists (invariant 3.11 obligation 8.2, the "downgrade a critical value" class), but only a self-authored instance has been run. Attack: construct content that is in fact consequential and positively matches an inert type. Do not propose a keyword blacklist as the remedy (3.5); the remedy is fail-closed types and a measured false-inert rate.
+
+### 5.3 The review queue is an integrity path, not just availability
+Fail-closed routing sends a lot to human review: on the 38-case seed corpus, 10 of 38 (26 percent) route to review, of which 4 (11 percent) are genuine cross-domain ties and the rest are unrecognised requests and unclassified content. That is a benign corpus; the adversarial rate is unmeasured and there is no reason to think it is lower. A flooded queue that gets rubber-stamped is not a denial of availability, it is an **integrity failure**: the effective classifier for the hardest cases becomes a fatigued human with an approve button, and approval is the sanctioned override that bypasses the whole symbolic layer. The human is the one component with no measured reliability figure. "Fail closed" is only a safety property if the thing it closes onto is a reliable oracle at the offered rate. This is the softest target in the design because attacking it needs no cleverness about ontologies or tokenizers.
+
+### 5.4 The D62 seam migrated proofs without restating their scope
+The marshalling seam joins the proven PoC and the demonstrated ontology build. It is the newest joint and the least exercised (one model, two messages). Beyond "can the provenance stamp and the trust level disagree", the structural question is which PoC-tier proofs had their scope assumptions invalidated when model text started feeding the classifier (see 3, 3.9). Attack the seam as the place where PROVEN quietly became conditional.
+
+### 5.5 The default deployment does not hold the cross-batch guarantee
+Cross-batch state staging (write A to B now, complete B to sink in a later turn) is caught only in the persistent store mode. The **default per-batch mode does not catch it**. Multi-turn staging is the natural attack once single-shot injection is closed, so a per-batch deployment is vulnerable to one of the most likely real attacks. Framing the mitigation as "a deployment decision" understates it: the guarantee against cross-batch staging is a precondition (persistent mode), not a default.
+
+### 5.6 Extraction accuracy is out of scope, conditional on 5.1
+A wrong or poisoned extracted value passes because the extraction is inert; the premise is about action, not correctness. This scope limit holds only if every value that parameterises an action must pass the gate, which in turn depends on 5.1 (an honest flow graph). Attack: find a path where an inaccurate-but-inert value later parameterises an action without a gate check. If it must pass the gate, the scope limit holds; if 5.1 is broken, this is too.
+
+### 5.7 Boundary closures are per pinned tokenizer/template, not per "model family"
+The control-token handling was verified for one tokenizer and chat template. "Model family" is the wrong unit: special-token inventories and chat templates change across point releases, and a quantised conversion is a distinct artefact with its own `tokenizer.json`. The correct unit is a pinned tokenizer/template hash, and onboarding should refuse any artefact whose hash is not in a verified set. Relatedly, 3.4 verifies the tokens *submitted* at the call boundary; off-device (hosted endpoint, server-side templating, prefix caching, batching) that is a claim about the request, not about reception. On-device execution (or an attested equivalent) is a precondition of 3.4; the word to use is "submitted", not "received".
+
+### 5.8 There is no adversary model for the authoring and configuration path
+The stated threat model is untrusted external content. But an inert-typing rule, a sink consumption declaration, a flow edge, the backend mode, the verified-tokenizer set and the ontology content are all trusted inputs that decide outcomes, and none is content. The design offers no integrity control, review requirement or signing for any of them. A design whose guarantee is bounded by an ontology needs the ontology and its sibling configuration in the threat model. This is the obvious next invariant to write.
+
+### 5.9 Substrate dense-cycle cost (a performance caveat, lowest)
+Edge-deletion retraction is sound but degrades toward full-graph work when reachability is one dense strongly-connected component. A realistic flow graph is sparse; this is a monitoring caveat, not a security seam, unless a workload can force the degenerate case.
+
+---
+
+## 6. What counts as a real break (stated in consequence, not in the system's own labels)
+
+v1.0 stated break conditions using `action-critical`, a computed label, which made every classifier miss a non-break by construction. Corrected: a break is defined against real-world consequence and ground-truth labels, not the system's output.
+
+**A real break** is any of:
+- Untrusted-derived content parameterises an action with real-world consequence, without a human decision, when that content was **in fact** consequential. "In fact consequential" is adjudicated against ground-truth labels (the obligation 8.2 corpus), not against what the classifier decided. A consequential value the classifier typed as inert, so it skipped the gate, is a break, not a coverage observation.
+- Uncovered or unrecognised content is typed as a trusted or actionable type by default rather than routed to review (a genuine fail-open of the default).
+- Content forges the origin boundary so the model treats it as an instruction.
+- A model call, or model-generated content (rules, ontology, config), sits on an action-authorisation path.
+- A sink's declaration diverges from its behaviour so the gate authorises an action it should have blocked (5.1).
+
+**A severity gradient, not a separate category.** Classifier misses are breaks, graded by consequence: a mistyped payment request is a high-severity break; a mistyped newsletter that would have been inert anyway is low. This is the correction to v1.0, which parked all misses as non-breaks.
+
+**Genuinely not a break (the fail-safe working):** content that is uncovered and routes to review; content the classifier types to a *higher*-risk type than needed (an over-classification, which is a cost, not a safety property, and should be counted as a cost not pooled with the fail-safe). If you can only get content to the review queue, you have not broken the action path, but see 5.3: the review queue is itself an attackable integrity path.
+
+The distinction is itself a claim you may attack: if you can show the fail-closed default is not closed (uncovered content reaching an inert or trusted type, or the review route being bypassable), that collapses the distinction and is a headline finding.
+
+---
+
+## 7. Numbers a hostile reviewer will ask for and cannot find
+
+These are the evidential gaps, and the first is the one the design should not be signed off without.
+
+| Wanted | Present? |
+|--------|----------|
+| False-inert rate under adversarial phrasing, on an independent corpus (**the** bound) | No |
+| Held-out or third-party / red-team corpus results (the seed is self-authored) | No |
+| Count and breadth of inert rules (the actual capability-grant surface) | No |
+| Review-queue throughput and assumed human error rate at that rate | No |
+| Which of 3.1 to 3.10 were re-verified after the D62 seam | No |
+| Build-time provenance of the ontology (answer: hand-authored; now stated, previously implicit) | Now yes (section 4) |
+| Coverage as a raw fraction with an interval (36/38), not 94.7% | Now yes (section 4) |
+| An adversary model for configuration and rule authoring | No |
+| Verified tokenizer/template hash set (not "family") | No |
+
+---
+
+## 8. Findings the author would least like to receive
+
+Naming these costs credibility, which is why they belong here. In descending order of how much each would force a redesign rather than an increment:
+
+1. **A verified-in-the-wild false-inert case:** consequential content that positively matches an inert rule, adjudicated consequential by ground truth, that skips both the gate and review. This attacks the measured half of the guarantee (section 2) at its weakest and unmeasured point.
+2. **A demonstrated divergence between a sink's declaration and its behaviour** in a real integration, so the gate authorises what it should block (5.1). This attacks the assumption the whole flow-to-sink guarantee rests on.
+3. **Any path that puts model-generated content on an authorisation path**, for example if a future coverage-growth step drafts ontology rules with a model and they are loaded without human ratification. This would breach invariant 3.1 in substance while passing its runtime AST check.
+4. **A working multi-turn staging chain against a default (per-batch) deployment** (5.5), since that is the shipped configuration.
+5. **A review-queue flooding argument with numbers** showing the human oracle's effective error rate at the induced rate makes fail-closed routing a fail-open path in practice (5.3).
+
+If you are the reviewer, these are the targets. A finding here changes the design; a finding elsewhere increments it.
+
+---
+
+## 9. Ground truth to check the claims against
+
+Do not trust this summary; check it against the artifacts.
+
+- `poc/.venv/bin/python -m ontology.tests.harness` reports coverage, classification correctness (downgrades are critical), the fail-closed property, reasoner soundness with its negative control, flow-to-sink reachability, and the Gjoll gate.
+- `poc/.venv/bin/python spike/substrate/harness.py` runs the substrate spike.
+- `cd poc && .venv/bin/python harness.py` (add `--temp 0.7`, `--sinks unsafe`) runs the PoC.
+- `ontology/tests/e2e_harness.py` and `ontology/tests/memgraph_integration_harness.py` are the optional real-model and live-store checks; they skip cleanly when the model or Memgraph is absent, so a green core suite does not assume them.
+- Every claim traces to a decision in `DECISIONS.md` and an invariant in `NEUROSYMBOLIC_FILTER_INVARIANTS.md` with an explicit PROVEN / DEMONSTRATED / NOT YET TESTED mark. A claim here not backed there is a finding.
+
+The single most honest sentence about the project, corrected from v1.0 which attributed the whole bound to the one input that has a number: **the premise is proven for a pre-seam system and only partially re-verified since; the mechanism is demonstrated on a small self-authored seed; and the guarantee is bounded by three things, ontology coverage (measured), inert-rule precision under adversarial phrasing (unmeasured), and the honesty of sink and flow declarations (unattested).** Test that sentence hardest.
+
+---
+
+## Changelog: what the first hostile review changed
+
+A hostile review of v1.0 was accepted almost in full; the substantive corrections it forced, recorded so the change is auditable (decision D66):
+
+- **Break definition** rewritten in consequence and ground-truth terms; classifier misses are breaks with a severity gradient, not a separate non-break category (was the review's F1, the headline finding).
+- **The headline claim** split into a proven structural half (trust by origin) and a measured classification half (criticality), because the authorisation decision does inspect content (F2).
+- **Invariant 3.9** re-described accurately: v1.0's flat "safety holds regardless of model behaviour" oversimplified the invariant doc, which already scopes the guarantee to the coverage bound it marks NOT YET TESTED. The correction is that v1.0's summary was looser than the doc, and the seam puts model-produced text into the classifier's input, so the already-untested coverage bound is where the risk sits (F3).
+- **The seam list reordered** so sink and flow declaration honesty is first, as the root the other seams reduce to (F4).
+- **Coverage reported as 36/38** with an interval, self-authorship of the corpus flagged, and the false-inert rate named as the true unmeasured bound (F5).
+- **Invariant 3.1 generalised** to no model output on any authorisation path (config, rules, ontology), not just the runtime call graph; the ontology confirmed hand-authored (F6).
+- **Cross-batch staging** stated plainly as absent from the default deployment (F7).
+- **The review queue** recategorised from availability to an integrity / confused-deputy path (F8).
+- **The temperature sweep** reframed as "no behavioural dependence detected", not corroboration of structure (F9).
+- **Boundary scope** pinned to a tokenizer/template hash, not "model family"; 3.4 restated as "submitted" tokens with on-device as a precondition (F10).
+- **A configuration/authoring adversary** added as a named gap and the obvious next invariant (F11).
+- **This "least welcome findings" section** added, on the review's document-level finding that v1.0 spent all its care telling the reviewer which findings did not count and none naming the ones the author would least like.
+
+Two points where the review was only partly accepted, recorded for honesty: its proposed break definition invoked a hypothetical "competent human reviewer" as the oracle; section 6 instead ties "in fact consequential" to the ground-truth labels of the obligation-8.2 corpus, which is measurable rather than hypothetical. And its F9 "null experiment" charge is accepted as a reframing (present the sweep as a dependence check) but not as "worthless": a sweep that could have surfaced an accidental behavioural dependence and did not is a modest real result, which is how it is now stated.
