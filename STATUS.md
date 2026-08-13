@@ -42,11 +42,11 @@ and tested; full coverage is still untested.** That is the state of the project.
   algorithm is bound to a live Memgraph store (via podman) and matches the
   in-memory reference exactly across fuzzed sequences. See
   `spike/substrate/OUTCOME.md`.
-- **Built and tested on a three-domain seed (the ontology).** The Phase 1
-  communications and scheduling domains are authored on BFO as a runnable
-  property-graph-native package, with a deterministic Nornir (classifier,
-  reasoner, flow-to-sink) and a ground-truth corpus. All four test obligations of
-  invariant 3.11 pass: coverage is measured (93.9% across three domains),
+- **Built and tested on a four-domain seed (the ontology).** The Phase 1
+  communications, scheduling, finance and publication domains are authored on BFO
+  as a runnable property-graph-native package, with a deterministic Nornir
+  (classifier, reasoner, flow-to-sink) and a ground-truth corpus. All four test
+  obligations of invariant 3.11 pass: coverage is measured (94.7% across four domains),
   classification correctness has no downgrade or fail-safe breach, the reasoner is
   sound (with a chained derivation and a negative control that catches an unsound
   rule, D56), and cross-domain state-staging is caught agent-scoped. The domain attach
@@ -79,7 +79,7 @@ and tested; full coverage is still untested.** That is the state of the project.
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
-| `DECISIONS.md` | The decision log: 58 tracked decisions with consistency checks |
+| `DECISIONS.md` | The decision log: 61 tracked decisions with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -103,17 +103,19 @@ with `DECISIONS.md` as the running record of why each choice was made.
   substrate-neutral test of the flow-to-sink action-critical label. 23 checks, all
   pass. Ratifies D25/D38 and resolves D32. Throwaway per 3.3, kept as evidence.
 - **Seed ontology and Nornir** (`ontology/yggdrasil/`, `ontology/nornir/`): the
-  Phase 1 communications, scheduling and finance domains on BFO as a runnable
-  property-graph package (55 nodes), the deterministic classifier and reasoner (no
-  model, per-domain rule registry, fail-closed inert gate), and the test harness
-  (`ontology/tests/`) with a 33-case ground-truth corpus and 4 flow fixtures. All
-   four obligations of 3.11 pass, plus a classification fail-closed property test
-   (obligation 8.2b, D55) that catches a blacklist/fail-open regression
-   automatically, a strengthened reasoner-soundness check with a negative control
-   (D56), and the Gjoll action-critical gate (obligation 3.6, D58) that blocks an
-   unsafe wiring before it fires while passing a safe one; coverage measured at
-   93.9%; domain attach test demonstrated twice; cross-domain priority governed by
-   principle (D52); inert classification fails closed (D54). See `ontology/OUTCOME.md`.
+  Phase 1 communications, scheduling, finance and publication domains on BFO as a
+  runnable property-graph package (58 nodes), the deterministic classifier and
+  reasoner (no model, per-domain rule registry, fail-closed inert gate), and the
+  test harness (`ontology/tests/`) with a 38-case ground-truth corpus and 4 flow
+  fixtures. All four obligations of 3.11 pass, plus a classification fail-closed
+  property test (obligation 8.2b, D55) that catches a blacklist/fail-open regression
+  automatically, a strengthened reasoner-soundness check with a negative control
+  (D56), the Gjoll action-critical gate (obligation 3.6, D58) that blocks an unsafe
+  wiring before it fires while passing a safe one, and a coverage-gap capture that
+  reports the review queue by reason to drive demand-driven growth (D60); coverage
+  measured at 94.7%; domain attach test demonstrated three times (D59); cross-domain
+  priority governed by principle (D52, refined for inert ties D61); inert
+  classification fails closed (D54). See `ontology/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -140,31 +142,36 @@ is resolved by D52; D53 records the review-queue cost the finance domain measure
 D54 makes inert classification fail closed (evasions route to review, no keyword
 blacklist), and D55 enforces that discipline with a property test, AGENTS.md rule,
 authoring checklist and a sharpened invariant 3.5. D56 strengthens reasoner-soundness
-testing (per-rule entailment oracle, a chained derivation, a negative control). D46
-to D56 record the seed ontology, Nornir, the classification rulings,
-the test-corpus provenance, the per-domain rule registry (attach test demonstrated
-twice), the cross-domain priority principle, its measured cost, and the fail-closed
-inert gate. The only items still open are the research questions D33 to D36.
+testing (per-rule entailment oracle, a chained derivation, a negative control). D57
+binds the flow-to-sink algorithm to a live Memgraph store; D58 wires Gjoll's gate to
+the action-critical determination. D59 adds the publication domain (open-web
+surface), D60 the coverage-gap capture process, D61 the inert-tie refinement. D46 to
+D61 record the seed ontology, Nornir, the classification rulings, the test-corpus
+provenance, the per-domain rule registry (attach test demonstrated three times), the
+cross-domain priority principle and its cost, the fail-closed inert gate, the
+substrate binding, the action-critical gate, and demand-driven coverage growth. The
+only items still open are the research questions D33 to D36.
 
 ---
 
 ## 6. Recommended next step
 
 The substrate is ratified and bound to a live store, the seed ontology is built
-across three domains with a principled cross-domain priority rule, the classifier
-fails closed, the reasoner is soundness-tested with a control, and Gjoll's
-action-critical gate is demonstrated. The mechanism is now largely proven on the
-seed; what is left is breadth and persistence. Next steps, in leverage order:
+across four domains with a principled cross-domain priority rule, the classifier
+fails closed, the reasoner is soundness-tested with a control, Gjoll's action-critical
+gate is demonstrated, and coverage growth is now demand-driven off a captured
+gap signal (D60). The mechanism is largely proven on the seed; what is left is
+breadth and persistence. Next steps, in leverage order:
 
-1. **Grow coverage beyond the seed.** Coverage is 93.9% on a 33-case corpus; that
-   is a start, not a claim. Extend the ground-truth corpus and the classification
-   rules where real traffic (or new adversarial cases) demand it, hand-authored and
-   human-curated (D26). This raises the measured guarantee (invariant 3.9) and
-   sharpens the classification-correctness corpus that D34 (honest vs
-   injection-induced error) needs.
+1. **Grow coverage from the captured gaps.** Coverage is 94.7% on a 38-case corpus;
+   the gap-capture report (D60) now names what is in the review queue by reason, so
+   extension is driven by real signal rather than a manual probe. Extend the corpus
+   and rules where the gap report shows thinness, hand-authored and human-curated
+   (D26). This raises the measured guarantee (invariant 3.9) and sharpens the
+   classification-correctness corpus that D34 (honest vs injection-induced) needs.
 2. **Tune the finance/communications boundary demand-driven (D53)** once real
-   traffic shows which payment overlaps actually occur, to bring down the 15% tie
-   rate without losing the tie-to-review safety net.
+   traffic shows which payment overlaps actually occur, to bring down the tie rate
+   without losing the tie-to-review safety net.
 3. **Wire Nornir's live flow-to-sink and the Gjoll gate to the Memgraph binding.**
    The binding is verified against the reference (D57) and the gate is proven over
    the in-memory graph (D58); the natural follow-on is to run both over the store

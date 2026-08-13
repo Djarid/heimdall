@@ -158,15 +158,26 @@ def classify_assertion(a: MarshalledAssertion) -> ClassificationOutcome:
         w = winners[0]
         return ClassificationOutcome(type_name=w.type_name, matched_rule=w.name)
 
-    # Genuine tie at the top: equal risk tier, equal specificity, different types.
-    # Route to human review; never silently pick. The value keeps the top risk tier,
-    # so it is still gated, and a human resolves which type it is.
-    return ClassificationOutcome(
-        type_name=None,
-        matched_rule="",
-        tie=True,
-        tie_candidates=tuple(sorted(distinct_types)),
-    )
+    # A genuine tie at the top tier: equal risk tier, equal specificity, different
+    # types. What happens next depends on whether the tie is GATED (D52, refined by
+    # D60):
+    #   - If the top tier is HIGH (or any gated tier), route to human review. A human
+    #     must resolve which consequential type applies; the value keeps the high-risk
+    #     tier so it is still gated meanwhile. Never silently pick a gated type.
+    #   - If the top tier is INERT or below, no gating decision hinges on the choice
+    #     (neither candidate is consequential), so routing to review would be pure
+    #     friction. Resolve deterministically by name and classify. Still safe: an
+    #     inert type is inert whichever of the tied labels it takes.
+    if top_tier >= RiskTier.HIGH:
+        return ClassificationOutcome(
+            type_name=None,
+            matched_rule="",
+            tie=True,
+            tie_candidates=tuple(sorted(distinct_types)),
+        )
+    winners_by_name = sorted(winners, key=lambda r: r.type_name)
+    chosen = winners_by_name[0]
+    return ClassificationOutcome(type_name=chosen.type_name, matched_rule=chosen.name)
 
 
 # --- 2. Derivation rules -------------------------------------------------------

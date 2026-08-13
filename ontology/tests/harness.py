@@ -165,6 +165,45 @@ def run_classification(nornir: Nornir, cases: list[dict], rep: Report,
     rep.line("")
 
 
+def run_coverage_gaps(nornir: Nornir, cases: list[dict], rep: Report) -> None:
+    """The coverage-gap capture process (ONTOLOGY_CONSTRUCTION.md section 7, D59).
+
+    Not a pass/fail obligation: a reported summary of what landed in the review queue,
+    grouped by reason, so coverage growth is demand-driven off real signal rather than
+    discovered by luck. It surfaces the same review-routed content the growth model
+    (section 7) says to extend from. The one hard property it does assert: every
+    review-routed assertion is accounted for in a bucket, so nothing silently escapes
+    the gap capture."""
+    assertions = [
+        MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
+        for c in cases
+    ]
+    result = nornir.run(assertions)
+    gaps = result.coverage_gaps()
+
+    rep.line("=== Coverage-gap capture (reported, drives demand-driven growth, D59) ===")
+    rep.line(f"  Review queue: {gaps['review_total']} of {len(cases)} cases "
+             f"({gaps['reviewed_fraction'] * 100:.0f}%), by reason:")
+    for reason, items in gaps["by_reason"].items():
+        rep.line(f"    {reason}: {len(items)}"
+                 + (f"  e.g. {items[0]['sample']!r}" if items else ""))
+
+    # Hard property: the gap capture accounts for every review-routed assertion. A
+    # review-routed assertion is one whose classified type is a fail-safe/review type
+    # or which is routed to human_review; each must appear in exactly one bucket.
+    from ontology.yggdrasil.unclassified import UNCLASSIFIED, HIGH_RISK_UNRESOLVED
+    review_types = {UNCLASSIFIED, HIGH_RISK_UNRESOLVED, "comms:unrecognised_request"}
+    routed = {c.assertion_id for c in result.classified if c.type_name in review_types}
+    captured = {it["id"] for items in gaps["by_reason"].values() for it in items}
+    escaped = routed - captured
+    if escaped:
+        rep.critical_failures += 1
+        rep.line(f"  [CRITICAL] review-routed assertions not captured as gaps: {sorted(escaped)}")
+    else:
+        rep.line("  [PASS] every review-routed assertion is captured for coverage growth.")
+    rep.line("")
+
+
 def run_failclosed_property(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None:
     """Obligation 8.2b: the classification fail-closed property (invariant 3.5,
     classification path; D54, D55).
@@ -482,6 +521,7 @@ def main() -> int:
              f"{len(cases)} labelled cases, {len(fixtures)} flow fixtures\n")
 
     run_classification(nornir, cases, rep, hr, inert)
+    run_coverage_gaps(nornir, cases, rep)
     run_failclosed_property(nornir, rep, inert)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)

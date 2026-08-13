@@ -53,6 +53,46 @@ class NornirResult:
         covered = sum(1 for c in self.classified if c.type_name != UNCLASSIFIED)
         return covered / len(self.classified)
 
+    def coverage_gaps(self) -> dict:
+        """The coverage-gap capture process (ONTOLOGY_CONSTRUCTION.md section 7, D59).
+
+        Everything that landed in the review queue rather than a positive type is a
+        signal about where coverage is thin. This groups those assertions by the
+        REASON they need review, so a human (or, later, Odin under the D27 provenance
+        gate) can see what to extend, demand-driven, rather than discovering gaps by
+        luck. It reports, it does not act: growing coverage stays hand-authored and
+        human-curated (D26).
+
+        Three buckets, none of them a safety failure (all fail closed):
+          - unclassified: matched no rule at all (UNCLASSIFIED_DATA_ASSERTION). The
+            content is not recognisably anything the ontology covers.
+          - unrecognised_request: a communication carrying an imperative we could not
+            positively classify (the fail-closed default, D54).
+          - high_risk_tie: a genuine cross-domain tie routed to review (D52).
+        Each bucket carries the assertion ids and a small sample of the extracted
+        subject/summary, so the review is actionable.
+        """
+        buckets: dict[str, list] = {"unclassified": [], "unrecognised_request": [], "high_risk_tie": []}
+        for c in self.classified:
+            key = None
+            if c.type_name == UNCLASSIFIED:
+                key = "unclassified"
+            elif c.type_name == "comms:unrecognised_request":
+                key = "unrecognised_request"
+            elif c.type_name == HIGH_RISK_UNRESOLVED:
+                key = "high_risk_tie"
+            if key is None:
+                continue
+            sample = c.fields.get("subject_extracted") or c.fields.get("requested_action_summary") or ""
+            buckets[key].append({"id": c.assertion_id, "sample": sample[:80],
+                                 "tie": list(getattr(c, "tie_candidates", ()) or ())})
+        return {
+            "review_total": sum(len(v) for v in buckets.values()),
+            "reviewed_fraction": (sum(len(v) for v in buckets.values()) / len(self.classified))
+                                 if self.classified else 0.0,
+            "by_reason": buckets,
+        }
+
 
 class Nornir:
     def __init__(self, ontology: Ontology) -> None:
