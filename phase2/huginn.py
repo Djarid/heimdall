@@ -1,10 +1,24 @@
 """Huginn: canary monitoring and the attempt-introspection tripwire.
 
-Huginn observes every Fenrir emission and raises Gjallarhorn hard signals. It never
+Huginn observes every Fenrir emission and COMPUTES a fail-closed verdict over it. It never
 authorises anything: its only outcomes are a clean pass or a halt-and-quarantine. This
 is the permitted polarity of invariant 3.5 (a detector may observe and alert, never be
 the gate that authorises action), which is exactly why Huginn can inform the false-inert
 problem (D67-fix direction d) without violating invariant 3.1.
+
+How findings surface (scope, and the seam to Phase 3). `monitor(run)` returns a typed
+`MonitorResult` (verdict, the hard signals that fired, whether the run is quarantined, and
+whether it was a consequential catch). That verdict IS Huginn's finding at this build
+depth: it is computed and returned for a caller to act on. It is NOT yet raised, routed or
+alerted. In the full architecture, findings surface through Gjallarhorn (`gjallarhorn.md`,
+Phase 3, unbuilt): containment is decoupled from alerting (the Fenrir instance self-halts
+per-instance on a hard signal regardless of whether any alert is seen), `Gjallarhorn.raise`
+routes a typed event by type (log-only, human-notify, halt-agent, halt-system), correlated
+signals aggregate into one incident, and genuine escalations travel on a protected channel
+separate from the bulk triage queue. None of that routing, aggregation or channel machinery
+exists yet; `MonitorResult` is the seam a future Gjallarhorn will consume. The
+`quarantined` flag on the result represents the containment DECISION; acting on it (halting
+an instance, quarantining a source) also lands with the Phase-3 wiring.
 
 Two detectors, from fenrir.md sections 3.2 and 3.3:
 
@@ -158,12 +172,15 @@ def _canary_signals(run: FenrirRun) -> list[HardSignal]:
 def monitor(run: FenrirRun) -> MonitorResult:
     """Observe a Fenrir run and return a fail-closed verdict.
 
-    Any hard canary signal or an attempt-introspection hit is a HALT: the instance is
-    halted, its output discarded and the source quarantined to review. A run with no
-    hard signal is CLEAN, meaning its assertions may proceed as TAINTED data (still not
-    actionable; Fenrir never promotes). Huginn never returns anything that authorises an
-    action; the strongest thing a CLEAN verdict says is "no injection signal observed",
-    which is not the same as "safe to act on"."""
+    Any hard canary signal or an attempt-introspection hit yields a HALT verdict: the
+    intended disposition is that the instance is halted, its output discarded and the
+    source quarantined to review. At this build depth that disposition is RETURNED in the
+    result (verdict=HALT, quarantined=True); acting on it, and routing or alerting the
+    finding, is the Phase-3 Gjallarhorn wiring (see the module docstring), not done here.
+    A run with no hard signal is CLEAN, meaning its assertions may proceed as TAINTED data
+    (still not actionable; Fenrir never promotes). Huginn never returns anything that
+    authorises an action; the strongest thing a CLEAN verdict says is "no injection signal
+    observed", which is not the same as "safe to act on"."""
     # Guard the tripwire's precondition: the zero-false-positive property is a property
     # of Fenrir's empty capability set. If that ever changes, an action-shaped emission
     # is no longer dispositive, so refuse to certify a clean tripwire result.
