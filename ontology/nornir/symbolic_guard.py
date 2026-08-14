@@ -22,8 +22,23 @@ them wrong in either direction is a failure:
   contains many times while importing no model.
 
 So the check parses each module with `ast` and inspects real `Import`, `ImportFrom`
-and `Call` nodes, plus `subprocess`/`os.system` shell-outs, never the source text. It
-keys on a forbidden set and permits a graph-DB allowlist explicitly.
+and `Call` nodes, plus `subprocess`/`os.system` shell-outs, never the source text.
+
+Why an allowlist and not a forbidden list (D71). An earlier form of this guard (D70)
+enforced by a forbidden set of model-client modules plus an enumerated set of about
+ten network modules. That is a blacklist of module names, the same shape as a blacklist
+of hostnames: it fails on the next name not listed. A hosted-inference call via `boto3`
+(AWS Bedrock) or `google` (Vertex/Gemini), or egress via `smtplib`, `ssl` or `ctypes`,
+needs none of the enumerated network modules and so passed the D70 guard clean, which
+is exactly the indirect model call invariant 3.1 forbids, and invariant 3.5's blacklist
+trap reproduced one layer over on the very guard meant to enforce the anti-blacklist
+discipline. Enforcement is therefore inverted: `ALLOWED_IMPORT_ROOTS` is the boundary.
+Any absolute import whose root is not on it is a violation. Relative (intra-package)
+imports are exempt. This forbids the whole indirect-egress class by construction, and it
+has the correct polarity for this project: safety is earned by a positive match, and a
+new dependency is a deliberate trust-boundary decision made in review, not a silent
+pass. The forbidden and network sets are kept only to produce a more specific message
+for the obvious cases; they are no longer the boundary.
 
 Scope. The authorisation path only: `ontology/yggdrasil/`, `ontology/nornir/`, and the
 PoC symbolic layer `poc/symbolic.py`. Deliberately EXCLUDED, with reasons, so the
@@ -40,33 +55,43 @@ import ast
 from pathlib import Path
 
 
-# Forbidden: language-model clients and inference libraries. A top-level module name
-# here, imported anywhere on the authorisation path, is a violation.
+# THE BOUNDARY (D71). The known-good top-level import roots the authorisation path is
+# permitted. Any absolute import whose root is not here is a violation. This is an
+# ALLOWLIST, not a blacklist: it forbids the whole indirect-egress class (hosted
+# inference via `boto3`/`google`, egress via `smtplib`/`ssl`/`ctypes`, or any module
+# not listed) by construction, rather than enumerating forbidden names and failing on
+# the next one. It was derived by scanning the real authorisation path, which imports
+# exactly these 12 roots: standard library plus the graph-DB substrate (`neo4j`, the
+# spike's `memgraph_store`). Adding a root here is a deliberate trust-boundary decision
+# made in review. Relative (intra-package) imports are exempt (handled in _scan_module).
+ALLOWED_IMPORT_ROOTS = frozenset({
+    # standard library used by the deterministic classifier/reasoner
+    "__future__", "collections", "dataclasses", "email", "enum", "json",
+    "pathlib", "re", "sys", "typing",
+    # the graph-DB substrate Nornir runs over (not a model)
+    "neo4j", "memgraph_store",
+})
+
+# The following two sets are NO LONGER THE BOUNDARY (D71). They exist only to produce a
+# more specific, more useful message for the obvious cases: an import that is both
+# not-allowlisted AND a known model client or network module gets named as such rather
+# than reported as a generic unlisted import. Enforcement is by ALLOWED_IMPORT_ROOTS.
+
+# Language-model clients and inference libraries (for messaging only).
 FORBIDDEN_MODULE_ROOTS = frozenset({
     "mlx", "mlx_lm", "mlx_metal",
-    "openai", "anthropic", "cohere", "google.generativeai",
+    "openai", "anthropic", "cohere", "google", "boto3",
     "llama_cpp", "ctransformers", "vllm", "ollama",
     "transformers", "torch", "sentence_transformers", "sentencepiece",
 })
 
-# Allowed even though a substring search might flag them: graph-database drivers and
-# the store binding. These are the substrate Nornir runs over, not a model.
-ALLOWED_MODULE_ROOTS = frozenset({
-    "neo4j", "memgraph_store", "gqlalchemy", "pymgclient",
-})
-
-# Network / outbound-HTTP modules. The invariant forbids a model call "direct or
-# INDIRECT", and the most likely indirect path is an HTTP call to a hosted inference
-# endpoint, which needs no model-client import at all. Rather than blacklist model
-# hostnames (which would fail on the next URL, invariant 3.5), the authorisation path
-# is forbidden ANY outbound network call: it is deterministic classification over
-# already-quarantined data and has no legitimate reason to reach the network (this
-# also aligns with invariant 3.8, taint and egress boundaries coincide). Importing one
-# of these on the authorisation path is a violation. Verified: the authorisation path
-# uses none of these today, so this false-positives nothing that exists.
+# Network / outbound-HTTP modules (for messaging only). The invariant forbids a model
+# call "direct or INDIRECT", and the most likely indirect path is an HTTP call to a
+# hosted inference endpoint. These are named for a clearer message; the allowlist is
+# what actually forbids them (and every other egress module not in this set).
 NETWORK_MODULE_ROOTS = frozenset({
     "requests", "httpx", "aiohttp", "urllib", "urllib3", "http", "socket",
-    "websocket", "websockets", "grpc",
+    "websocket", "websockets", "grpc", "smtplib", "ftplib", "pycurl",
 })
 
 # Dynamic-import builtins/functions: the textbook INDIRECT import, by which a
@@ -104,23 +129,28 @@ class Violation:
         return f"{self.path}:{self.lineno}: {self.detail}"
 
 
-def _forbidden_root(dotted: str) -> str | None:
-    """Return the forbidden top-level root of a dotted module name, or None. A name is
-    forbidden if its first component (or the full name) is in the forbidden set and not
-    in the allowed set. Allowed roots win, so `neo4j` and `memgraph_store` never flag."""
-    parts = dotted.split(".")
-    root = parts[0]
-    if root in ALLOWED_MODULE_ROOTS or dotted in ALLOWED_MODULE_ROOTS:
-        return None
-    if root in FORBIDDEN_MODULE_ROOTS or dotted in FORBIDDEN_MODULE_ROOTS:
-        return root
-    return None
-
-
-def _network_root(dotted: str) -> str | None:
-    """Return the network module root of a dotted module name, or None."""
+def _import_violation(dotted: str, path: Path, lineno: int) -> Violation | None:
+    """Enforce the allowlist (D71). Return a Violation if the absolute import root is
+    not on ALLOWED_IMPORT_ROOTS, else None. The forbidden and network sets are consulted
+    only to make the message more specific for the obvious cases; the allowlist is the
+    boundary, so an unlisted egress module (`boto3`, `smtplib`, `ssl`, ...) is caught
+    even though it is on no forbidden list."""
     root = dotted.split(".")[0]
-    return root if root in NETWORK_MODULE_ROOTS else None
+    if root in ALLOWED_IMPORT_ROOTS:
+        return None
+    if root in FORBIDDEN_MODULE_ROOTS:
+        detail = (f"imports language-model module {dotted!r}, which is not on the "
+                  f"authorisation-path allowlist (invariant 3.1)")
+    elif root in NETWORK_MODULE_ROOTS:
+        detail = (f"imports network module {dotted!r}; the authorisation path must make "
+                  f"no outbound call, which is how an indirect model call (a hosted "
+                  f"inference endpoint) would arrive (invariant 3.1)")
+    else:
+        detail = (f"imports {dotted!r}, which is not on the authorisation-path allowlist "
+                  f"ALLOWED_IMPORT_ROOTS; an unlisted module may reach the network or a "
+                  f"model indirectly, so it must be a reviewed trust-boundary decision "
+                  f"(invariant 3.1, D71)")
+    return Violation(path, lineno, detail)
 
 
 def _scan_module(path: Path) -> list[Violation]:
@@ -131,35 +161,22 @@ def _scan_module(path: Path) -> list[Violation]:
         return [Violation(path, e.lineno or 0, f"could not parse: {e}")]
 
     for node in ast.walk(tree):
-        # import mlx / import torch / import requests
+        # import json / import boto3 / import requests: every absolute root must be
+        # allowlisted (D71).
         if isinstance(node, ast.Import):
             for alias in node.names:
-                root = _forbidden_root(alias.name)
-                if root:
-                    violations.append(Violation(
-                        path, node.lineno,
-                        f"imports language-model module {alias.name!r} (invariant 3.1)"))
-                net = _network_root(alias.name)
-                if net:
-                    violations.append(Violation(
-                        path, node.lineno,
-                        f"imports network module {alias.name!r}; the authorisation path "
-                        f"must make no outbound call, which is how an indirect model "
-                        f"call (a hosted inference endpoint) would arrive (invariant 3.1)"))
-        # from mlx_lm import load / from urllib import request
+                v = _import_violation(alias.name, path, node.lineno)
+                if v:
+                    violations.append(v)
+        # from . import x (relative, exempt); from urllib import request (absolute,
+        # must be allowlisted).
         elif isinstance(node, ast.ImportFrom):
+            if node.level and node.level > 0:
+                continue  # relative intra-package import: exempt from the allowlist
             module = node.module or ""
-            root = _forbidden_root(module)
-            if root:
-                violations.append(Violation(
-                    path, node.lineno,
-                    f"imports from language-model module {module!r} (invariant 3.1)"))
-            net = _network_root(module)
-            if net:
-                violations.append(Violation(
-                    path, node.lineno,
-                    f"imports from network module {module!r}; the authorisation path "
-                    f"must make no outbound call (invariant 3.1)"))
+            v = _import_violation(module, path, node.lineno)
+            if v:
+                violations.append(v)
         elif isinstance(node, ast.Call):
             target = _call_target(node.func)
             # subprocess / os.system shelling out to a model runner
@@ -234,11 +251,19 @@ _MUST_CATCH = (
     ("dynamic import", "import importlib\nimportlib.import_module('mlx_lm')\n"),
     ("outbound HTTP to an inference endpoint", "import requests\nrequests.post('https://api.openai.com')\n"),
     ("model-runner subprocess", "import subprocess\nsubprocess.run(['ollama', 'run'])\n"),
+    # Unlisted-egress probes (D71): these are on NO forbidden or network list, so a
+    # blacklist would miss them; the allowlist must catch them, proving the boundary is
+    # the allowlist and not the enumerated names. boto3 = AWS Bedrock hosted inference;
+    # smtplib = stdlib egress.
+    ("unlisted hosted-inference SDK (boto3)", "import boto3\n"),
+    ("unlisted stdlib egress (smtplib)", "import smtplib\n"),
 )
 _MUST_NOT_CATCH = (
     ("graph-DB driver", "from neo4j import GraphDatabase\n"),
     ("store binding", "from memgraph_store import MemgraphReachability\n"),
     ("a 'model' comment", "# the model fills values only\nx = 1\n"),
+    ("an allowlisted stdlib import", "import json\nimport re\n"),
+    ("a relative intra-package import", "from . import yggdrasil\nfrom ..core import Node\n"),
 )
 
 

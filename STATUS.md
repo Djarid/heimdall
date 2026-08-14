@@ -91,7 +91,7 @@ more than a green one that never tested it; the fix is an open design problem
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 70 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 71 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist) plus the open D67-fix item, with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -168,7 +168,11 @@ cross-domain priority principle and its cost, the fail-closed inert gate, the
 substrate binding, the action-critical gate, and demand-driven coverage growth. A
 repository-access review then added the AST symbolic-layer guard (D68); a second
 review extended it to indirect model calls (dynamic import, outbound HTTP) and gave it
-a mandatory negative control (D70), and the shared inert guard was ported (D69). Open
+a mandatory negative control (D70), and the shared inert guard was ported (D69). A third
+review found D70's "whole class" network claim was in the code a ten-name blacklist that
+missed `boto3`, `google`, `smtplib`, `ctypes` and every other unlisted egress module, so
+enforcement was inverted to a known-good import allowlist that forbids the class by
+construction (D71). Open
 items: the false-inert fix (D67-fix, reduced to 1/16 but not closed, the suite is
 red), CI wiring (the checks exist but nothing runs them automatically), and the
 research questions D33 to D36.
@@ -177,11 +181,16 @@ research questions D33 to D36.
 
 ## 6. Recommended next step
 
-Two repository-access reviews closed gaps over the last rounds: invariant 3.1 now has
+Three repository-access reviews closed gaps over the last rounds: invariant 3.1 now has
 an executable AST guard (D68), extended to indirect model calls and given a mandatory
-negative control by the second review (D70); and the false-inert break was reduced
-from 3/12 to 1/16 by porting a shared inert-earning guard to all domains (D69). The
-suite is still RED at 1/16, so that remains the top of the list.
+negative control by the second review (D70), and inverted from a residual module-name
+blacklist to a known-good import allowlist by the third review's finding (D71) so it
+forbids the whole indirect-egress class by construction; and the false-inert break was
+reduced from 3/12 to 1/16 by porting a shared inert-earning guard to all domains (D69).
+The suite is still RED at 1/16, so that remains the top of the list. (The third review
+overstepped its review-only remit and described a D71 fix as committed when it was not;
+the fix here is the real implementation, verified against a fresh egress probe battery
+and end to end in the harness.)
 
 1. **Close the false-inert break (D67-fix), and it must be a design change, not
    keywords.** D69 reduced it by applying the rule set's own discipline consistently,

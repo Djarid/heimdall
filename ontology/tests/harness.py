@@ -113,10 +113,12 @@ def run_symbolic_guard(rep: Report) -> None:
 
     # Mandatory negative control (invariant 3.10, D10): before trusting a clean scan,
     # confirm the guard actually catches planted violations (direct import, from-import,
-    # dynamic import, HTTP to an inference endpoint, model subprocess) and does not flag
-    # benign controls (a graph-DB driver, the store binding, a 'model' comment). A guard
-    # that cannot catch a planted model import is theatre, exactly as an uncontrolled
-    # soundness check would be.
+    # dynamic import, HTTP to an inference endpoint, model subprocess, and two
+    # UNLISTED-egress probes, boto3 and smtplib, that no blacklist would name so the
+    # allowlist is proven to bite, D71) and does not flag benign controls (a graph-DB
+    # driver, the store binding, an allowlisted stdlib import, a relative import, a
+    # 'model' comment). A guard that cannot catch a planted model import is theatre,
+    # exactly as an uncontrolled soundness check would be.
     control_failures = control_check()
     if control_failures:
         for cf in control_failures:
@@ -124,8 +126,9 @@ def run_symbolic_guard(rep: Report) -> None:
             rep.line(f"  [CRITICAL] negative control: {cf}")
     else:
         rep.line("  [PASS] negative control: the guard catches planted model imports, "
-                 "dynamic imports, inference HTTP and model subprocesses, and does not "
-                 "flag graph-DB drivers or 'model' comments (it bites, it is not theatre).")
+                 "dynamic imports, inference HTTP, model subprocesses and unlisted egress "
+                 "(boto3, smtplib), and does not flag allowlisted stdlib, graph-DB drivers, "
+                 "relative imports or 'model' comments (the allowlist bites, not theatre).")
 
     files = scanned_files()
     violations = scan()
