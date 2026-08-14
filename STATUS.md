@@ -27,16 +27,20 @@ architecture and `README.md` for the orientation paths.
 **The premise is proven; the substrate is ratified; the seed ontology is built;
 and an adversarial measurement has found a real classification break, so the test
 suite is deliberately RED.** That is the state of the project. The break (D67): an
-independent adversarial corpus measures a false-inert rate, consequential content that
-positively earns an inert signal skips both the gate and review. Two structural guards
-have reduced it (D69 an imperative/consequence guard 3/12 to 1/16; D72 a
-referential-completeness guard closing that residual but a fresh metaphor probe
-re-opening it to 1/17), and the pattern is now understood: it is bounded by invariant
-3.1 itself, because separating a passively-phrased or metaphorical consequence from a
-genuine informational statement needs world knowledge, which is a model, which 3.1 keeps
-off the classification path. It is left red and named, not papered over, because a suite
-that names a real break is worth more than a green one that never tested it; the fix is
-an open design problem (D67-fix), not more keywords.
+adversarial corpus measures a false-inert rate: consequential content that positively
+earns an inert signal skips both the gate and review. The rate has two figures, and the
+gap is the point. On the self-authored corpus two structural guards reduced it (D69,
+3/12 to 1/16; D72, closing that residual before a fresh metaphor probe re-opened it to
+1/17). But that corpus was tuned by the rules' own author; a larger scenario-authored
+independent corpus measures 13/30, about 43 percent (D77), so the self-authored number
+badly understated the bound. The break is large and structural, not an edge case: the
+classifier is blind to consequence expressed without imperative or movement vocabulary,
+across config changes, deletion, contract renewal, access grants, payroll redirects and
+security-state changes. It is bounded by invariant 3.1 (separating a passively-phrased or
+metaphorical consequence from a genuine informational statement needs world knowledge,
+which is a model 3.1 keeps off the classification path). It is left red and named, not
+papered over; the fix is an open design problem (D67-fix), and "accept a small residual"
+is now ruled out because the residual is not small.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -64,9 +68,10 @@ an open design problem (D67-fix), not more keywords.
   measured (36/38, 95% Wilson interval 83 to 99 percent); the reasoner is sound (with
   a chained derivation and a negative control that catches an unsound rule, D56);
   cross-domain state-staging is caught agent-scoped; but the independent adversarial
-  corpus finds consequential content typed inert (a real downgrade, 1/17 after the
-  D69 and D72 guard-ports reduced it from 3/12, and a fresh metaphor probe re-opened it;
-  now understood to be bounded by invariant 3.1, D72). The domain attach
+  corpus finds consequential content typed inert (a real downgrade): 1/17 on the
+  self-authored corpus after the D69/D72 guards, but 13/30 (about 43 percent) on a larger
+  independent scenario-authored corpus (D77), so the break is large and structural, bounded
+  by invariant 3.1. The domain attach
   test (D29) is demonstrated twice (scheduling, then finance) without editing the
   existing domains or the spine. Domain governance (D31) is settled single-curated,
   with a cross-domain priority principle (D52) whose review-queue cost the finance
@@ -97,7 +102,7 @@ an open design problem (D67-fix), not more keywords.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 76 tracked decisions (D72 the referential-completeness guard bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap for a resisting model, D76 adopt Gleipnir's trust-tiered memory governance on success) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 77 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17) plus the open D67-fix item, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -135,8 +140,8 @@ with `DECISIONS.md` as the running record of why each choice was made.
   3.6, D58) that blocks an unsafe wiring before it fires while passing a safe one, a
   coverage-gap capture that reports the review queue by reason (D60), a
   marshalling-contract check (D62), and the false-inert measurement (D67). The suite
-   is currently RED: the false-inert measurement finds 1/17 (a real break, reduced from
-   3/12 by the D69 and D72 guards and re-opened by a fresh probe, left red and named);
+   is currently RED: the false-inert measurement finds 1/17 on the self-authored corpus but
+   13/30 (about 43 percent) on a larger independent corpus (D77), a large real break, left red and named;
    the other checks pass. Coverage measured at 36/38; domain attach test
   demonstrated three times (D59); cross-domain priority governed by principle (D52, refined for inert
   ties D61); inert classification fails closed (D54). An optional end-to-end harness
@@ -238,14 +243,16 @@ fresh probe batteries and end to end in the harness.)
    it each time. D72 established the limit: separating a passively-phrased or
    metaphorical consequence from a genuine informational statement needs world
    knowledge, which is a model, which 3.1 keeps off the classification path. The two
-   honest directions are a deterministic referential-completeness discipline stronger
-   than a regex (measure its review-friction cost first), or accepting the residual as
-   the stated bound and reporting the guarantee alongside it. Not more keywords.
-2. **Build a genuinely independent adversarial corpus.** 1/17 is a lower bound: one
-   author wrote both the rules and the corpus, and D69/D72 demonstrated the circularity
-   directly (each guard tuned to zero, a fresh probe re-opened it). A corpus
-   labelled by someone who has not read the rules turns the lower bound into an
-   estimate, and is the single highest-information next artefact (G2).
+    honest directions are a deterministic referential-completeness discipline stronger
+    than a regex (measure its review-friction cost first), or a fail-closed advisory
+    model that only routes to review. "Accept a small residual" is now ruled out: D77
+    measured the real rate at about 43 percent, not small. Not more keywords.
+2. **Build a genuinely THIRD-PARTY corpus.** Partly done: the independent
+   scenario-authored corpus (D77) already raised the measured rate from 1/17 to 13/30
+   (about 43 percent), demonstrating the circularity the self-authored number hid. But
+   D77 is still same-author, so it is a broader lower bound, not an unbiased estimate. A
+   corpus labelled by someone who has never read the rules is the remaining
+   highest-information artefact (G2) and would likely push the rate higher still.
 3. **Publish the sink-declaration schema and add gate-boundary validation** so the
    seam ranked first (sink-wiring honesty) becomes attackable by someone other than
    its author; `ActionProposal.consumes` is currently an unchecked dict (review 3.2).

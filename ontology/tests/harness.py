@@ -606,23 +606,29 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
 
 
 FALSE_INERT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_adversarial.json"
+FALSE_INERT_INDEPENDENT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
 
 
-def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None:
+def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
+                    corpus_path: Path = FALSE_INERT_CORPUS, label: str = "") -> None:
     """Measure the FALSE-INERT RATE: of genuinely-consequential content, the fraction
     the classifier types to an inert type, so it skips both the Gjoll gate and human
-    review. This is the true bound of the guarantee (ADVERSARIAL_REVIEW.md 5.2), and
-    it was unmeasured on any corpus not authored to match the rules. This obligation
-    exists to attack that bound with an independent adversarial corpus whose
-    consequence labels come from an external test, and whose cases are constructed to
-    evade the rule vocabulary (see the corpus's independence_discipline).
+    review. This is the true bound of the guarantee (ADVERSARIAL_REVIEW.md 5.2).
+
+    Two corpora are run (D77). The original `false_inert_adversarial.json` was authored
+    by the same person who wrote the rules and measures 1/17: a lower bound tuned to the
+    rules. The larger `false_inert_independent.json` is scenario-authored across more
+    consequence domains and inert wrappers, labelled purely by the external consequence
+    test, and measures a much higher rate (13/30): the self-authored number badly
+    understated the bound. Both are still same-author, so both are lower bounds, not
+    unbiased estimates; a true third-party corpus remains wanted.
 
     A consequential case that lands INERT is a false-inert and a critical finding
     (invariant 3.11 obligation 8.2). A consequential case routed to review or typed
     high-risk is NOT a false-inert: it failed closed or was caught. Benign controls
     must not be typed high-risk (that would be over-classification, a cost)."""
-    rep.line("=== False-inert rate (independent adversarial corpus, ADVERSARIAL_REVIEW 5.2) ===")
-    data = json.loads(FALSE_INERT_CORPUS.read_text())
+    rep.line(f"=== False-inert rate ({label}, ADVERSARIAL_REVIEW 5.2) ===")
+    data = json.loads(corpus_path.read_text())
     cases = data["cases"]
     assertions = [
         MarshalledAssertion(c["id"], c["taint_class"], dict(c["fields"]))
@@ -653,12 +659,8 @@ def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset) -> None
         rep.line("  [PASS] no consequential case was typed inert; every one was caught "
                  "high-risk or routed to review (failed closed).")
     else:
-        rep.line(f"  FALSE-INERT RATE on this corpus: {fi}/{n}. This is a measured bound, "
-                 f"not a claim of the rate on real traffic.")
-    # Report where the caught ones landed, so the reader sees closed-fail vs caught.
-    rep.line("  Consequential cases that failed closed or were caught:")
-    for cid, typ in caught_or_review:
-        rep.line(f"    {cid} -> {typ}")
+        rep.line(f"  FALSE-INERT RATE on this corpus: {fi}/{n}. A measured LOWER BOUND "
+                 f"(same author wrote the rules and the corpus), not the rate on real traffic.")
     rep.line("")
 
 
@@ -684,7 +686,10 @@ def main() -> int:
     run_coverage_gaps(nornir, cases, rep)
     run_marshalling(nornir, rep)
     run_failclosed_property(nornir, rep, inert)
-    run_false_inert(nornir, rep, inert)
+    run_false_inert(nornir, rep, inert, FALSE_INERT_CORPUS,
+                    "self-authored corpus, a lower bound tuned to the rules")
+    run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
+                    "independent scenario-authored corpus, D77")
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
@@ -708,19 +713,21 @@ def main() -> int:
     print(f"SUITE FAIL: {fatal} critical finding(s). Detail above.")
     if rep.false_inert_failures and fatal == rep.false_inert_failures:
         print()
-        print("The only failures are false-inert findings from the independent adversarial")
-        print("corpus (ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72). This red bar is")
-        print("EXPECTED and RECORDED: consequential content that positively earns an inert")
-        print("signal defeats the fail-closed default, because inertness is earned by a content")
-        print("pattern an attacker can also satisfy. Two guards have reduced the rate (D69 the")
-        print("imperative/consequence guard, D72 the referential-completeness guard), and each")
-        print("time a fresh probe re-opened it (now fi-20, a metaphor the D72 guard's vocabulary")
-        print("does not match). That is the point, not a failure of the fix: no content pattern")
-        print("separates a passively-phrased or metaphorical consequence from a genuine")
-        print("informational statement without world knowledge, which invariant 3.1 keeps off")
-        print("the classification path, so a residual false-inert rate is inherent. It is left")
-        print("red deliberately: a suite that names a real break is worth more than a green one")
-        print("that never tested it (invariant 3.5 in its deeper form, the inert signal is content).")
+        print("The only failures are false-inert findings from the two adversarial corpora")
+        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77). This red bar is EXPECTED")
+        print("and RECORDED: consequential content that positively earns an inert signal defeats")
+        print("the fail-closed default, because inertness is earned by a content pattern an")
+        print("attacker can also satisfy. TWO measurements, both lower bounds: the self-authored")
+        print("corpus reads 1/17 after the D69 and D72 guards (each fixed the cases it was shown,")
+        print("each re-opened by a fresh probe), but the larger independent scenario-authored")
+        print("corpus reads 13/30 (D77), so the self-authored number badly understated the bound.")
+        print("The break is large, not an edge case: the classifier is blind to consequence")
+        print("expressed without imperative or movement vocabulary, across config changes,")
+        print("deletion, contract renewal, access grants, payroll redirects and security-state")
+        print("changes. No content pattern separates a passively-phrased or metaphorical")
+        print("consequence from a genuine informational statement without world knowledge, which")
+        print("invariant 3.1 keeps off the classification path. It is left red deliberately: a")
+        print("suite that names a real break is worth more than a green one that never tested it.")
     else:
         print("A downgrade, a fail-safe breach, an unmatched request going inert, an unsound")
         print("derivation or a missed action-critical value is a boundary failure.")

@@ -4,7 +4,7 @@
 **Date:** August 2026
 **Version:** 0.1 (draft)
 **Phase:** 2
-**Status of the component today:** demonstrated on a four-domain seed with one deliberately-failing obligation (D67), per `plans/hld.md` section 3. The classifier, forward-chaining reasoner and constraint checker are real in `ontology/nornir/`; the false-inert obligation (8.2) is red at 1/17 by design (reduced from 3/12 by the D69 and D72 structural guards, re-opened each time by a fresh probe, now understood to be bounded by invariant 3.1, D72).
+**Status of the component today:** demonstrated on a four-domain seed with one deliberately-failing obligation (D67), per `plans/hld.md` section 3. The classifier, forward-chaining reasoner and constraint checker are real in `ontology/nornir/`; the false-inert obligation (8.2) is red by design, and the break is LARGE: 1/17 on the self-authored corpus (after the D69 and D72 guards) but 13/30, about 43 percent, on a larger independent scenario-authored corpus (D77), bounded by invariant 3.1.
 
 ---
 
@@ -118,7 +118,7 @@ Nornir does not carry the type structure; it loads it. The composed ontology (up
 Nornir inherits the ontology test harness (`ontology/tests/harness.py`), which runs the four obligations of invariant 3.11 plus the fail-closed property, the false-inert measurement, the Gjöll gate and the symbolic-layer guard. The inherited obligations:
 
 - **8.1 Coverage measurement.** The reported fraction classified to a known type versus `UNCLASSIFIED`, with a Wilson interval. The hard invariant behind the number is that uncovered content fails safe, never to a trusted or actionable type; a fail-safe breach is a critical finding.
-- **8.2 Classification correctness.** Each case to its expected type, with the failure direction distinguished: a downgrade of an action-critical value to an inert label is a critical finding that fails the suite, while an over-classification costs only a review and is tolerated. This obligation is deliberately red, at false-inert 1/17 on the independent adversarial corpus, and it is left red because a suite that names a real break is worth more than a green one that never tested it. A future session must not mistake this red bar for a regression, and must not silence it with more keywords.
+- **8.2 Classification correctness.** Each case to its expected type, with the failure direction distinguished: a downgrade of an action-critical value to an inert label is a critical finding that fails the suite, while an over-classification costs only a review and is tolerated. This obligation is deliberately red: false-inert 1/17 on the self-authored corpus and 13/30 (about 43 percent) on the larger independent corpus (D77), and it is left red because a suite that names a real break is worth more than a green one that never tested it. A future session must not mistake this red bar for a regression, and must not silence it with more keywords.
 - **8.3 Reasoner soundness.** Every derived fact is checked against its producing rule's entailment oracle and must carry its assertion chain; a chained derivation is exercised; and a deliberately-unsound rule is registered as a negative control and must be caught, so the check is proven to bite (D56).
 - **8.4 Flow-to-sink reachability.** Agent-scoped and cross-domain, including the mandatory state-staging case where a value reaches a sink only through a multi-hop cross-domain chain (D30). A missing action-critical value is fatal; an extra one fails safe.
 
