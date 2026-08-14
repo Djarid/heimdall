@@ -52,6 +52,8 @@ Everything crossing the boundary is stamped untrusted by origin, before any pars
 
 **Acceptance.** No code path constructs a trusted value from boundary-crossing content without an explicit, logged promotion. Unprovenanced assertions are rejected, not defaulted to trusted.
 
+**A small piece of positive evidence that the separation is structural, not a model disposition (D75).** The Phase 2 detection-layer demonstration ran the Fenrir reading path against an abliterated (refusal-removed) model of the same family and size as the baseline. It was not steered into an action attempt by any injection (overt, tool-call syntax or roleplay): it described the injected instruction but did not act on it, because its compliance was directed at the canonical out-of-band task ("extract and describe this content"), not at the injected one. Removing the model's refusal training did not help the attacker, because the attacker is fighting the trusted-frame-versus-tainted-window separation, not the model's disposition. This is a single data point on a small model, not a proof, but it is the one test that deliberately removed model good-behaviour and found the separation held anyway. See `phase2/OUTCOME.md` section 4.2.
+
 ### 3.3 The data boundary must not be forgeable by content
 
 **PROVEN, and this is the PoC's sharpest finding.** Maps to principle 1 and Bifröst.
