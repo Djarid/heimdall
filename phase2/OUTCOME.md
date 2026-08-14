@@ -232,6 +232,35 @@ So the experiments demote ONE detective signal as a false-inert fix. They do not
 if anything strengthen, the case for Fenrir itself: its preventive structural guarantee and
 its role as the only component allowed to read tainted content at all.
 
+## 5.2 Does Fenrir catch the false-inert cases? No, and why that is not the same as "they are inert"
+
+A tempting reading: the D77 false-inert cases go to Fenrir, so Fenrir catches them, and if
+it does not, they must be truly inert. Both halves are wrong, and precisely so:
+
+- Fenrir EXTRACTS; Nornir CLASSIFIES. The false-inert break is a Nornir classification
+  failure (a payroll-redirect fact typed `finance:financial_statement`), not a Fenrir one.
+  Fenrir faithfully extracted the fact; it does not re-judge consequence, and it must not,
+  because that judgement in a model is what invariant 3.1 forbids. Fenrir's tripwire fires
+  on a model's ATTEMPT TO ACT, which D75 measured does not happen for these payloads.
+- "Not acted on behaviourally" is not "consequentially inert". A payroll-redirect or
+  contract-renewal fact does nothing when READ, but drives a real action when a legitimate
+  downstream agent later treats it as settled truth (HEIMDALL.md: writing an action-critical
+  value to the world model is, in effect, an execution capability). So a false-inert value
+  is behaviourally quiet and consequentially live at once.
+
+Where the blast radius IS bounded is a different axis the classification break does not
+defeat: ORIGIN TIER. In the tiered-memory model Heimdall is adopting from Gleipnir on
+success (D76), a Fenrir-extracted value is untrusted BY ORIGIN and sits in the lowest tier
+regardless of how Nornir typed it, and the tier governs read rigour, so a downstream reader
+cannot treat a mis-classified-inert value as trusted ground truth. That backstop holds
+because the tier is assigned by unforgeable origin, not by a content classification the
+attacker can satisfy. It MITIGATES the downstream-acts-on-a-corrupted-premise failure, it
+does not ERASE the break: the value still skips human review and the action-critical gate,
+and the read-rigour enforcement is the D76 dependency (under test in Gleipnir), not built in
+Mímisbrunnr yet. So the false-inert break stays a real, open classification break; what the
+origin tier buys is that its blast radius does not extend to a downstream agent trusting the
+value as fact.
+
 ## 6. Consequences
 
 - The Fenrir + Huginn detection layer stands as a real, tested component for its actual
