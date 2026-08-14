@@ -108,6 +108,8 @@ The PoC's control-token handling was verified for one tokenizer and chat templat
 
 **Acceptance.** Model onboarding includes a boundary-verification gate. No model processes tainted content until it passes. The single-constant model identifier in the PoC becomes a per-model onboarding record in the live system.
 
+**A concrete instance of the per-family caveat, found in the Phase 2 cross-family sweep (D75).** The invariant above is usually read as being about control-token ids, but the sweep found the separation MECHANISM itself is per-family, not only the token set. The Phase 2 demonstration relies on an out-of-band trusted/untrusted separation built from a system message (the trusted frame) and a user message (the tainted window). Gemma-2 has no system role in its chat template, so that separation does not exist for it, and the demonstration fell back to folding the trusted instruction into the user turn, a weaker separation. A production Fenrir on a no-system-role family therefore needs its separation re-constructed and re-verified per family (a distinct turn, a template-level separator, or an equivalent), not just its token ids re-derived. Recorded so the onboarding gate covers the separation construction, not only the boundary-forgery corpus. See `phase2/OUTCOME.md` section 4.3.
+
 ### 3.8 The tainted-content role is bound and has no egress
 
 **DEMONSTRATED in shape, not in deployment.** Maps to principle 9 (bound monitored sandbox), principle 13 (taint and egress boundaries coincide) and Fenrir.

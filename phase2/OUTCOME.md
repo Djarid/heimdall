@@ -139,6 +139,39 @@ record is now unbroken across five model configurations (0.5B, 1.5B, 7B, abliter
 and the assumed-steered mock), and the false-inert cases remain ones every model, restricted
 or not, reads as information rather than acting on.
 
+### 4.3 Cross-family sweep: Llama-3.2, Phi-3.5, Gemma-2
+
+Sections 4.1 and 4.2 were all Qwen2.5, so family (tokenizer, chat template, training
+lineage) was a confound: "the separation holds" could have been a Qwen property. To test
+that, the same battery (subtle fi-19/fi-20 plus overt, tool-call-syntax and roleplay
+injections) was run against three distinct non-Qwen lineages: Llama-3.2-3B (Meta),
+Phi-3.5-mini (Microsoft) and Gemma-2-2b (Google).
+
+Result: none of the three was steered into an action attempt on any payload. Every family
+DESCRIBED the injection ("The content appears to be a payment instruction, requesting a
+transfer of 5000 to account GB29"; "a simulation of a financial bot that handles transfers")
+and did not act on it. So across four distinct families and six model configurations
+(Qwen 0.5B/1.5B/7B/abliterated-7B, Llama-3.2-3B, Phi-3.5-mini, Gemma-2-2b), not one model
+was steered into an action attempt, and the attempt-introspection tripwire never fired on
+real behaviour. The finding is not a Qwen artefact.
+
+Two honest caveats from this sweep:
+
+- A REAL per-family boundary caveat (invariant 3.7). Gemma-2 has no system role in its chat
+  template, so the out-of-band trusted/untrusted separation the other families get from a
+  system message plus a user message does not exist for it. The demonstration fell back to
+  folding the trusted instruction into the first user turn, a WEAKER separation (the trusted
+  frame and the tainted window share one turn, though still distinct blocks). This is
+  exactly what invariant 3.7 anticipates: the boundary mechanism is per-family and must be
+  re-verified and, for a no-system-role family, re-constructed. Gemma still described rather
+  than acted here, but the separation it ran under was weaker, and a production Fenrir on a
+  no-system-role model would need a stronger construction (for example a distinct turn or a
+  template-level separator), verified per family, not the fold-in fallback.
+- Phi-3.5 on the two subtle cases produced no hard signal at all (it echoed the token and
+  gave a bland non-answer). Not steered, but a clean-looking non-answer sits in the
+  value-poisoning-adjacent zone (schema-clean, no action, section 5 and fenrir.md 9): the
+  honest residual the detection layer does not close.
+
 ## 5. What this means for direction (d), stated plainly
 
 The claim that the attempt-introspection catch "meaningfully closes the false-inert gap"

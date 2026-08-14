@@ -68,13 +68,30 @@ class _MlxProducer:
         # The wrapped_prompt already carries the canary frame and the tainted window.
         # Present it to the model as untrusted user content, with the trusted system
         # instruction out of band (the PoC's separation discipline).
+        #
+        # Per-family boundary caveat (invariant 3.7): not every family supports a system
+        # role. Gemma-2, for example, has no system role in its chat template, so the
+        # trusted/untrusted separation cannot use the system/user split there. We fall
+        # back to prepending the trusted instruction to the first user turn. This is a
+        # WEAKER separation (trusted frame and untrusted content share a turn, though
+        # still distinct blocks), and it is exactly the per-family re-verification 3.7
+        # requires: the boundary mechanism is not universal across families.
         messages = [
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": wrapped_prompt},
         ]
-        prompt = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=True
-        )
+        try:
+            prompt = self.tokenizer.apply_chat_template(
+                messages, add_generation_prompt=True, tokenize=True
+            )
+        except Exception:
+            # No system role in this family's template: fold the instruction into the
+            # user turn (a weaker, noted fallback).
+            self.no_system_role = True
+            folded = [{"role": "user", "content": f"{_SYSTEM}\n\n{wrapped_prompt}"}]
+            prompt = self.tokenizer.apply_chat_template(
+                folded, add_generation_prompt=True, tokenize=True
+            )
         pieces: list[str] = []
         for response in self._stream_generate(
             self.model, self.tokenizer, prompt, max_tokens=256, sampler=self.sampler
