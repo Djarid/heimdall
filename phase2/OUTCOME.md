@@ -245,13 +245,15 @@ its role as the only component allowed to read tainted content at all.
 - R-1 stays open and the ontology suite stays RED. Nothing here closes the false-inert
   break; the build clarified that this approach does not close it either.
 - Persisted-influence poisoning (a tainted value that survives across sessions in stored
-  memory) is out of scope for this Phase 2 reading-path work and is not an open Heimdall
-  hole to dwell on here: the sibling Gleipnir framework already addresses it structurally
-  with a trust-tiered memory model (G-6, "Memory is not poisonable",
-  `../gleipnir/gleipnir_specification_v0_3_12.md`): persistent memory is untrusted, tiered
-  input with named writers, provenance, review-gated promotion and integrity digests held
-  outside the agent-writable surface, on the same authority-ladder pattern Heimdall's DD
-  already reuses (index.md section 3). Noted so this work does not treat it as unmitigated.
+  memory) is out of scope for this Phase 2 reading-path work and is a tracked external
+  dependency, not an open Heimdall hole. The sibling Gleipnir framework is proving a
+  trust-tiered memory model for it (G-6, "Memory is not poisonable",
+  `../gleipnir/gleipnir_specification_v0_3_12.md`): persistent memory as untrusted tiered
+  input with named writers, provenance, a review-gated write pipeline and integrity digests
+  held outside the agent-writable surface, on the same authority-ladder pattern Heimdall's
+  DD already reuses (index.md section 3). Heimdall will ADOPT that governance into
+  Mímisbrunnr's write path on success of Gleipnir's own test of it, rather than authoring
+  its own (decision D76), so this is neither unmitigated nor Heimdall's to build now.
 
 ## 7. How to run
 

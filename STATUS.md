@@ -97,7 +97,7 @@ an open design problem (D67-fix), not more keywords.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 75 tracked decisions (D71 the allowlist inversion, D72 the referential-completeness guard bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap for a resisting model) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 76 tracked decisions (D72 the referential-completeness guard bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap for a resisting model, D76 adopt Gleipnir's trust-tiered memory governance on success) plus the open D67-fix item, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -206,6 +206,15 @@ six phases, the implementation-ready Detailed Design is scoped to Phases 1-3, an
 name Himinbjörg (the gateway and control surface, essentially unbuilt) as the Phase-3
 critical path and the Gjöll sink-declaration schema as the load-bearing gap to close
 first. They do not change the build state recorded above; they lay out the route to it.
+
+The Phase 2 Fenrir + Huginn detection layer was then built under a scoped R-1 exception
+(D74, `phase2/`), and its real-model demonstration returned an honest negative finding
+(D75): the attempt-introspection catch does not close the false-inert gap for a resisting
+model, so it is an injection-success detector, not a false-inert fix. Separately, memory
+poisoning is a tracked EXTERNAL dependency, not a Heimdall build item: Gleipnir is proving
+a trust-tiered memory-write governance model (its G-6), and Heimdall will adopt it into
+Mímisbrunnr on success rather than author its own (D76), keeping the two systems' memory
+trust models aligned.
 
 ---
 
