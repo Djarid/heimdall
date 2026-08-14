@@ -196,10 +196,48 @@ was not. This is the honesty-over-reassurance ethos doing its job: building the 
 measuring it revealed the claim was too strong, which is a more useful result than a green
 bar would have been.
 
+## 5.1 What this does NOT mean: Fenrir is still needed
+
+The sweep must not be misread as "models cannot be coerced, so Fenrir is unnecessary".
+That inverts the architecture. Three points, stated so a later reader cannot draw the wrong
+conclusion from the negative coercion result:
+
+- **Fenrir's primary guarantee is preventive and structural, not detective.** The
+  load-bearing property is the EMPTY CAPABILITY SET: even if a model IS coerced, there is no
+  tool, network, filesystem or shell for the coercion to act through, so "injection
+  succeeded" can only ever mean "the text was influenced", never "an action occurred"
+  (fenrir.md section 2). The experiments here only probed one DETECTIVE signal (attempt
+  introspection); they say nothing about the preventive layer, which is needed regardless
+  and which the abliterated test (4.2) actually reinforced. The tripwire is the second line;
+  the sandbox is the first.
+- **The negative coercion result is weak evidence, not proof of un-coercibility.** It rests
+  on small (0.5B to 8B), 4-bit-quantised models, one quantisation per family, a handful of
+  payloads written by this author (not a dedicated red team), and one task shape (extraction
+  under a canary wrap). A determined adversary with per-model tuning, many-shot jailbreaks,
+  or an agentic tool-trained model (far more prone to emit the very tool calls the tripwire
+  catches) could plausibly produce an action attempt. The finding is "these models, these
+  payloads, did not steer", not "models cannot be steered". Fenrir exists precisely because
+  we must assume some will be.
+- **The reason Fenrir exists is to read tainted content at all, safely.** Some tasks
+  genuinely need a model to read the untrusted text (extraction, summarisation). Fenrir is
+  the only component allowed to, and it makes that reading structurally safe (empty
+  capabilities, fresh context, egress restriction, mandatory monitoring). None of those four
+  properties was questioned by these experiments; three of them were not even exercised.
+- And the canary layer, a part of this same build, DID fire across the whole sweep: it
+  caught every weak-model and cross-family failure the tripwire did not. The detection layer
+  earns its place; a different signal within it does the work.
+
+So the experiments demote ONE detective signal as a false-inert fix. They do not touch, and
+if anything strengthen, the case for Fenrir itself. The value-poisoning residual (section 5,
+fenrir.md 9) is untouched and is arguably the more important threat; it is contained by
+Gjoll downstream, which is another reason the reading path and its monitoring must exist.
+
 ## 6. Consequences
 
 - The Fenrir + Huginn detection layer stands as a real, tested component for its actual
   purpose: reading tainted content safely and detecting a successful injection attempt.
+  Only direction (d), one detective use of it, is demoted; the component itself, and its
+  preventive structural guarantee, are unaffected and remain needed (section 5.1).
 - Direction (d) is demoted in the D67-fix candidate list: it is an injection-success
   detector, not a false-inert fix for a resisting model. The remaining honest directions
   for the false-inert break are (a) a stronger deterministic referential-completeness
