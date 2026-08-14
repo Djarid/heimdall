@@ -19,7 +19,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
-    carries_imperative_or_consequence,
+    earns_inert,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -76,18 +76,16 @@ def _is_communication(a: MarshalledAssertion) -> bool:
 
 
 def _is_informational(a: MarshalledAssertion) -> bool:
-    """POSITIVELY informational: a communication that shows an informational signal
-    and carries NO imperative or consequence signal. Earning the inert label requires
-    both. A message that both informs and asks (or informs and describes a
-    consequence) is treated as the latter and falls through to the FALLBACK
-    unrecognised_request. This now uses the SHARED guard (D69), the same one the
-    scheduling, finance and publication inert rules use, rather than the older
-    narrower communications-only `_IMPERATIVE`; the shared guard also catches
-    consequence phrasings like 'the usual monthly arrangement' that the narrow one
-    missed (a false-inert case, D67)."""
+    """POSITIVELY informational: a communication that shows an informational signal and
+    passes the SHARED inert-earning discipline `earns_inert` (D69, extended D72). Earning
+    the inert label requires both. A message that both informs and asks, or informs and
+    describes a consequence (D69), or defers a consequence to out-of-message context (D72,
+    the fi-19 passive-standing-order shape), is treated as the latter and falls through to
+    the FALLBACK unrecognised_request. `earns_inert` is the same discipline the scheduling,
+    finance and publication inert rules use, so all four apply it consistently."""
     if not _is_communication(a):
         return False
-    return bool(_INFORMATIONAL.search(text_of(a))) and not carries_imperative_or_consequence(a)
+    return bool(_INFORMATIONAL.search(text_of(a))) and earns_inert(a)
 
 
 def register_rules() -> None:

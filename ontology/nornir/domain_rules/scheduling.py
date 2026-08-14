@@ -19,7 +19,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
-    carries_imperative_or_consequence,
+    earns_inert,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -49,7 +49,7 @@ def _is_calendar_entry(a: MarshalledAssertion) -> bool:
     # the important-buttons room" is not an inert calendar entry; it falls through to
     # the fail-closed default. This applies the same discipline the communications
     # inert rule always had, which the false-inert measurement (D67) found missing here.
-    return bool(_CALENDAR.search(text_of(a))) and not carries_imperative_or_consequence(a)
+    return bool(_CALENDAR.search(text_of(a))) and earns_inert(a)
 
 
 def register_rules() -> None:

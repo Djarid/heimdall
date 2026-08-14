@@ -139,6 +139,58 @@ def carries_imperative_or_consequence(a: MarshalledAssertion) -> bool:
     return bool(_IMPERATIVE_OR_CONSEQUENCE.search(text_of(a)))
 
 
+# The referential-completeness guard, shared across all domains (D72). This is a REDUCTION
+# of the false-inert break, not a closure, and it is honest to say so up front: the D69
+# guard keyed on imperative and consequence VERBS, so an attacker who passivises the verb
+# ("the standing order to the contractor is set to go out", the fi-19 break) earns inert.
+# This guard keys on a different structural shape: a message that DEFERS its consequence to
+# a referent OUTSIDE itself. A deictic/definite pointer ("the thing we discussed", "the
+# usual arrangement", "as agreed", "the standing order") combined with a motion/completion
+# phrasing ("is set to go", "now in motion", "proceeds", "going ahead") is the shape of
+# "a consequence is happening, and I am pointing at it rather than stating it". A genuinely
+# informational statement reports something COMPLETE within the message ("the newsletter is
+# set to go out tomorrow" names its own subject), so it does not match. Measured on the
+# 38-case corpus this re-routes zero real inert cases (no friction) and closes fi-19 and the
+# pure-euphemism probe the D69/subject-matter approaches missed. It does NOT close the hole:
+# a pure metaphor ("the wheels are turning on the matter") expresses the same deixis+motion
+# without the keywords and still earns inert, and that case is kept in the corpus as the
+# named residual (fi-20). So this is the SAME category as D69, a reduction that keys on
+# shape rather than topic, and is fail-open on the phrasing it does not match. It is NOT a
+# blacklist of attack topics (invariant 3.5): it never enumerates payments/access/exfil, it
+# tests a grammatical deferral shape, and when in doubt it denies inert and falls through to
+# review. The load-bearing point (D67-fix stays OPEN) is that no content pattern can separate
+# a passively-phrased consequence from a genuine informational statement without world
+# knowledge, which invariant 3.1 keeps off the classification path.
+_DEFERRED_DEIXIS = re.compile(
+    r"\b(the (thing|matter|arrangement|usual|standing order|order|payment|transfer|deal)\b|"
+    r"as (we )?(discussed|agreed|arranged)|the one (from|we)|"
+    r"it (will|is set)|that (we )?spoke)\b"
+)
+_DEFERRED_MOTION = re.compile(
+    r"\b(set to (go|proceed|run|happen|execute|send)|going out|goes out|"
+    r"now in motion|in motion|proceeds?|going ahead|"
+    r"will (go|proceed|happen|run)|is (being )?actioned)\b"
+)
+
+
+def defers_consequence_to_context(a: MarshalledAssertion) -> bool:
+    """True if the assertion defers a consequence to a referent outside the message (a
+    deictic/definite pointer plus a motion/completion phrasing), so it must not earn an
+    inert type (D72). A REDUCTION, not a closure: keys on a deferral SHAPE, not attack
+    topics, and is fail-open on phrasings it does not match (see fi-20, the residual)."""
+    text = text_of(a)
+    return bool(_DEFERRED_DEIXIS.search(text) and _DEFERRED_MOTION.search(text))
+
+
+def earns_inert(a: MarshalledAssertion) -> bool:
+    """The shared inert-earning discipline every domain's inert rule applies over its own
+    positive signal: a value may earn an inert type only if it carries no imperative or
+    consequence signal (D69) AND does not defer a consequence to out-of-message context
+    (D72). When in doubt this denies inert and falls through to the fail-closed default
+    (review), never to a silent inert type (invariant 3.5)."""
+    return not carries_imperative_or_consequence(a) and not defers_consequence_to_context(a)
+
+
 # The classification-rule registry. Domain rule modules append their rules here at
 # import time through `register_classification_rule`. This is what makes the domain
 # attach test (D29) hold for rules as well as for types: a new domain contributes a

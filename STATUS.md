@@ -27,11 +27,16 @@ architecture and `README.md` for the orientation paths.
 **The premise is proven; the substrate is ratified; the seed ontology is built;
 and an adversarial measurement has found a real classification break, so the test
 suite is deliberately RED.** That is the state of the project. The break (D67): an
-independent adversarial corpus measures a false-inert rate of 3/12, consequential
-content that positively earns an inert signal skips both the gate and review. It is
-left red and named, not patched, because a suite that names a real break is worth
-more than a green one that never tested it; the fix is an open design problem
-(D67-fix), not more keywords.
+independent adversarial corpus measures a false-inert rate, consequential content that
+positively earns an inert signal skips both the gate and review. Two structural guards
+have reduced it (D69 an imperative/consequence guard 3/12 to 1/16; D72 a
+referential-completeness guard closing that residual but a fresh metaphor probe
+re-opening it to 1/17), and the pattern is now understood: it is bounded by invariant
+3.1 itself, because separating a passively-phrased or metaphorical consequence from a
+genuine informational statement needs world knowledge, which is a model, which 3.1 keeps
+off the classification path. It is left red and named, not papered over, because a suite
+that names a real break is worth more than a green one that never tested it; the fix is
+an open design problem (D67-fix), not more keywords.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -59,8 +64,9 @@ more than a green one that never tested it; the fix is an open design problem
   measured (36/38, 95% Wilson interval 83 to 99 percent); the reasoner is sound (with
   a chained derivation and a negative control that catches an unsound rule, D56);
   cross-domain state-staging is caught agent-scoped; but the independent adversarial
-  corpus finds consequential content typed inert (a real downgrade, 1/16 after the
-  D69 guard-port, down from 3/12). The domain attach
+  corpus finds consequential content typed inert (a real downgrade, 1/17 after the
+  D69 and D72 guard-ports reduced it from 3/12, and a fresh metaphor probe re-opened it;
+  now understood to be bounded by invariant 3.1, D72). The domain attach
   test (D29) is demonstrated twice (scheduling, then finance) without editing the
   existing domains or the spine. Domain governance (D31) is settled single-curated,
   with a cross-domain priority principle (D52) whose review-queue cost the finance
@@ -91,7 +97,7 @@ more than a green one that never tested it; the fix is an open design problem
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 71 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 72 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist, D72 the referential-completeness guard that reduces the false-inert rate and shows it is bounded by 3.1) plus the open D67-fix item, with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -125,8 +131,9 @@ with `DECISIONS.md` as the running record of why each choice was made.
   3.6, D58) that blocks an unsafe wiring before it fires while passing a safe one, a
   coverage-gap capture that reports the review queue by reason (D60), a
   marshalling-contract check (D62), and the false-inert measurement (D67). The suite
-  is currently RED: the false-inert measurement finds 3/12 (a real break, left red
-  and named); the other checks pass. Coverage measured at 36/38; domain attach test
+   is currently RED: the false-inert measurement finds 1/17 (a real break, reduced from
+   3/12 by the D69 and D72 guards and re-opened by a fresh probe, left red and named);
+   the other checks pass. Coverage measured at 36/38; domain attach test
   demonstrated three times (D59); cross-domain priority governed by principle (D52, refined for inert
   ties D61); inert classification fails closed (D54). An optional end-to-end harness
   (`ontology/tests/e2e_harness.py`) runs the real mlx model through
@@ -172,10 +179,11 @@ a mandatory negative control (D70), and the shared inert guard was ported (D69).
 review found D70's "whole class" network claim was in the code a ten-name blacklist that
 missed `boto3`, `google`, `smtplib`, `ctypes` and every other unlisted egress module, so
 enforcement was inverted to a known-good import allowlist that forbids the class by
-construction (D71). Open
-items: the false-inert fix (D67-fix, reduced to 1/16 but not closed, the suite is
-red), CI wiring (the checks exist but nothing runs them automatically), and the
-research questions D33 to D36.
+construction (D71). A referential-completeness guard then reduced the false-inert rate
+again and showed the residual is bounded by invariant 3.1 (D72). Open
+items: the false-inert fix (D67-fix, reduced to 1/17 by D69 and D72 but not closed and
+now understood to be bounded by 3.1, the suite is red), and the research questions D33
+to D36.
 
 ---
 
@@ -186,38 +194,43 @@ an executable AST guard (D68), extended to indirect model calls and given a mand
 negative control by the second review (D70), and inverted from a residual module-name
 blacklist to a known-good import allowlist by the third review's finding (D71) so it
 forbids the whole indirect-egress class by construction; and the false-inert break was
-reduced from 3/12 to 1/16 by porting a shared inert-earning guard to all domains (D69).
-The suite is still RED at 1/16, so that remains the top of the list. (The third review
-overstepped its review-only remit and described a D71 fix as committed when it was not;
-the fix here is the real implementation, verified against a fresh egress probe battery
-and end to end in the harness.)
+reduced from 3/12 to 1/16 by a shared inert-earning guard (D69) then to 1/17 by a
+referential-completeness guard that closed that residual before a fresh metaphor probe
+re-opened it (D72). The suite is still RED at 1/17, so that remains the top of the list.
+(The third review overstepped its review-only remit and described a D71 fix as committed
+when it was not; the D71 and D72 work here is the real implementation, verified against
+fresh probe batteries and end to end in the harness.)
 
-1. **Close the false-inert break (D67-fix), and it must be a design change, not
-   keywords.** D69 reduced it by applying the rule set's own discipline consistently,
-   but a fresh passively-phrased case still slips (1/16) and widening the keyword
-   guard is the treadmill invariant 3.5 forbids. The real fix changes how inertness is
-   earned (candidate: a narrow grammar-constrained model question "does this ask the
-   reader to do something with an effect", inert requires a no). Re-measure after, on
-   an independent corpus, not the self-authored one.
-2. **Build a genuinely independent adversarial corpus.** 1/16 is a lower bound: one
-   author wrote both the rules and the corpus, and D69 demonstrated the circularity
-   directly (tuned to catch three cases, a fresh probe found a fourth). A corpus
+1. **Decide the false-inert break's disposition (D67-fix); it is now understood to be
+   bounded by invariant 3.1, not merely unfinished.** D69 and D72 reduced it with
+   structural guards (a verb shape, then a deferral shape), and a fresh probe re-opened
+   it each time. D72 established the limit: separating a passively-phrased or
+   metaphorical consequence from a genuine informational statement needs world
+   knowledge, which is a model, which 3.1 keeps off the classification path. The two
+   honest directions are a deterministic referential-completeness discipline stronger
+   than a regex (measure its review-friction cost first), or accepting the residual as
+   the stated bound and reporting the guarantee alongside it. Not more keywords.
+2. **Build a genuinely independent adversarial corpus.** 1/17 is a lower bound: one
+   author wrote both the rules and the corpus, and D69/D72 demonstrated the circularity
+   directly (each guard tuned to zero, a fresh probe re-opened it). A corpus
    labelled by someone who has not read the rules turns the lower bound into an
    estimate, and is the single highest-information next artefact (G2).
 3. **Publish the sink-declaration schema and add gate-boundary validation** so the
    seam ranked first (sink-wiring honesty) becomes attackable by someone other than
    its author; `ActionProposal.consumes` is currently an unchecked dict (review 3.2).
-4. **Wire CI** to run the harness and the AST guard on push (D68 built the guard but
-   there is no CI; the checks run only when a human runs them).
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
 (D53), and persistent-store hardening under load and cross-batch edge deletion (D64).
 
+(CI is deliberately out of scope: the harness and the 3.1 guard run when a human runs
+them, and that is the accepted current state, not a gap to close.)
+
 Honest note on the frontier: the earlier claim that there was "no unblocked
 mechanism-level gap left" was wrong, and the false-inert measurement is what showed it.
-There is now a named, measured, unblocked mechanism-level break, and closing it is the
-work.
+There is a named, measured false-inert break, now reduced twice and understood to be
+bounded by invariant 3.1 (D72): the remaining question is disposition (a stronger
+deterministic discipline, or accepting and reporting the bound), not another keyword.
 
 The external jailbreak corpus (`poc/corpus/adapter.py`) remains a PoC loose end and
 is not currently available.

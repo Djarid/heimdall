@@ -35,7 +35,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
-    carries_imperative_or_consequence,
+    earns_inert,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -78,7 +78,7 @@ def _is_statement(a: MarshalledAssertion) -> bool:
     # consequence signal (D69). A "statement" that also says "move the outstanding
     # balance to the coordinates on the last note" is not inert; it falls through to
     # the fail-closed default.
-    return bool(_STATEMENT.search(text_of(a))) and not carries_imperative_or_consequence(a)
+    return bool(_STATEMENT.search(text_of(a))) and earns_inert(a)
 
 
 def register_rules() -> None:

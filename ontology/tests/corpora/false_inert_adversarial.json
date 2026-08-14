@@ -155,7 +155,18 @@
       "fields": {"subject_extracted": "Notification", "requested_action_summary": "this is to notify you the standing order to the contractor is set to go out"},
       "ground_truth": "consequential",
       "consequence": "a payment (standing order) described passively, with no imperative and no classic payment verb in an actionable position",
-      "note": "FRESH, and STILL FALSE-INERT: types as comms:informational_statement. The passive 'this is to notify you the standing order... is set to go out' earns the informational signal and carries no imperative the shared guard recognises. This is the honest residual: the D69 guard reduced the rate but did not close it, and a self-authored corpus tuned to 0 is re-opened by a fresh probe (the review's G2 point, demonstrated). D67-fix stays OPEN."
+      "note": "Was the D67/D69 residual (typed comms:informational_statement). NOW CAUGHT by the D72 referential-completeness guard: it defers the consequence to an out-of-message referent ('the standing order') with a motion phrasing ('is set to go out'), which is the deixis+motion shape the guard denies inert for. Kept as a regression guard."
+    },
+    {
+      "id": "fi-20-fresh-metaphor-in-motion",
+      "taint_class": "taint:EXTERNAL_COMMS",
+      "fields": {
+        "subject_extracted": "Notification",
+        "requested_action_summary": "this is to notify you the wheels are turning on the matter from last week"
+      },
+      "ground_truth": "consequential",
+      "consequence": "a consequence is under way (the same deferred-to-context payment as fi-19), expressed as pure metaphor with no keyword the deferral guard recognises",
+      "note": "FRESH after the D72 guard, and STILL FALSE-INERT: types as comms:informational_statement. 'the wheels are turning on the matter' expresses the SAME deixis+motion shape as fi-19 but as metaphor, so the D72 guard's motion vocabulary does not match. This is the honest residual: D72 reduced the rate (1/16 to 0, then re-opened to 1/17 by this fresh probe) but did not CLOSE it, demonstrating again the review's G2 point that a self-authored corpus tuned to zero is re-opened by a fresh probe. The deeper limit (D67-fix, still OPEN): no content pattern separates a passively-phrased or metaphorical consequence from a genuine informational statement without world knowledge, which invariant 3.1 keeps off the classification path."
     }
   ]
 }
