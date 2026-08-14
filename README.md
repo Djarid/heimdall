@@ -45,6 +45,8 @@ Read [**ADVERSARIAL_REVIEW.md**](ADVERSARIAL_REVIEW.md): a briefing written to b
 ### 🛠️ I want to understand how it would be built
 Read the [**Architecture**](HEIMDALL.md#architecture) overview, then the [**Components**](HEIMDALL.md#components) section top to bottom. The [**Harness Integration**](HEIMDALL.md#harness-integration--pidev-extension-api) section covers how it maps onto an existing agent runtime, [**Build Phases**](HEIMDALL.md#build-phases) lays out the staged path from proof-of-separation to full system, and [**Open Questions**](HEIMDALL.md#open-questions) is where the unresolved engineering lives.
 
+For the build-oriented engineering view, read the [**High-Level Design**](plans/hld.md): it translates the architecture into component interfaces, a per-component achievement baseline (what is proven against what is still specified-only), a harness-agnostic integration interface and a risk register, across all six phases. The [**Detailed Design**](plans/dd/index.md) then goes to implementation fidelity for Phases 1 to 3, one document per component, targeting the OpenCode permission model as its reference harness.
+
 ### ⚙️ I care about the operational trade-offs
 The [**Action-Critical Set Sizing**](HEIMDALL.md#action-critical-set-sizing--the-central-operational-discipline) section is the most important operational decision in the whole design — it determines whether the system is secure, usable, or neither. The [**Fenrir implementation notes**](HEIMDALL.md#fenrir--sandbox-agent) cover hardware and model choices (local, egress-restricted, dense model with speculative decoding).
 

@@ -97,9 +97,12 @@ an open design problem (D67-fix), not more keywords.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 72 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist, D72 the referential-completeness guard that reduces the false-inert rate and shows it is bounded by 3.1) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 73 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist, D72 the referential-completeness guard that reduces the false-inert rate and shows it is bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design) plus the open D67-fix item, with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
+| `plans/hld.md` | The High-Level Design: the build-oriented engineering view of the whole system across all six phases, with a per-component achievement baseline, a harness-agnostic integration interface and a risk register (D73) |
+| `plans/dd/` | The Detailed Design, implementation fidelity for Phases 1-3: an index (conventions, the OpenCode/Gleipnir harness binding, cross-cutting contracts) plus eight component documents (Bifröst, Mímisbrunnr, Nornir, Fenrir, Hliðskjálf, Himinbjörg, Gjöll, Gjallarhorn) (D73) |
+| `plans/hld_scoping_brainstorm.md` | The scoping analysis behind D73: the achievement audit and the three converged decisions (harness, classifier stance, phasing) |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
 | `spike/` | Throwaway ratification spikes; `substrate/` settled the D25/D38 substrate decision |
 | `ontology/` | Yggdrasil: BFO loaded, SUMO reference; the seed ontology authored as the `yggdrasil` package, the reasoner as `nornir`, tests passing (`ontology/OUTCOME.md`) |
@@ -184,6 +187,14 @@ again and showed the residual is bounded by invariant 3.1 (D72). Open
 items: the false-inert fix (D67-fix, reduced to 1/17 by D69 and D72 but not closed and
 now understood to be bounded by 3.1, the suite is red), and the research questions D33
 to D36.
+
+An HLD and a Phase 1-3 Detailed Design have been authored for the build-out (D73,
+`plans/hld.md` and `plans/dd/`), grounded in an achievement audit against the real
+code. They are design artifacts, not new build: the HLD is harness-agnostic across all
+six phases, the implementation-ready Detailed Design is scoped to Phases 1-3, and both
+name Himinbjörg (the gateway and control surface, essentially unbuilt) as the Phase-3
+critical path and the Gjöll sink-declaration schema as the load-bearing gap to close
+first. They do not change the build state recorded above; they lay out the route to it.
 
 ---
 
