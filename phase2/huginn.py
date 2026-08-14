@@ -26,12 +26,10 @@ a real capability would have a legitimate reason to emit an action, so the emiss
 no longer be dispositive. This module asserts the emptiness before trusting a clean
 tripwire result, so a future capability grant cannot silently degrade the guarantee.
 
-Honest residual (fenrir.md section 9): the tripwire detects a model that ATTEMPTS an
-action. It does not detect value poisoning (a schema-clean output with a corrupted value
-and no action attempt), nor a passive consequence the model merely records as a fact
-without trying to act on it. Those pass Huginn clean. So this REDUCES the false-inert
-gap, it does not close it, and the modules and tests say so rather than reporting a
-hollow green.
+Honest residual: the tripwire detects a model that ATTEMPTS an action. It does not fire on
+a passive consequence the model merely records as a fact without trying to act on it; that
+passes Huginn clean. So this REDUCES the false-inert gap, it does not close it, and the
+modules and tests say so rather than reporting a hollow green.
 """
 
 from __future__ import annotations

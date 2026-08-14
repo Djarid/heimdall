@@ -19,7 +19,7 @@ misses.
 This module measures the catch over the corpus. It is a fail-closed detector: a hit
 quarantines, never grants inertness (invariant 3.5). It reduces but does not close the
 gap, and the measurement reports both what it catches and what it still misses (the
-honest residual, fenrir.md section 9), rather than a hollow green.
+honest residual: passive cases that induce no action attempt), rather than a hollow green.
 """
 
 from __future__ import annotations

@@ -168,9 +168,10 @@ Two honest caveats from this sweep:
   no-system-role model would need a stronger construction (for example a distinct turn or a
   template-level separator), verified per family, not the fold-in fallback.
 - Phi-3.5 on the two subtle cases produced no hard signal at all (it echoed the token and
-  gave a bland non-answer). Not steered, but a clean-looking non-answer sits in the
-  value-poisoning-adjacent zone (schema-clean, no action, section 5 and fenrir.md 9): the
-  honest residual the detection layer does not close.
+  gave a bland non-answer). Not steered, and not a hard signal either: a clean-looking
+  non-answer is a low-quality extraction, which the soft signals (semantic drift, confidence
+  outliers) and the fail-closed default (a low-confidence extraction is treated as
+  UNCLASSIFIED and routed to review) handle, not the hard tripwire.
 
 ## 5. What this means for direction (d), stated plainly
 
@@ -228,9 +229,8 @@ conclusion from the negative coercion result:
   earns its place; a different signal within it does the work.
 
 So the experiments demote ONE detective signal as a false-inert fix. They do not touch, and
-if anything strengthen, the case for Fenrir itself. The value-poisoning residual (section 5,
-fenrir.md 9) is untouched and is arguably the more important threat; it is contained by
-Gjoll downstream, which is another reason the reading path and its monitoring must exist.
+if anything strengthen, the case for Fenrir itself: its preventive structural guarantee and
+its role as the only component allowed to read tainted content at all.
 
 ## 6. Consequences
 
@@ -244,8 +244,14 @@ Gjoll downstream, which is another reason the reading path and its monitoring mu
   discipline, (b) a fail-closed advisory model, and (c) accepting and reporting the bound.
 - R-1 stays open and the ontology suite stays RED. Nothing here closes the false-inert
   break; the build clarified that this approach does not close it either.
-- The value-poisoning residual (fenrir.md section 9) is unchanged and still not addressed
-  by any component here; it is contained by Gjöll at action time (Phase 3), not by Fenrir.
+- Persisted-influence poisoning (a tainted value that survives across sessions in stored
+  memory) is out of scope for this Phase 2 reading-path work and is not an open Heimdall
+  hole to dwell on here: the sibling Gleipnir framework already addresses it structurally
+  with a trust-tiered memory model (G-6, "Memory is not poisonable",
+  `../gleipnir/gleipnir_specification_v0_3_12.md`): persistent memory is untrusted, tiered
+  input with named writers, provenance, review-gated promotion and integrity digests held
+  outside the agent-writable surface, on the same authority-ladder pattern Heimdall's DD
+  already reuses (index.md section 3). Noted so this work does not treat it as unmitigated.
 
 ## 7. How to run
 

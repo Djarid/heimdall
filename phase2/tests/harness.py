@@ -163,7 +163,7 @@ def test_false_inert_catch(rep: Report) -> None:
     missed = [r.case_id for r in report.missed_consequential]
     rep.line(f"  [INFO] HONEST RESIDUAL: {len(missed)} consequential cases still not caught by "
              f"this behavioural signal (a model that records the consequence as a fact without "
-             f"attempting an action, or a value-poisoning case; fenrir.md section 9).")
+             f"attempting an action).")
     rep.line(f"         still-missed: {', '.join(missed) if missed else 'none'}")
     rep.line("  [NOTE] This shows the LOGIC works against a mock that gets steered. The "
              "real-model demonstration (phase2/real_model_demo.py) found a robust model is NOT "
