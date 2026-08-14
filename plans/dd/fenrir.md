@@ -4,7 +4,7 @@
 **Date:** August 2026
 **Version:** 0.1 (draft)
 **Phase:** 2
-**Status of the component today:** demonstrated in shape (tool-less, egress-free, fresh-context extraction in the proof-of-concept neural layer), per `plans/hld.md` section 3. The sandbox deployment, the canary mechanism and attempt introspection are unbuilt. See `poc/neural.py`.
+**Status of the component today:** the detection layer is now BUILT under the scoped R-1 exception (D74), at `phase2/` (canary wrap, `extract`, the six hard canary signals and the attempt-introspection tripwire), with a green deterministic logic suite and an optional real-model demonstration. The proof-of-concept neural layer (`poc/neural.py`) proves the tool-less, egress-free, fresh-context extraction shape. Still unbuilt: the segmented-sandbox network deployment and true grammar-constrained decoding. Honest finding from the build (D75): the attempt-introspection catch does not close the false-inert gap for a robust model, because such a model is not steered by the payloads and so emits no action to catch; it is an injection-success detector, not a false-inert fix. See `phase2/OUTCOME.md`.
 
 ---
 

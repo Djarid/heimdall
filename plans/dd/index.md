@@ -97,7 +97,7 @@ Each component document carries a test plan. The conventions:
 
 - Tests are written before implementation where the component has executable behaviour (the test is the correctness arbiter).
 - A security property is tested by its failure mode, not only its happy path: a taint-boundary test plants an injection and asserts it does not reach the control channel; a gate test plants a poisoned value and asserts a block; a fail-closed test feeds unclassifiable input and asserts routing to review.
-- The existing proof-of-concept and spike suites are the baseline: `poc/` (the separation proof), `spike/substrate/` (the flow-to-sink algorithm), `ontology/tests/` (the classifier and gate, currently deliberately red at false-inert 1/16). A component document states which existing tests it inherits and which it adds.
+- The existing proof-of-concept and spike suites are the baseline: `poc/` (the separation proof), `spike/substrate/` (the flow-to-sink algorithm), `ontology/tests/` (the classifier and gate, currently deliberately red at false-inert 1/17). A component document states which existing tests it inherits and which it adds.
 - Coverage is reported as line and branch, and a green count over low branch coverage on a fail-closed component is not evidence, because the failure paths are the point.
 
 ## 6. Decisions (index)

@@ -97,7 +97,8 @@ an open design problem (D67-fix), not more keywords.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 73 tracked decisions (D68 the AST guard, D69 the shared inert guard, D70 the guard's indirect-call coverage and negative control, D71 the allowlist inversion that closes the residual egress blacklist, D72 the referential-completeness guard that reduces the false-inert rate and shows it is bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 75 tracked decisions (D71 the allowlist inversion, D72 the referential-completeness guard bounded by 3.1, D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap for a resisting model) plus the open D67-fix item, with consistency checks |
+| `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `plans/hld.md` | The High-Level Design: the build-oriented engineering view of the whole system across all six phases, with a per-component achievement baseline, a harness-agnostic integration interface and a risk register (D73) |
@@ -142,6 +143,16 @@ with `DECISIONS.md` as the running record of why each choice was made.
   (`ontology/tests/e2e_harness.py`) runs the real mlx model through
   marshal-classify-gate: an injected directive is extracted and blocked before firing
   (D62). See `ontology/OUTCOME.md`.
+- **Phase 2 detection layer** (`phase2/`): Fenrir (sandbox reader: empty capability
+  set, canary wrap, tainted-only output, fresh context) and Huginn (six hard canary
+  signals plus the attempt-introspection tripwire, both fail-closed), built under the
+  scoped R-1 exception (D74). The deterministic logic suite is green (five obligations,
+  tested by failure mode, zero false positives). The optional real-model demonstration
+  returned an honest NEGATIVE finding (D75): a robust model is not steered by the
+  false-inert payloads (including an overt injection), so the attempt-introspection
+  catch (D67-fix direction d) does NOT close the false-inert gap for a resisting model;
+  it is an injection-success detector, not a false-inert fix, and direction (d) is
+  demoted. See `phase2/OUTCOME.md`.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
