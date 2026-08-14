@@ -55,12 +55,27 @@ ALLOWED_MODULE_ROOTS = frozenset({
     "neo4j", "memgraph_store", "gqlalchemy", "pymgclient",
 })
 
-# Forbidden call names: inference entry points. A call to one of these on the
-# authorisation path is a violation even if the import somehow slipped through.
-FORBIDDEN_CALL_NAMES = frozenset({
-    "stream_generate", "generate", "chat_completion", "create_completion",
-    "load",  # mlx_lm.load; note: also a common benign name, so only flagged when the
-             # call is attributed to a forbidden module (see _check_calls)
+# Network / outbound-HTTP modules. The invariant forbids a model call "direct or
+# INDIRECT", and the most likely indirect path is an HTTP call to a hosted inference
+# endpoint, which needs no model-client import at all. Rather than blacklist model
+# hostnames (which would fail on the next URL, invariant 3.5), the authorisation path
+# is forbidden ANY outbound network call: it is deterministic classification over
+# already-quarantined data and has no legitimate reason to reach the network (this
+# also aligns with invariant 3.8, taint and egress boundaries coincide). Importing one
+# of these on the authorisation path is a violation. Verified: the authorisation path
+# uses none of these today, so this false-positives nothing that exists.
+NETWORK_MODULE_ROOTS = frozenset({
+    "requests", "httpx", "aiohttp", "urllib", "urllib3", "http", "socket",
+    "websocket", "websockets", "grpc",
+})
+
+# Dynamic-import builtins/functions: the textbook INDIRECT import, by which a
+# forbidden module could be loaded without a static import statement the guard can
+# see. Any use on the authorisation path is a violation, because the path has no
+# legitimate need to import a module chosen at runtime.
+DYNAMIC_IMPORT_CALLS = frozenset({
+    "__import__", "importlib.import_module", "importlib.__import__",
+    "import_module",  # bare, when importlib is imported as a name
 })
 
 # Roots of the authorisation path to scan.
@@ -102,6 +117,12 @@ def _forbidden_root(dotted: str) -> str | None:
     return None
 
 
+def _network_root(dotted: str) -> str | None:
+    """Return the network module root of a dotted module name, or None."""
+    root = dotted.split(".")[0]
+    return root if root in NETWORK_MODULE_ROOTS else None
+
+
 def _scan_module(path: Path) -> list[Violation]:
     violations: list[Violation] = []
     try:
@@ -110,7 +131,7 @@ def _scan_module(path: Path) -> list[Violation]:
         return [Violation(path, e.lineno or 0, f"could not parse: {e}")]
 
     for node in ast.walk(tree):
-        # import mlx / import torch
+        # import mlx / import torch / import requests
         if isinstance(node, ast.Import):
             for alias in node.names:
                 root = _forbidden_root(alias.name)
@@ -118,7 +139,14 @@ def _scan_module(path: Path) -> list[Violation]:
                     violations.append(Violation(
                         path, node.lineno,
                         f"imports language-model module {alias.name!r} (invariant 3.1)"))
-        # from mlx_lm import load
+                net = _network_root(alias.name)
+                if net:
+                    violations.append(Violation(
+                        path, node.lineno,
+                        f"imports network module {alias.name!r}; the authorisation path "
+                        f"must make no outbound call, which is how an indirect model "
+                        f"call (a hosted inference endpoint) would arrive (invariant 3.1)"))
+        # from mlx_lm import load / from urllib import request
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             root = _forbidden_root(module)
@@ -126,18 +154,29 @@ def _scan_module(path: Path) -> list[Violation]:
                 violations.append(Violation(
                     path, node.lineno,
                     f"imports from language-model module {module!r} (invariant 3.1)"))
-        # subprocess / os.system shelling out to a model runner
+            net = _network_root(module)
+            if net:
+                violations.append(Violation(
+                    path, node.lineno,
+                    f"imports from network module {module!r}; the authorisation path "
+                    f"must make no outbound call (invariant 3.1)"))
         elif isinstance(node, ast.Call):
             target = _call_target(node.func)
+            # subprocess / os.system shelling out to a model runner
             if target in {"subprocess.run", "subprocess.Popen", "subprocess.call",
                           "os.system", "os.popen"}:
-                # Flag only if a forbidden model-runner name appears in the literal
-                # args (a real shell-out to a model). A subprocess call with no model
-                # runner argument is not a 3.1 violation on its face.
                 if _args_mention_model_runner(node):
                     violations.append(Violation(
                         path, node.lineno,
                         f"shells out to a model runner via {target} (invariant 3.1)"))
+            # dynamic import: the textbook INDIRECT import of a module chosen at
+            # runtime, which a static import scan cannot otherwise see.
+            elif target in DYNAMIC_IMPORT_CALLS or target.endswith(".import_module"):
+                violations.append(Violation(
+                    path, node.lineno,
+                    f"uses dynamic import {target!r}; the authorisation path must not "
+                    f"import a module chosen at runtime (an indirect model import, "
+                    f"invariant 3.1)"))
     return violations
 
 
@@ -181,3 +220,45 @@ def scanned_files(repo_root: Path | None = None) -> list[Path]:
     if repo_root is None:
         repo_root = Path(__file__).resolve().parents[2]
     return _authorisation_files(repo_root)
+
+
+# Negative-control probes: sources the guard MUST flag, and sources it MUST NOT. The
+# harness runs these before trusting a clean scan, so a guard that has been silently
+# neutered (a swallowed exception, an over-broad allowlist, a dropped scope) is caught
+# rather than reporting a hollow PASS. This is the mandatory-control discipline the
+# project applies to every other check (invariant 3.10, D10); it was missing on the
+# guard obligation itself (adversarial review round 2, finding 3.2).
+_MUST_CATCH = (
+    ("direct model import", "import mlx_lm\n"),
+    ("from-import of a model client", "from openai import OpenAI\n"),
+    ("dynamic import", "import importlib\nimportlib.import_module('mlx_lm')\n"),
+    ("outbound HTTP to an inference endpoint", "import requests\nrequests.post('https://api.openai.com')\n"),
+    ("model-runner subprocess", "import subprocess\nsubprocess.run(['ollama', 'run'])\n"),
+)
+_MUST_NOT_CATCH = (
+    ("graph-DB driver", "from neo4j import GraphDatabase\n"),
+    ("store binding", "from memgraph_store import MemgraphReachability\n"),
+    ("a 'model' comment", "# the model fills values only\nx = 1\n"),
+)
+
+
+def control_check() -> list[str]:
+    """Run the negative control. Returns a list of failure descriptions (empty if the
+    guard behaves): each MUST_CATCH source must produce at least one violation, and
+    each MUST_NOT_CATCH source must produce none. A non-empty return means the guard
+    itself is broken, which is more serious than any single scanned file."""
+    import tempfile
+
+    failures: list[str] = []
+    d = Path(tempfile.mkdtemp())
+    for label, src in _MUST_CATCH:
+        f = d / "probe.py"
+        f.write_text(src)
+        if not _scan_module(f):
+            failures.append(f"guard FAILED to catch a planted {label}")
+    for label, src in _MUST_NOT_CATCH:
+        f = d / "probe.py"
+        f.write_text(src)
+        if _scan_module(f):
+            failures.append(f"guard WRONGLY flagged a benign {label}")
+    return failures

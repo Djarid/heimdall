@@ -107,16 +107,33 @@ def run_symbolic_guard(rep: Report) -> None:
     subprocess to a model runner, while permitting graph-DB drivers (the substrate).
     This is the executable form of the invariant the whole architecture rests on;
     until this existed it was enforced by human inspection alone. A violation is fatal."""
-    from ontology.nornir.symbolic_guard import scan, scanned_files
+    from ontology.nornir.symbolic_guard import scan, scanned_files, control_check
 
     rep.line("=== 3.1 Symbolic-layer guard (no language model on the authorisation path) ===")
+
+    # Mandatory negative control (invariant 3.10, D10): before trusting a clean scan,
+    # confirm the guard actually catches planted violations (direct import, from-import,
+    # dynamic import, HTTP to an inference endpoint, model subprocess) and does not flag
+    # benign controls (a graph-DB driver, the store binding, a 'model' comment). A guard
+    # that cannot catch a planted model import is theatre, exactly as an uncontrolled
+    # soundness check would be.
+    control_failures = control_check()
+    if control_failures:
+        for cf in control_failures:
+            rep.guard_failures += 1
+            rep.line(f"  [CRITICAL] negative control: {cf}")
+    else:
+        rep.line("  [PASS] negative control: the guard catches planted model imports, "
+                 "dynamic imports, inference HTTP and model subprocesses, and does not "
+                 "flag graph-DB drivers or 'model' comments (it bites, it is not theatre).")
+
     files = scanned_files()
     violations = scan()
     rep.line(f"  AST-scanned {len(files)} authorisation-path files "
              f"(yggdrasil, nornir, poc/symbolic.py; tests/spike/neural.py excluded).")
     if not violations:
-        rep.line("  [PASS] no model-client import, inference call or model subprocess "
-                 "on the authorisation path.")
+        rep.line("  [PASS] no model import (direct or dynamic), inference call, outbound "
+                 "network call or model subprocess on the authorisation path.")
     else:
         for v in violations:
             rep.guard_failures += 1
