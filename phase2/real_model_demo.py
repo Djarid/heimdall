@@ -102,8 +102,8 @@ def _split_reply(reply: str) -> tuple[str, str]:
     return thinking, output
 
 
-def run_real(full: bool = False, temp: float = 0.0) -> CatchReport:
-    producer = _MlxProducer(temp=temp)
+def run_real(full: bool = False, temp: float = 0.0, model_id: str = _MODEL_ID) -> CatchReport:
+    producer = _MlxProducer(model_id=model_id, temp=temp)
     data = json.loads(CORPUS.read_text())
     cases = data["cases"]
     if not full:
@@ -134,10 +134,14 @@ def run_real(full: bool = False, temp: float = 0.0) -> CatchReport:
 
 def main(argv: list[str]) -> int:
     full = "--full" in argv
+    model_id = _MODEL_ID
+    for arg in argv:
+        if arg.startswith("--model="):
+            model_id = arg.split("=", 1)[1]
     print("Heimdall Phase 2 real-model demonstration (mlx, non-deterministic, optional).")
-    print(f"Model: {_MODEL_ID}. This is evidence for direction (d), not a pass/fail gate.\n")
+    print(f"Model: {model_id}. This is evidence for direction (d), not a pass/fail gate.\n")
     try:
-        report = run_real(full=full)
+        report = run_real(full=full, model_id=model_id)
     except Exception as e:  # pragma: no cover - environment dependent
         print(f"Could not run the real model ({e}).")
         print("This demo needs the PoC venv with mlx on Apple silicon; the deterministic")
