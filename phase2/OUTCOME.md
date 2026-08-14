@@ -248,18 +248,29 @@ it does not, they must be truly inert. Both halves are wrong, and precisely so:
   value to the world model is, in effect, an execution capability). So a false-inert value
   is behaviourally quiet and consequentially live at once.
 
-Where the blast radius IS bounded is a different axis the classification break does not
-defeat: ORIGIN TIER. In the tiered-memory model Heimdall is adopting from Gleipnir on
-success (D76), a Fenrir-extracted value is untrusted BY ORIGIN and sits in the lowest tier
-regardless of how Nornir typed it, and the tier governs read rigour, so a downstream reader
-cannot treat a mis-classified-inert value as trusted ground truth. That backstop holds
-because the tier is assigned by unforgeable origin, not by a content classification the
-attacker can satisfy. It MITIGATES the downstream-acts-on-a-corrupted-premise failure, it
-does not ERASE the break: the value still skips human review and the action-critical gate,
-and the read-rigour enforcement is the D76 dependency (under test in Gleipnir), not built in
-Mímisbrunnr yet. So the false-inert break stays a real, open classification break; what the
-origin tier buys is that its blast radius does not extend to a downstream agent trusting the
-value as fact.
+The realised risk is nonetheless LOW given tiered memory, and the reason is a distinction
+worth naming: a FALSE-INERT (a classification-time mis-typing, what the 43% measures) is not
+a LATENT false-inert (one that has become a trusted, reachable, acted-upon premise). Harm
+needs the latter, and getting there requires PROMOTION into the trusted memory tier. In the
+tiered-memory model Heimdall adopts from Gleipnir (D76): a Fenrir-extracted value is
+untrusted BY ORIGIN and lands in the low tier regardless of how Nornir typed it; the
+retrieved tier is ML-ratifiable but has no authority over planning or tool use; and entry to
+the user-reviewed tier (the tier a downstream agent may treat as fact) happens ONLY through
+a review-gated write pipeline whose human diff-approval is a mandatory gate with no outgoing
+edge until answered. So the path "mis-classified inert then silently trusted then acted on"
+is CLOSED by the human promotion gate, not by the classifier. The inert classification does
+not let a value skip that gate, because the gate is on the tier boundary (assigned by
+unforgeable origin), not on the classification. The classifier being wrong costs an OUTER
+layer; the layer that actually prevents harm (human ratification into trusted memory) is
+downstream and unbypassable.
+
+This DOWNGRADES the severity of the false-inert break from "open door" to "degraded outer
+layer": it is a real, open classification break (the classification-derived gate, Gjoll, is
+defeated by the same break, and a value staying in the untrusted tier is a cost), but its
+blast radius does not reach a downstream agent trusting the value as fact. Two honest
+caveats: the containment is the D76 dependency, correct in the target architecture but under
+test in Gleipnir and not built in Mímisbrunnr yet; and it rests on the origin-tier promotion
+gate alone, since Gjoll is defeated by the same break.
 
 ## 6. Consequences
 
