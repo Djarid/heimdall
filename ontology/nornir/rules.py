@@ -100,6 +100,45 @@ def text_of(a: MarshalledAssertion) -> str:
     return " ".join(parts).lower()
 
 
+# The inert-earning guard, shared across all domains (D69). A repository-access review
+# found that only the communications inert rule required "no imperative present"; the
+# scheduling, finance and publication inert rules were bare keyword matches, so
+# consequential content that positively earned one of their signals (a payment framed
+# as a "reminder" or an "article") was typed inert and skipped both the gate and
+# review, a measured false-inert break (D67). This guard is authored once over the
+# shared structure (like the flow-to-sink rule, ONTOLOGY_CONSTRUCTION.md section 6) so
+# every domain's inert rule applies the SAME discipline consistently: a value may only
+# be typed inert if it carries NO imperative and NO consequence signal. It is not a
+# blacklist of attacks (invariant 3.5, D54/D55): it is a conservative "does this ask
+# for, or describe, something with an effect?" test that, when in doubt, denies the
+# inert label and lets the value fall through to the fail-closed default (review). An
+# imperfect detector here only ever means "more review", never "silent inert".
+_IMPERATIVE_OR_CONSEQUENCE = re.compile(
+    # request/imperative shapes (does it ask the reader to do something?)
+    r"\b((please|kindly) (?!find|see|note|be advised|disregard|ignore)\w+|"
+    r"can you|could you|would you|need you to|make sure|ensure you|"
+    r"send|buy|purchase|confirm|provide|share|reply with|respond with|"
+    r"go to|visit|use the (new )?(details|coordinates|ones)|as (we )?discussed|as agreed|"
+    r"(?<!no )action (needed|required)|get back to me|"
+    # a general "add/give/grant/put X to/into Y" request shape (a grammatical pattern,
+    # not a specific attack phrase): captures access grants like "add the new starter
+    # to the room" without enumerating the wording.
+    r"(add|give|grant|put|move|send)\s+\w+(\s+\w+){0,4}\s+(to|into|onto)\b|"
+    # consequence shapes (does it concern something with an effect, even without an
+    # explicit imperative?): money, access, execution, exfiltration, security state
+    r"move (the |money|funds)|transfer|remit|pay|wire|disburse|settle|invoice|"
+    r"grant|access|permission|run|execute|deploy|delete|disable|"
+    r"forward (the|all)|exfiltrate|the recipe|take care of|"
+    r"the usual (monthly )?(thing|arrangement))\b"
+)
+
+
+def carries_imperative_or_consequence(a: MarshalledAssertion) -> bool:
+    """True if the assertion's text carries an imperative OR a consequence signal, so
+    it must not earn an inert type (D69). Shared by every domain's inert rule."""
+    return bool(_IMPERATIVE_OR_CONSEQUENCE.search(text_of(a)))
+
+
 # The classification-rule registry. Domain rule modules append their rules here at
 # import time through `register_classification_rule`. This is what makes the domain
 # attach test (D29) hold for rules as well as for types: a new domain contributes a

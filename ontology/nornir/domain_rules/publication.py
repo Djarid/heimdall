@@ -33,6 +33,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
+    carries_imperative_or_consequence,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -67,7 +68,11 @@ def _is_published_directive(a: MarshalledAssertion) -> bool:
 
 
 def _is_informational_publication(a: MarshalledAssertion) -> bool:
-    return bool(_PUBLICATION.search(text_of(a)))
+    # Inert only if it looks like a publication AND carries no imperative or
+    # consequence signal (D69). An "article" that also says "the reader might gather
+    # the money-folder spreadsheets and send them along" is not an inert publication;
+    # it falls through to the fail-closed default.
+    return bool(_PUBLICATION.search(text_of(a))) and not carries_imperative_or_consequence(a)
 
 
 def register_rules() -> None:

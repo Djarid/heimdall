@@ -54,11 +54,13 @@ more than a green one that never tested it; the fix is an open design problem
 - **Built and tested on a four-domain seed (the ontology).** The Phase 1
   communications, scheduling, finance and publication domains are authored on BFO
   as a runnable property-graph-native package, with a deterministic Nornir
-  (classifier, reasoner, flow-to-sink) and a ground-truth corpus. All four test
-  obligations of invariant 3.11 pass: coverage is measured (94.7% across four domains),
-  classification correctness has no downgrade or fail-safe breach, the reasoner is
-  sound (with a chained derivation and a negative control that catches an unsound
-  rule, D56), and cross-domain state-staging is caught agent-scoped. The domain attach
+  (classifier, reasoner, flow-to-sink) and a ground-truth corpus. Most 3.11
+  obligations pass but the suite is RED (the false-inert break, D67): coverage is
+  measured (36/38, 95% Wilson interval 83 to 99 percent); the reasoner is sound (with
+  a chained derivation and a negative control that catches an unsound rule, D56);
+  cross-domain state-staging is caught agent-scoped; but the independent adversarial
+  corpus finds consequential content typed inert (a real downgrade, 1/16 after the
+  D69 guard-port, down from 3/12). The domain attach
   test (D29) is demonstrated twice (scheduling, then finance) without editing the
   existing domains or the spine. Domain governance (D31) is settled single-curated,
   with a cross-domain priority principle (D52) whose review-queue cost the finance
@@ -89,7 +91,7 @@ more than a green one that never tested it; the fix is an open design problem
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 67 tracked decisions (D67 the false-inert break) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 69 tracked decisions (D68 the AST symbolic-layer guard, D69 the shared inert guard) plus the open D67-fix item, with consistency checks |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `poc/` | The proof-of-concept: code, corpus, spec and outcome |
@@ -163,34 +165,38 @@ surface), D60 the coverage-gap capture process, D61 the inert-tie refinement. D4
 D61 record the seed ontology, Nornir, the classification rulings, the test-corpus
 provenance, the per-domain rule registry (attach test demonstrated three times), the
 cross-domain priority principle and its cost, the fail-closed inert gate, the
-substrate binding, the action-critical gate, and demand-driven coverage growth. Open
-items: the false-inert fix (D67-fix, forced now, the suite is red) and the research
-questions D33 to D36.
+substrate binding, the action-critical gate, and demand-driven coverage growth. A
+repository-access review then added the AST symbolic-layer guard (D68) and the shared
+inert guard (D69). Open items: the false-inert fix (D67-fix, reduced to 1/16 but not
+closed, the suite is red), CI wiring (the checks exist but nothing runs them
+automatically), and the research questions D33 to D36.
 
 ---
 
 ## 6. Recommended next step
 
-The structural half is proven and the mechanism is demonstrated on the seed, but the
-suite is RED: the false-inert measurement (D67) found a real classification break.
-That is now the top of the list.
+A repository-access review closed two gaps this round: invariant 3.1 now has an
+executable AST guard (D68, it had no automated enforcement before), and the false-inert
+break was reduced from 3/12 to 1/16 by porting a shared inert-earning guard to all
+domains (D69). The suite is still RED at 1/16, so that remains the top of the list.
 
 1. **Close the false-inert break (D67-fix), and it must be a design change, not
-   keywords.** Consequential content that positively earns an inert signal
-   (informational, calendar, publication) is typed inert and skips both gate and
-   review; measured 3/12. The fix changes how inertness is earned so a positive inert
-   signal cannot override a co-present consequence signal, and a keyword blacklist is
-   explicitly forbidden (D54/D55, invariant 3.5). Candidate directions are recorded
-   under D67-fix. After a fix, re-measure the false-inert rate; do not declare it
-   closed on the current 12-case corpus alone.
-2. **Build a genuinely independent adversarial corpus.** The 3/12 is a lower bound
-   because one author wrote both the rules and the corpus (its labels come from an
-   external consequence test, but not third-party judgement). A corpus labelled by
-   someone who has not read the rules would turn the lower bound into an estimate,
-   and is the single highest-information next artefact (ADVERSARIAL_REVIEW 5.2, G2).
-3. **Publish the sink-declaration schema and inventory** so the seam ranked first
-   (ADVERSARIAL_REVIEW 5.1, sink-wiring honesty) becomes attackable by someone other
-   than its author.
+   keywords.** D69 reduced it by applying the rule set's own discipline consistently,
+   but a fresh passively-phrased case still slips (1/16) and widening the keyword
+   guard is the treadmill invariant 3.5 forbids. The real fix changes how inertness is
+   earned (candidate: a narrow grammar-constrained model question "does this ask the
+   reader to do something with an effect", inert requires a no). Re-measure after, on
+   an independent corpus, not the self-authored one.
+2. **Build a genuinely independent adversarial corpus.** 1/16 is a lower bound: one
+   author wrote both the rules and the corpus, and D69 demonstrated the circularity
+   directly (tuned to catch three cases, a fresh probe found a fourth). A corpus
+   labelled by someone who has not read the rules turns the lower bound into an
+   estimate, and is the single highest-information next artefact (G2).
+3. **Publish the sink-declaration schema and add gate-boundary validation** so the
+   seam ranked first (sink-wiring honesty) becomes attackable by someone other than
+   its author; `ActionProposal.consumes` is currently an unchecked dict (review 3.2).
+4. **Wire CI** to run the harness and the AST guard on push (D68 built the guard but
+   there is no CI; the checks run only when a human runs them).
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

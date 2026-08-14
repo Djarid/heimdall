@@ -19,6 +19,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
+    carries_imperative_or_consequence,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -64,21 +65,10 @@ _INFORMATIONAL = re.compile(
     r"notification|status (update|notification)|this is to (inform|notify|let you know)|"
     r"a heads[- ]up|just so you know)\b"
 )
-# An IMPERATIVE / request signal: the message asks the reader to DO something. Kept
-# deliberately generic (does it ask?), NOT a list of specific bad actions. A message
-# that asks but matches no known high-risk type is an unrecognised request and fails
-# closed to review, so this detector being imperfect only ever means "more review",
-# never "silent inert". Note bare "please" is deliberately NOT here: on its own it is
-# politeness ("please find attached") not a request. We require please/kindly to be
-# followed by an action, or an action/request phrase to stand alone.
-_IMPERATIVE = re.compile(
-    r"\b((please|kindly) (?!find|see|note|be advised|disregard|ignore)\w+|"
-    r"can you|could you|would you|need you to|"
-    r"make sure|ensure you|"
-    r"send|buy|purchase|confirm|provide|share|reply with|respond with|"
-    r"go to|visit|use the new|use the (new )?details|as (we )?discussed|as agreed|"
-    r"(?<!no )action (needed|required)|get back to me|move the|take care of)\b"
-)
+# The imperative/consequence guard the communications inert rule needs is now the
+# SHARED `carries_imperative_or_consequence` in `rules.py` (D69), so every domain's
+# inert rule applies the same discipline. The old communications-only `_IMPERATIVE`
+# regex was promoted and broadened into that shared guard; it no longer lives here.
 
 
 def _is_communication(a: MarshalledAssertion) -> bool:
@@ -87,13 +77,17 @@ def _is_communication(a: MarshalledAssertion) -> bool:
 
 def _is_informational(a: MarshalledAssertion) -> bool:
     """POSITIVELY informational: a communication that shows an informational signal
-    and NO imperative. Earning the inert label requires both. A message that both
-    informs and asks is treated as asking (it falls through to the FALLBACK
-    unrecognised_request), because the ask is the part that could be consequential."""
+    and carries NO imperative or consequence signal. Earning the inert label requires
+    both. A message that both informs and asks (or informs and describes a
+    consequence) is treated as the latter and falls through to the FALLBACK
+    unrecognised_request. This now uses the SHARED guard (D69), the same one the
+    scheduling, finance and publication inert rules use, rather than the older
+    narrower communications-only `_IMPERATIVE`; the shared guard also catches
+    consequence phrasings like 'the usual monthly arrangement' that the narrow one
+    missed (a false-inert case, D67)."""
     if not _is_communication(a):
         return False
-    text = text_of(a)
-    return bool(_INFORMATIONAL.search(text)) and not _IMPERATIVE.search(text)
+    return bool(_INFORMATIONAL.search(text_of(a))) and not carries_imperative_or_consequence(a)
 
 
 def register_rules() -> None:

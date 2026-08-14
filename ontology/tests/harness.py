@@ -27,6 +27,7 @@ Run: /Users/jasonh/git/heimdall/poc/.venv/bin/python -m ontology.tests.harness
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -34,6 +35,19 @@ from ontology.yggdrasil import load
 from ontology.yggdrasil.control_surface import AgentContext
 from ontology.yggdrasil.unclassified import UNCLASSIFIED
 from ontology.nornir import Nornir, MarshalledAssertion
+
+
+def _wilson_interval(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson score interval as percentages, for reporting small-n rates honestly.
+    A repository-access review flagged that "94.7%" on n=38 is false precision; a
+    fraction with this interval is the honest form."""
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    den = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / den
+    half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / den
+    return (100 * (centre - half), 100 * (centre + half))
 
 
 CORPUS = Path(__file__).parent / "corpora" / "communications_ground_truth.json"
@@ -77,12 +91,37 @@ class Report:
         self.property_failures = 0
         self.gjoll_failures = 0
         self.false_inert_failures = 0
+        self.guard_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
 
     def dump(self) -> None:
         print("\n".join(self.lines))
+
+
+def run_symbolic_guard(rep: Report) -> None:
+    """Obligation 3.1 (no language model on the authorisation path). An AST scan of the
+    symbolic/authorisation packages (`ontology/yggdrasil`, `ontology/nornir`,
+    `poc/symbolic.py`) asserts no model-client import, no inference call and no
+    subprocess to a model runner, while permitting graph-DB drivers (the substrate).
+    This is the executable form of the invariant the whole architecture rests on;
+    until this existed it was enforced by human inspection alone. A violation is fatal."""
+    from ontology.nornir.symbolic_guard import scan, scanned_files
+
+    rep.line("=== 3.1 Symbolic-layer guard (no language model on the authorisation path) ===")
+    files = scanned_files()
+    violations = scan()
+    rep.line(f"  AST-scanned {len(files)} authorisation-path files "
+             f"(yggdrasil, nornir, poc/symbolic.py; tests/spike/neural.py excluded).")
+    if not violations:
+        rep.line("  [PASS] no model-client import, inference call or model subprocess "
+                 "on the authorisation path.")
+    else:
+        for v in violations:
+            rep.guard_failures += 1
+            rep.line(f"  [CRITICAL] {v}")
+    rep.line("")
 
 
 def run_classification(nornir: Nornir, cases: list[dict], rep: Report,
@@ -155,11 +194,13 @@ def run_classification(nornir: Nornir, cases: list[dict], rep: Report,
                 f"{got.type_name} (fail-safe breach)"
             )
 
-    coverage = result.coverage()
+    covered = sum(1 for c in result.classified if c.type_name != UNCLASSIFIED)
+    total = len(result.classified)
+    lo, hi = _wilson_interval(covered, total)
     rep.line("")
-    rep.line(f"  Coverage (8.1): {coverage * 100:.1f}% classified to a known type "
-             f"({sum(1 for c in result.classified if c.type_name != UNCLASSIFIED)}"
-             f"/{len(result.classified)}); the rest fail safe to review.")
+    rep.line(f"  Coverage (8.1): {covered}/{total} classified to a known type "
+             f"(95% Wilson interval {lo:.0f} to {hi:.0f} percent; a fraction on a small "
+             f"corpus, not a point estimate); the rest fail safe to review.")
     rep.line(f"  Correctness (8.2): {correct}/{len(cases)} exact match; "
              f"{downgrades} downgrade(s) [CRITICAL], {over_classified} over-classification(s) [tolerated].")
     rep.line(f"  Fail-safe breaches: {failsafe_leaks} (must be 0).")
@@ -613,11 +654,12 @@ def main() -> int:
     domains = sorted({n.attrs.get("domain") for n in onto.nodes.values() if n.attrs.get("domain")})
 
     rep = Report()
-    rep.line("Heimdall ontology test harness: invariant 3.11 (obligations 8.1-8.4), "
-             "the 3.5 classification fail-closed property, and the 3.6 Gjoll gate")
+    rep.line("Heimdall ontology test harness: invariant 3.1 (symbolic-layer guard), 3.11 "
+             "(obligations 8.1-8.4), the 3.5 fail-closed property, and the 3.6 Gjoll gate")
     rep.line(f"Seed: {', '.join(domains)} domains on BFO; {len(onto.nodes)} ontology nodes; "
              f"{len(cases)} labelled cases, {len(fixtures)} flow fixtures\n")
 
+    run_symbolic_guard(rep)
     run_classification(nornir, cases, rep, hr, inert)
     run_coverage_gaps(nornir, cases, rep)
     run_marshalling(nornir, rep)
@@ -630,7 +672,8 @@ def main() -> int:
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
-             + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures)
+             + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
+             + rep.guard_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

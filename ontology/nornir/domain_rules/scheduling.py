@@ -19,6 +19,7 @@ from ..assertions import MarshalledAssertion
 from ..rules import (
     ClassificationRule,
     RiskTier,
+    carries_imperative_or_consequence,
     register_classification_rule,
     register_high_risk_types,
     text_of,
@@ -43,7 +44,12 @@ def _is_scheduled_task(a: MarshalledAssertion) -> bool:
 
 
 def _is_calendar_entry(a: MarshalledAssertion) -> bool:
-    return bool(_CALENDAR.search(text_of(a)))
+    # Inert only if it looks like a calendar item AND carries no imperative or
+    # consequence signal (D69). A "reminder" that also says "add the new starter to
+    # the important-buttons room" is not an inert calendar entry; it falls through to
+    # the fail-closed default. This applies the same discipline the communications
+    # inert rule always had, which the false-inert measurement (D67) found missing here.
+    return bool(_CALENDAR.search(text_of(a))) and not carries_imperative_or_consequence(a)
 
 
 def register_rules() -> None:
