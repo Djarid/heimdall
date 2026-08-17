@@ -113,7 +113,7 @@ measurably weak and stays red, and the guarantee does not rest on it.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 82 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 83 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -248,17 +248,14 @@ trust models aligned.
 
 ## 6. Recommended next step
 
-Three repository-access reviews closed gaps over the last rounds: invariant 3.1 now has
-an executable AST guard (D68), extended to indirect model calls and given a mandatory
-negative control by the second review (D70), and inverted from a residual module-name
-blacklist to a known-good import allowlist by the third review's finding (D71) so it
-forbids the whole indirect-egress class by construction; and the false-inert break was
-reduced from 3/12 to 1/16 by a shared inert-earning guard (D69) then to 1/17 by a
-referential-completeness guard that closed that residual before a fresh metaphor probe
-re-opened it (D72). The suite is still RED at 1/17, so that remains the top of the list.
-(The third review overstepped its review-only remit and described a D71 fix as committed
-when it was not; the D71 and D72 work here is the real implementation, verified against
-fresh probe batteries and end to end in the harness.)
+The false-inert break is measured, mitigated in depth, and still open. The layer-one rate
+is 48 percent on the independent corpus (D77, D83), and the pipeline score is 90 percent
+containment with a named three-case residual (D83). Five mitigations were built, none of
+which depends on the classifier being right (D79 state-delta consequence detection, D80 the
+consequence axis that removes the inert override, D81 fail-closed sink-declaration
+validation, D82 promotion corroboration and graded review), and a correction established
+that the action-time gate was never defeated by the break at all (D78). The suite is RED at
+17 findings, all of them false-inert, which is the deliberate and expected state.
 
 1. **Decide the false-inert break's disposition (D67-fix); it is now understood to be
    bounded by invariant 3.1, not merely unfinished.** D69 and D72 reduced it with
@@ -276,9 +273,19 @@ fresh probe batteries and end to end in the harness.)
    D77 is still same-author, so it is a broader lower bound, not an unbiased estimate. A
    corpus labelled by someone who has never read the rules is the remaining
    highest-information artefact (G2) and would likely push the rate higher still.
-3. **Publish the sink-declaration schema and add gate-boundary validation** so the
-   seam ranked first (sink-wiring honesty) becomes attackable by someone other than
-   its author; `ActionProposal.consumes` is currently an unchecked dict (review 3.2).
+3. **Close the D83 residual class by growing the consequential-slot vocabulary.** Three
+   cases escape every layer because they are typed inert AND their effect falls outside the
+   declared consequential slots (an asset transfer, a trademark assignment, an insurance
+   lapse). This is a coverage problem with the same demand-driven answer as D60, and
+   explicitly not another keyword. It is the cheapest real reduction available.
+4. **Wire the mitigations into the live pipeline.** D79 to D82 are proven in isolation but
+   are not called by `engine.py`, `rules.py` or `gjoll.py`, and their harnesses are not in
+   the main suite, so the measured 48 percent is unchanged by them. The D83 pipeline score
+   is therefore the DESIGNED pipeline, not the built one. Integration plus structural
+   extraction in Fenrir is what turns the 90 percent into a real runtime property.
+5. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
+   silently disabled the gate, but an author who declares a consequential sink as
+   non-consequential still defeats it. That is the root seam and remains open.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
