@@ -44,9 +44,14 @@ metaphorical consequence from a genuine informational statement needs world know
 which is a model 3.1 keeps off the classification path). It is left red and named, not
 papered over; the fix is an open design problem (D67-fix), and "accept a small residual"
 is now ruled out because the residual is not small. Its realised severity, though, is
-bounded on two axes the classification break does not defeat: the action-time gate (D78,
-reachability-derived) and the human-gated promotion into trusted memory (D76), so the
-break is a degraded outer layer rather than an open door.
+bounded by defence in depth, none of which depends on the classifier being right: the
+action-time gate was never defeated by the break at all (D78, action-critical status is
+reachability-derived), promotion into trusted memory is human-gated (D76), and five
+mitigations now stand between a mis-classification and harm (D79 state-delta consequence
+detection, D80 two-dimensional classification removing the inert override, D81 fail-closed
+sink-declaration validation, D82 corroboration for promotion and graded review). So the
+break is a degraded outer layer rather than an open door: the classification layer is
+measurably weak and stays red, and the guarantee does not rest on it.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -108,7 +113,7 @@ break is a degraded outer layer rather than an open door.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 81 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 82 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -164,6 +169,18 @@ with `DECISIONS.md` as the running record of why each choice was made.
   catch (D67-fix direction d) does NOT close the false-inert gap for a resisting model;
   it is an injection-success detector, not a false-inert fix, and direction (d) is
   demoted. See `phase2/OUTCOME.md`.
+- **False-inert mitigations in depth** (`ontology/nornir/`, D79 to D82): four modules, each
+  with its own green harness, none depending on the classifier being right. `state_delta.py`
+  judges consequence by what a value would CHANGE against a declared consequential-slot set
+  (catches 8 of the 13 D77 cases by effect, unevadable by rephrasing where extraction is
+  structural). `consequence_axis.py` splits classification into a speech-act type plus an
+  independent consequence axis, so an inert type can no longer SUPPRESS a co-present
+  consequence signal, and records whether the evidence is structural or evadable.
+  `sink_declaration.py` gives the sink declarations a schema and fail-closed validation,
+  closing three paths where an error or drift silently disabled the gate.
+  `promotion_policy.py` requires independent corroboration or human approval before a
+  consequential fact is promoted, and grades review priority so an inert-in-effect value
+  touching a consequential slot still gets reviewed.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
