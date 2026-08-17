@@ -85,6 +85,14 @@ cheap; a lost decision is expensive.
   `ontology/tests/harness.py`; run it after any classification-rule change. See
   invariant 3.5, decisions D54 and D55, and the authoring checklist in
   `ONTOLOGY_CONSTRUCTION.md` section 6.
+- **Do not quote the pipeline score as the system's current behaviour.** The
+  false-inert mitigations (D79 to D82) are proven in isolation but are not yet
+  called by `engine.py`, `rules.py` or `gjoll.py`, so the roughly 90 percent
+  pipeline containment in D83 describes the DESIGNED pipeline while the measured
+  layer-one rate (about 48 percent) is the built one. You do not have to remember
+  this: `ontology/tests/pipeline_score_harness.py` detects the wiring live and
+  prints an INTEGRATION GAP banner naming each unwired module, and stops printing
+  it once they are wired. Closing that gap is task 1 in `STATUS.md` section 0.
 - **Python runs in a venv.** The PoC uses `poc/.venv` with `mlx-lm` on Apple
   silicon. Do not install into the system interpreter.
 - **Licence boundary.** `ontology/reference/sumo` is GPL and reference-only:

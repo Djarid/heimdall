@@ -46,6 +46,7 @@ where each consequential case is first caught, and what escapes everything.
 
 from __future__ import annotations
 
+import ast
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -74,6 +75,67 @@ from ..yggdrasil.control_surface import AgentContext
 from .harness import high_risk_types, inert_types, load
 
 CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
+
+# The mitigation modules whose layers this harness scores, and the live pipeline modules that
+# would have to call them for the score to describe the BUILT system rather than the designed
+# one. Checked at run time rather than asserted in prose, so the warning below cannot go stale:
+# the moment someone wires a mitigation in, this harness stops claiming it is unwired.
+_MITIGATION_MODULES = ("state_delta", "consequence_axis", "sink_declaration", "promotion_policy")
+_PIPELINE_MODULES = ("engine.py", "rules.py", "gjoll.py")
+
+
+def integration_status() -> dict:
+    """Detect which mitigation modules the live pipeline actually imports.
+
+    Returns a mapping of mitigation module name to the list of pipeline modules importing it.
+    An empty list means that layer is proven in isolation but is not in the runtime path, so
+    its contribution to the score below is DESIGNED rather than built."""
+    nornir = Path(__file__).resolve().parents[1] / "nornir"
+    wired: dict = {m: [] for m in _MITIGATION_MODULES}
+    for fname in _PIPELINE_MODULES:
+        f = nornir / fname
+        if not f.exists():
+            continue
+        try:
+            tree = ast.parse(f.read_text(encoding="utf-8"), filename=str(f))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            names = []
+            if isinstance(node, ast.ImportFrom) and node.module:
+                names.append(node.module.split(".")[-1])
+            elif isinstance(node, ast.Import):
+                names.extend(a.name.split(".")[-1] for a in node.names)
+            for n in names:
+                if n in wired:
+                    wired[n].append(fname)
+    return wired
+
+
+def print_integration_banner() -> bool:
+    """Print the integration state. Returns True when every mitigation is wired in.
+
+    This is the mechanism that makes the caveat self-maintaining. A future session does not
+    have to remember that the mitigations are standalone: running this harness says so, and
+    stops saying so once they are not."""
+    wired = integration_status()
+    unwired = [m for m, importers in wired.items() if not importers]
+    if not unwired:
+        print("INTEGRATION: every mitigation module is imported by the live pipeline, so the")
+        print("score below describes the BUILT pipeline. Re-check that the main suite runs the")
+        print("mitigation harnesses too, then the layer-one rate should move.")
+        return True
+    print("INTEGRATION GAP (detected live, not asserted): the following mitigation modules are")
+    print("NOT imported by any of engine.py, rules.py or gjoll.py, so their layers below are")
+    print("DESIGNED, not built, and the measured layer-one rate is unchanged by them:")
+    for m in unwired:
+        print(f"  - {m}.py")
+    for m, importers in wired.items():
+        if importers:
+            print(f"  + {m}.py is wired into {', '.join(sorted(set(importers)))}")
+    print("Closing this gap is task 1 in STATUS.md section 0. Until it is closed, quote the")
+    print("pipeline score as the designed pipeline, never as the system's current behaviour.")
+    return False
 
 # The consequential sinks the scoring deployment arms, and their declarations. A real
 # deployment declares these; here they are the fixture the flow-bearing cases point at.
@@ -199,9 +261,11 @@ def main() -> int:
     n = len(outcomes)
 
     print("Pipeline score: defence in depth over the independent false-inert corpus")
-    print("Scores the DESIGNED pipeline (layers 2 to 5 consume structural inputs that")
-    print("Fenrir and Mimisbrunnr do not yet produce). See the module docstring for the")
-    print("four honesty conditions before quoting any number from this.")
+    print("See the module docstring for the four honesty conditions before quoting any number")
+    print("from this. Layers 2 to 5 also consume structural inputs (slot bindings, flow edges)")
+    print("that Fenrir and Mimisbrunnr do not yet produce from a live extraction.")
+    print()
+    fully_wired = print_integration_banner()
     print()
 
     # The single-layer number, for contrast.
