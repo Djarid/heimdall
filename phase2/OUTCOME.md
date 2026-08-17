@@ -265,12 +265,28 @@ layer; the layer that actually prevents harm (human ratification into trusted me
 downstream and unbypassable.
 
 This DOWNGRADES the severity of the false-inert break from "open door" to "degraded outer
-layer": it is a real, open classification break (the classification-derived gate, Gjoll, is
-defeated by the same break, and a value staying in the untrusted tier is a cost), but its
-blast radius does not reach a downstream agent trusting the value as fact. Two honest
-caveats: the containment is the D76 dependency, correct in the target architecture but under
-test in Gleipnir and not built in Mímisbrunnr yet; and it rests on the origin-tier promotion
-gate alone, since Gjoll is defeated by the same break.
+layer": it is a real, open classification break (a value staying in the untrusted tier is a
+cost, and the review-queue routing is lost), but its blast radius does not reach a downstream
+agent trusting the value as fact.
+
+An earlier version of this section said Gjoll was "defeated by the same break". That was
+WRONG and is corrected (D78). Action-critical status is computed by backward graph
+reachability from the agent's consequential sink set over the declared flow edges; it does
+not consult the classified type, and the gate's authorisation condition
+(`sink_is_consequential and untrusted_derived and c.action_critical`, `gjoll.py:109`) has no
+classification term either. Verified empirically: a payroll-redirect assertion with a
+declared flow to a payment sink classifies as `finance:financial_statement`, an INERT type (a
+genuine false-inert), yet is marked action-critical and the gate BLOCKS it with no action
+effects. So the false-inert break costs the review-queue routing and the risk signalling, NOT
+the action-time gate. The containment consequently rests on FLOW-DECLARATION honesty (the
+declared flows and the sink-consequential declaration), which relocates the residual to the
+sink-wiring-honesty seam `ADVERSARIAL_REVIEW.md` ranks first, rather than to the classifier.
+
+Two honest caveats remain: the tiered-memory containment is the D76 dependency, correct in
+the target architecture but under test in Gleipnir and not built in Mímisbrunnr yet; and the
+gate containment holds only where a flow edge to a consequential sink is actually declared (a
+value with no declared flow is not action-critical and is not gated, which is the sink-wiring
+seam, not a classification issue).
 
 ## 6. Consequences
 

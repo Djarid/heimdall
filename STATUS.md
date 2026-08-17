@@ -28,8 +28,11 @@ architecture and `README.md` for the orientation paths.
 and an adversarial measurement has found a real classification break, so the test
 suite is deliberately RED.** That is the state of the project. The break (D67): an
 adversarial corpus measures a false-inert rate: consequential content that positively
-earns an inert signal skips both the gate and review. The rate has two figures, and the
-gap is the point. On the self-authored corpus two structural guards reduced it (D69,
+earns an inert signal, so it loses the review-queue routing and its risk signalling. (It
+does NOT skip the action-time gate: action-critical status is computed by graph
+reachability, not by the classification, so a false-inert value that can reach a
+consequential sink is still gated and blocked, verified empirically in D78.) The rate has
+two figures, and the gap is the point. On the self-authored corpus two structural guards reduced it (D69,
 3/12 to 1/16; D72, closing that residual before a fresh metaphor probe re-opened it to
 1/17). But that corpus was tuned by the rules' own author; a larger scenario-authored
 independent corpus measures 13/30, about 43 percent (D77), so the self-authored number
@@ -40,7 +43,10 @@ security-state changes. It is bounded by invariant 3.1 (separating a passively-p
 metaphorical consequence from a genuine informational statement needs world knowledge,
 which is a model 3.1 keeps off the classification path). It is left red and named, not
 papered over; the fix is an open design problem (D67-fix), and "accept a small residual"
-is now ruled out because the residual is not small.
+is now ruled out because the residual is not small. Its realised severity, though, is
+bounded on two axes the classification break does not defeat: the action-time gate (D78,
+reachability-derived) and the human-gated promotion into trusted memory (D76), so the
+break is a degraded outer layer rather than an open door.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -102,7 +108,7 @@ is now ruled out because the residual is not small.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 77 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 78 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
