@@ -12,6 +12,53 @@ the map, not the territory.
 
 ---
 
+## 0. Resume here (handoff, last updated after D83)
+
+A fresh session should read this block, then section 6, then start work. Everything below
+is committed and pushed; the working tree is clean.
+
+**State in one paragraph.** The false-inert classification break is measured, mitigated in
+depth, and still open. Layer one (the classifier) misses about 48 percent of consequential
+content on the independent corpus. Scored across all six layers the pipeline contains about
+90 percent, with a named three-case residual. The suite is deliberately RED at 17 findings,
+all of them false-inert, and must stay red until the break is actually closed.
+
+**Run this first, to see the state for yourself:**
+
+```
+poc/.venv/bin/python -m ontology.tests.harness                  # RED at 17, expected
+poc/.venv/bin/python -m ontology.tests.pipeline_score_harness   # the 48 vs 90 percent picture
+```
+
+**The next piece of work, in priority order (detail in section 6):**
+
+1. **Wire D79 to D82 into the live pipeline.** They are proven in isolation and green, but
+   `engine.py`, `rules.py` and `gjoll.py` do not call them, and their harnesses are not in
+   the main suite. Until that is done the measured 48 percent is unchanged by them and the
+   D83 90 percent is the DESIGNED pipeline, not the built one. This is the single highest
+   value task and the reason the mitigations do not yet show up in the headline number.
+2. **Close the D83 residual class** by growing the consequential-slot vocabulary in
+   `ontology/nornir/state_delta.py` to cover asset and entitlement transfers. Three corpus
+   cases (`ind-41` to `ind-43`) escape every layer today. This is coverage growth in the D60
+   sense, and explicitly not another keyword rule.
+3. **Structural extraction in Fenrir**, since layers 2 to 5 need values bound to typed slots
+   rather than interpretive summaries. `plans/dd/fenrir.md` section 3.1 already prefers this.
+
+**Traps that have already caught someone in this repo:**
+
+- Never grow classification coverage by adding keyword rules that enumerate malicious
+  phrasings. That is invariant 3.5's blacklist trap; it has been tried and re-opened twice
+  (D69, D72). The fail-closed property test in `ontology/tests/harness.py` enforces it.
+- Anything added under `ontology/yggdrasil/`, `ontology/nornir/` or `poc/symbolic.py` is on
+  the authorisation path and may import only roots on `ALLOWED_IMPORT_ROOTS` in
+  `ontology/nornir/symbolic_guard.py`. The 3.1 guard is fatal and runs first.
+- Do not soften the RED bar or report a harness result you have not run. The red suite is
+  the honest artefact; a green one that never tested the break is worth less.
+- Use the `sync-project-docs` skill when recording anything: the repo and the Tolaria vault
+  at `~/git/tolaria1` both have to be updated, and the vault has a strict schema.
+
+---
+
 ## 1. What Heimdall is
 
 A neurosymbolic architecture that lets LLM agents work with untrusted external
@@ -35,7 +82,7 @@ consequential sink is still gated and blocked, verified empirically in D78.) The
 two figures, and the gap is the point. On the self-authored corpus two structural guards reduced it (D69,
 3/12 to 1/16; D72, closing that residual before a fresh metaphor probe re-opened it to
 1/17). But that corpus was tuned by the rules' own author; a larger scenario-authored
-independent corpus measures 13/30, about 43 percent (D77), so the self-authored number
+independent corpus measures 16/33, about 48 percent (D77, D83), so the self-authored number
 badly understated the bound. The break is large and structural, not an edge case: the
 classifier is blind to consequence expressed without imperative or movement vocabulary,
 across config changes, deletion, contract renewal, access grants, payroll redirects and
@@ -49,9 +96,20 @@ action-time gate was never defeated by the break at all (D78, action-critical st
 reachability-derived), promotion into trusted memory is human-gated (D76), and five
 mitigations now stand between a mis-classification and harm (D79 state-delta consequence
 detection, D80 two-dimensional classification removing the inert override, D81 fail-closed
-sink-declaration validation, D82 corroboration for promotion and graded review). So the
+sink-declaration validation, D82 corroboration for promotion and graded review). Scored as
+defence in depth rather than by the classifier alone, the pipeline contains 30 of 33
+consequential cases, about 90 percent, against the 48 percent layer-one rate (D83). So the
 break is a degraded outer layer rather than an open door: the classification layer is
 measurably weak and stays red, and the guarantee does not rest on it.
+
+**Two caveats a fresh session must carry, or the 90 percent is misleading.** First, D83
+scores the DESIGNED pipeline: the mitigations D79 to D82 are proven in isolation but are not
+yet called by `engine.py`, `rules.py` or `gjoll.py`, and their layers consume structural
+inputs (slot bindings, flow edges) that Fenrir and Mimisbrunnr do not yet produce, so the
+measured 48 percent is unchanged by them. Second, D83 found a residual CLASS the first
+100 percent score had hidden: three cases (`ind-41` to `ind-43`, an asset transfer, a
+trademark assignment, an insurance lapse) escape every layer because they are typed inert
+AND their effect falls outside the declared consequential-slot vocabulary.
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -125,10 +183,13 @@ measurably weak and stays red, and the guarantee does not rest on it.
 | `ontology/` | Yggdrasil: BFO loaded, SUMO reference; the seed ontology authored as the `yggdrasil` package, the reasoner as `nornir`, tests passing (`ontology/OUTCOME.md`) |
 | `reference/style_guide.md` | The writing style guide all prose is written to |
 
-Read order for a cold start: this page, then `poc/OUTCOME.md`,
-then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, then
-the two Phase 2 outcomes (`spike/substrate/OUTCOME.md`, `ontology/OUTCOME.md`),
-with `DECISIONS.md` as the running record of why each choice was made.
+Read order for a cold start: section 0 of this page, then section 6, then
+`poc/OUTCOME.md`, then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then
+`ONTOLOGY_CONSTRUCTION.md`, then the outcomes (`spike/substrate/OUTCOME.md`,
+`ontology/OUTCOME.md`, `phase2/OUTCOME.md`), with `DECISIONS.md` as the running
+record of why each choice was made. For the current work specifically, the
+decisions that matter are D77 (the measured rate), D78 (the gate correction),
+D79 to D82 (the mitigations) and D83 (the pipeline score and its residual).
 
 ---
 
@@ -180,7 +241,10 @@ with `DECISIONS.md` as the running record of why each choice was made.
   closing three paths where an error or drift silently disabled the gate.
   `promotion_policy.py` requires independent corroboration or human approval before a
   consequential fact is promoted, and grades review priority so an inert-in-effect value
-  touching a consequential slot still gets reviewed.
+  touching a consequential slot still gets reviewed. `ontology/tests/pipeline_score_harness.py`
+  (D83) scores all six layers together and reports where each consequential case is first
+  caught, which is how the 90 percent figure is produced; it is a measurement harness, not a
+  pass/fail obligation, and carries four honesty conditions in its docstring.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -223,9 +287,12 @@ missed `boto3`, `google`, `smtplib`, `ctypes` and every other unlisted egress mo
 enforcement was inverted to a known-good import allowlist that forbids the class by
 construction (D71). A referential-completeness guard then reduced the false-inert rate
 again and showed the residual is bounded by invariant 3.1 (D72). Open
-items: the false-inert fix (D67-fix, reduced to 1/17 by D69 and D72 but not closed and
-now understood to be bounded by 3.1, the suite is red), and the research questions D33
-to D36.
+items: the false-inert fix (D67-fix, open as a classification break but mitigated in depth
+by D79 to D82, the suite is red), the D83 residual class (three cases escaping every layer
+because no declared consequential slot covers their effect, fixed by slot-vocabulary
+coverage rather than a keyword), the integration gap (D79 to D82 are not wired into the live
+pipeline, so the D83 score is of the designed pipeline not the built one), and the research
+questions D33 to D36.
 
 An HLD and a Phase 1-3 Detailed Design have been authored for the build-out (D73,
 `plans/hld.md` and `plans/dd/`), grounded in an achievement audit against the real

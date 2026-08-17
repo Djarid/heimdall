@@ -13,11 +13,12 @@ system being designed, not the tooling that builds it.
 
 ## Read this first
 
-Before doing anything else, read `STATUS.md`. It is the "you are here" page:
-current state, what is proven, what is open, and the recommended next step. Then
-follow its cold-start read order (`poc/OUTCOME.md`, then
-`NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then `ONTOLOGY_CONSTRUCTION.md`, with
-`DECISIONS.md` as the running record of why).
+Before doing anything else, read `STATUS.md`, starting at its **section 0
+(Resume here)**, which carries the handoff state, the commands to run to see it for
+yourself, the next task in priority order, and the traps that have already caught
+someone in this repo. Then read section 6 and follow the cold-start read order
+(`poc/OUTCOME.md`, then `NEUROSYMBOLIC_FILTER_INVARIANTS.md`, then
+`ONTOLOGY_CONSTRUCTION.md`, with `DECISIONS.md` as the running record of why).
 
 ---
 
