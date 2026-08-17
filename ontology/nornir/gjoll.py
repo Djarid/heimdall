@@ -45,6 +45,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .assertions import ClassifiedAssertion
+from .sink_declaration import (
+    SinkRegistry,
+    effective_consequential,
+    validate_proposal,
+)
 
 
 # How a sink consumes a parameter, mirroring the PoC (poc/sinks.py).
@@ -81,6 +86,7 @@ def evaluate(
     proposal: ActionProposal,
     classified_by_id: dict,
     agent_consequential_sinks: frozenset,
+    sink_registry: "SinkRegistry | None" = None,
 ) -> GateDecision:
     """Authorise or block a consequential action. Fails closed.
 
@@ -88,10 +94,40 @@ def evaluate(
     proposal consumes, as an ACTION, any parameter that is an untrusted-derived,
     action-critical value. Otherwise authorised. The check inspects the wiring and the
     computed labels, never the parameter's content.
+
+    When `sink_registry` is supplied (D84, wiring D81), the proposal is first VALIDATED
+    against the declared sink contracts, and a validation failure is a BLOCK, not a
+    warning. This closes the three fail-open paths D81 named: an undeclared or mistyped
+    sink no longer silently disables the gate (it is treated as consequential), a
+    silently-omitted or phantom parameter is caught, and an invalid consume mode is not
+    read as inert. Without a registry the gate keeps its prior behaviour, so existing
+    callers are unaffected; a real deployment always supplies one.
     """
     reasons: list[str] = []
 
-    sink_is_consequential = proposal.sink in agent_consequential_sinks
+    if sink_registry is not None:
+        # Fail-closed declaration validation runs BEFORE the content gate. A declaration
+        # error is an authorisation failure by itself: we do not gate a proposal we
+        # cannot even validate against a known sink contract.
+        known_ids = frozenset(classified_by_id.keys())
+        validation = validate_proposal(
+            proposal.sink, proposal.consumes, sink_registry, known_ids
+        )
+        if not validation.valid:
+            return GateDecision(
+                action_id=proposal.action_id,
+                authorised=False,
+                reasons=list(validation.errors),
+            )
+        # Consequential status with the fail-closed inversion: an undeclared sink is
+        # consequential (we cannot know it is safe), a declared sink follows agent
+        # scoping (D24). validate_proposal already blocked an undeclared sink above, so
+        # this reads the declared/agent-scoped answer for a valid proposal.
+        sink_is_consequential = effective_consequential(
+            proposal.sink, sink_registry, agent_consequential_sinks
+        )
+    else:
+        sink_is_consequential = proposal.sink in agent_consequential_sinks
 
     for param_id, mode in proposal.consumes.items():
         if mode != CONSUME_ACTION:
@@ -135,11 +171,13 @@ def enforce(
     classified_by_id: dict,
     agent_consequential_sinks: frozenset,
     actuator: Actuator,
+    sink_registry: "SinkRegistry | None" = None,
 ) -> GateDecision:
     """Evaluate the gate and, only if authorised, let the effect run. A blocked action
     never reaches the actuator: the gate fires before the effect, exactly as the PoC's
-    gate blocked the payment actuator before any mock money moved."""
-    decision = evaluate(proposal, classified_by_id, agent_consequential_sinks)
+    gate blocked the payment actuator before any mock money moved. `sink_registry`, when
+    supplied, runs the D81 fail-closed declaration validation before the gate (D84)."""
+    decision = evaluate(proposal, classified_by_id, agent_consequential_sinks, sink_registry)
     if not decision.authorised:
         return decision  # fired stays False; the effect never runs
     for param_id, mode in proposal.consumes.items():

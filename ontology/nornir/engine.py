@@ -30,6 +30,24 @@ from .rules import (
 )
 from . import domain_rules
 from ..yggdrasil.unclassified import UNCLASSIFIED, HIGH_RISK_UNRESOLVED
+# The false-inert mitigations, wired into the live pipeline (D84). None of them
+# depends on the classifier being right: each only ever ADDS caution, so composing
+# them with the existing fail-closed discipline can never introduce a silent
+# downgrade. They read STRUCTURAL inputs (slot bindings, flow edges) off the
+# marshalled assertion, not the classifier's content pattern (D79, D80, D82).
+from .state_delta import StateOracle, SlotRef, dict_oracle, evaluate as evaluate_deltas
+from .consequence_axis import (
+    classify_two_dimensional,
+    flow_to_sink_signal,
+    state_delta_signal,
+)
+from .promotion_policy import (
+    PromotionDecision,
+    ReviewPriority,
+    SourcedValue,
+    evaluate_promotion,
+    review_priority,
+)
 
 
 @dataclass
@@ -37,6 +55,13 @@ class NornirResult:
     classified: list[ClassifiedAssertion]
     violations: list[Violation] = field(default_factory=list)
     action_critical: set = field(default_factory=set)
+    # Promotion decisions per consequential slot (D84, wiring D82). A value that would
+    # set a consequential slot is not promotable to a trusted fact on a single source's
+    # word: it needs independent corroboration or human approval. Keyed by SlotRef.key().
+    # Empty when no assertion proposed a consequential-slot fact. This never grants
+    # trust; it only ever WITHHOLDS promotion, so it composes with the fail-closed
+    # discipline and cannot introduce a silent downgrade.
+    promotions: dict = field(default_factory=dict)
 
     def by_id(self, assertion_id: str) -> ClassifiedAssertion:
         for c in self.classified:
@@ -94,8 +119,24 @@ class NornirResult:
 
 
 class Nornir:
-    def __init__(self, ontology: Ontology, flow_backend=None) -> None:
+    def __init__(self, ontology: Ontology, flow_backend=None,
+                 state_oracle: "StateOracle | None" = None) -> None:
         self.onto = ontology
+        # The state oracle answers "what value is currently stored for this slot?" for
+        # the state-delta detector (D79). It defaults to an empty in-memory store, in
+        # which any proposed consequential-slot value is a first-value delta (a new
+        # consequential fact IS a delta, D79). A live deployment injects a Mímisbrunnr-
+        # backed oracle so a delta is a genuine change against stored state. Kept
+        # injectable and defaulted so the core path carries no store dependency.
+        self.state_oracle: StateOracle = state_oracle or dict_oracle({})
+        # The inert (low-risk) type set, read from the ontology exactly as the harness
+        # derives it (risk=low plus the fail-safe). The consequence axis needs it to
+        # know whether the speech-act type is inert; deriving it here keeps the engine
+        # self-contained and correct as domains add low-risk types.
+        self._inert_types = frozenset(
+            {n.name for n in ontology.nodes.values() if n.attrs.get("risk") == "low"}
+            | {UNCLASSIFIED}
+        )
         # The flow-to-sink backend computes the agent-scoped action-critical set from
         # the batch's flow edges and the agent's sinks. It defaults to the proven
         # in-memory backward reachability (dependency-free, D01). A caller may inject
@@ -188,6 +229,38 @@ class Nornir:
         for c in classified:
             c.action_critical = c.assertion_id in critical
 
+        # 2b. False-inert mitigations in depth (D84, wiring D79/D80/D82). For each
+        # assertion, judge consequence on the SECOND axis the inert speech-act type
+        # cannot suppress (D80), fed by two structural signals an attacker does not
+        # author: a state delta on a declared consequential slot (D79) and a flow edge
+        # reaching a consequential sink (the action-critical label just computed). The
+        # effective-inert conjunction is what downstream reads; the classifier's own
+        # type is left untouched, so layer one's measured rate is unchanged and the RED
+        # bar stays honest. This only ever ADDS caution.
+        by_marshalled = {a.assertion_id: a for a in assertions}
+        for c in classified:
+            a = by_marshalled.get(c.assertion_id)
+            signals = []
+            if a is not None and a.proposed_facts:
+                verdict = evaluate_deltas(list(a.proposed_facts), self.state_oracle)
+                if verdict.deny_inert:
+                    signals.extend(state_delta_signal(r) for r in verdict.reasons())
+            if c.action_critical:
+                signals.append(
+                    flow_to_sink_signal("value reaches a consequential sink for this agent")
+                )
+            speech_act_inert = c.type_name in self._inert_types
+            two_d = classify_two_dimensional(c.type_name, speech_act_inert, signals)
+            c.consequence = two_d.consequence
+            c.effective_inert = two_d.effective_inert
+            c.consequence_reasons = tuple(two_d.consequence.reasons())
+            # Graded review priority (D82): an inert-in-effect value that still touches
+            # a consequential slot earns LOW-priority review rather than none.
+            touches = bool(a is not None and a.proposed_facts)
+            c.review_priority = review_priority(
+                two_d.effective_inert, touches, two_d.consequence.has_structural
+            ).value
+
         # 3. Derivations (forward-chaining), now able to key on both the classified
         # type and the flow-to-sink label. Each derived fact records the rule that
         # produced it, so the soundness test can check it against that rule's own
@@ -201,7 +274,34 @@ class Nornir:
         violations = check_constraints(classified)
         violations.extend(self._check_gating(assertions, classified, critical, ctx))
 
-        return NornirResult(classified=classified, violations=violations, action_critical=critical)
+        # 5. Promotion policy (D84, wiring D82). Gather every proposed fact on a slot
+        # across the batch, grouped by slot, each carrying its source, and decide
+        # whether that slot may be promoted to a trusted fact. A consequential slot
+        # needs corroboration from independent sources or human approval; a single
+        # source is not enough. Disagreeing sources never promote and escalate. This
+        # runs over the same structural bindings the state-delta detector reads.
+        promotions = self._evaluate_promotions(assertions)
+
+        return NornirResult(
+            classified=classified,
+            violations=violations,
+            action_critical=critical,
+            promotions=promotions,
+        )
+
+    def _evaluate_promotions(self, assertions: list[MarshalledAssertion]) -> dict:
+        """Group proposed facts by slot and evaluate promotion for each (D82). Returns a
+        mapping of SlotRef.key() to PromotionDecision. Only slots that some assertion
+        proposes a value for appear; a batch with no structural bindings yields {}."""
+        by_slot: dict[str, list[SourcedValue]] = {}
+        for a in assertions:
+            for pf in a.proposed_facts:
+                key = pf.slot.key()
+                by_slot.setdefault(key, []).append(
+                    SourcedValue(slot=pf.slot, value=pf.value,
+                                 source=a.source or a.assertion_id)
+                )
+        return {key: evaluate_promotion(cands) for key, cands in by_slot.items()}
 
     def _check_gating(
         self,

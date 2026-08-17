@@ -92,6 +92,7 @@ class Report:
         self.gjoll_failures = 0
         self.false_inert_failures = 0
         self.guard_failures = 0
+        self.mitigation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -605,6 +606,45 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
     rep.line("")
 
 
+def run_mitigations(rep: Report) -> None:
+    """Run the four false-inert mitigation suites (D79 to D82) as part of the main suite.
+
+    Until D84 these harnesses were standalone: proven in isolation but not run here and
+    not wired into the pipeline, so `pipeline_score_harness` printed an INTEGRATION GAP
+    banner. They are now imported by the live engine and gate (D84), so their obligations
+    belong in the primary run. Each is a self-contained suite returning 0 (pass) or 1
+    (fail); a failure here is fatal, exactly like any other boundary check. Their verbose
+    per-check output is suppressed to keep this run readable; run any of them directly for
+    the detail (`python -m ontology.tests.state_delta_harness`)."""
+    import contextlib
+    import io
+    from . import (
+        state_delta_harness,
+        consequence_axis_harness,
+        sink_declaration_harness,
+        promotion_policy_harness,
+    )
+
+    rep.line("=== False-inert mitigations in depth (D79-D82), now wired (D84) ===")
+    suites = [
+        ("D79 state-delta consequence detection", state_delta_harness.main),
+        ("D80 two-dimensional consequence axis", consequence_axis_harness.main),
+        ("D81 fail-closed sink-declaration validation", sink_declaration_harness.main),
+        ("D82 promotion corroboration and graded review", promotion_policy_harness.main),
+    ]
+    for label, run in suites:
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = run()
+        if rc == 0:
+            rep.line(f"  [PASS] {label}")
+        else:
+            rep.mitigation_failures += 1
+            rep.line(f"  [CRITICAL] {label}: mitigation suite FAILED (run it directly for detail)")
+    rep.line("  These layers hold regardless of the classifier being right; they are what turns")
+    rep.line("  the ~48 percent layer-one rate into ~90 percent pipeline containment (D83).")
+    rep.line("")
+
+
 FALSE_INERT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_adversarial.json"
 FALSE_INERT_INDEPENDENT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
 
@@ -690,6 +730,7 @@ def main() -> int:
                     "self-authored corpus, a lower bound tuned to the rules")
     run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
                     "independent scenario-authored corpus, D77")
+    run_mitigations(rep)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
@@ -698,7 +739,7 @@ def main() -> int:
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
-             + rep.guard_failures)
+             + rep.guard_failures + rep.mitigation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
@@ -720,14 +761,21 @@ def main() -> int:
         print("attacker can also satisfy. TWO measurements, both lower bounds: the self-authored")
         print("corpus reads 1/17 after the D69 and D72 guards (each fixed the cases it was shown,")
         print("each re-opened by a fresh probe), but the larger independent scenario-authored")
-        print("corpus reads 13/30 (D77), so the self-authored number badly understated the bound.")
-        print("The break is large, not an edge case: the classifier is blind to consequence")
+        print("corpus reads 16/33 (D77, D83), so the self-authored number badly understated the")
+        print("bound. The break is large, not an edge case: the classifier is blind to consequence")
         print("expressed without imperative or movement vocabulary, across config changes,")
         print("deletion, contract renewal, access grants, payroll redirects and security-state")
         print("changes. No content pattern separates a passively-phrased or metaphorical")
         print("consequence from a genuine informational statement without world knowledge, which")
         print("invariant 3.1 keeps off the classification path. It is left red deliberately: a")
         print("suite that names a real break is worth more than a green one that never tested it.")
+        print()
+        print("This is LAYER ONE only, and it is the pessimistic figure. Since D84 the D79-D82")
+        print("mitigations are wired into the live engine and gate, and D85 closed the last")
+        print("residual class by slot-vocabulary coverage: run")
+        print("`python -m ontology.tests.pipeline_score_harness` for the defence-in-depth")
+        print("picture, where every consequential case on this corpus is contained downstream")
+        print("(same-author bindings, so a lower bound on difficulty, not a claim of zero risk).")
     else:
         print("A downgrade, a fail-safe breach, an unmatched request going inert, an unsound")
         print("derivation or a missed action-critical value is a boundary failure.")

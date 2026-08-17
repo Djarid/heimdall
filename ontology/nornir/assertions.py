@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .state_delta import ProposedFact
+
 
 @dataclass(frozen=True)
 class MarshalledAssertion:
@@ -35,12 +37,23 @@ class MarshalledAssertion:
     lists the ids of other assertions or sink names this assertion's value can flow
     into, which is the flow-to-sink edge set (Fenrir/Gjoll would derive these from
     the real data flow; a test supplies them explicitly).
+
+    `proposed_facts` is the STRUCTURAL extraction output (D79): the values the reading
+    layer bound to typed slots (`salary_destination = X`). It is what the state-delta
+    detector consumes to judge consequence by effect rather than by wording. An
+    assertion with no structural binding leaves this empty, and the mitigations that
+    key on it simply add no caution for that assertion (they only ever ADD caution, per
+    D79/D80), so an interpretive-only extraction is not silently downgraded. `source` is
+    the provenance identifier (a mailbox, a feed, a document id) the promotion policy
+    (D82) uses to count corroboration; it is provenance, never a trust level.
     """
 
     assertion_id: str
     taint_class: str
     fields: dict = field(default_factory=dict)
     flows: tuple = ()  # ids/sink-names this value can flow into
+    proposed_facts: tuple[ProposedFact, ...] = ()  # structural slot bindings (D79)
+    source: str = ""  # provenance identifier for corroboration (D82)
 
 
 @dataclass
@@ -63,3 +76,15 @@ class ClassifiedAssertion:
     # tied candidates are recorded for the audit trail and so the harness can confirm
     # the tie is a safe (still-gated) outcome, not a downgrade.
     tie_candidates: tuple = ()
+    # The two-dimensional consequence outcome (D79/D80), filled by the engine after
+    # classification and flow-to-sink. `consequence` is the second axis the inert
+    # speech-act type cannot suppress; `effective_inert` is the conjunction downstream
+    # reads to decide whether the value may be treated as inert; `review_priority`
+    # grades the review queue (D82). All three are set from structural inputs (slot
+    # bindings, flow edges), so a mis-classification at layer 1 no longer decides the
+    # outcome alone. They are optional so an assertion run without structural extraction
+    # simply carries the classifier's own result, unchanged.
+    consequence: object | None = None          # ConsequenceAxis (D80)
+    effective_inert: bool | None = None        # None until the engine computes it
+    consequence_reasons: tuple = ()            # audit strings for the axis
+    review_priority: str = ""                  # graded review priority (D82)
