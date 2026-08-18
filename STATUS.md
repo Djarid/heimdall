@@ -38,8 +38,11 @@ is fully third-party. The point of the architecture is exactly that the
 guarantee does not rest on the first layer: five later layers, none depending on the
 classifier being right, catch what it misses. So read the 48 percent as the pessimistic
 single-layer figure and the 33-of-33 as what the whole pipeline does, under the remaining
-honesty conditions (same-author bindings; the structural extraction uses bounded per-field
-generation, not yet true token-level grammar-constrained decoding, D87).
+honesty conditions (same-author bindings; and value poisoning, since the structural extraction
+now uses true token-level grammar-constrained decoding, D90, which constrains structure but
+not value truth). D90 replaced the D87 bounded per-field stand-in with a real grammar mask, so
+the "not yet true grammar constraint" caveat is closed; what remains on that layer is value
+poisoning, contained by Gjoll at action time.
 
 **Run this first, to see the state for yourself:**
 
@@ -71,10 +74,19 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
    config-tamper adversary) and D (verify the primitive against behaviour, the strongest
    evidence). That residual is the still-open part of the root seam (`ADVERSARIAL_REVIEW.md`
    5.1).
-3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
-   generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
-   grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the
-   named refinement, higher fidelity to the eventual design and a new dependency.
+3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
+   per-field stand-in with a real token-level grammar mask: the model emits the whole
+   `SlotExtractionSchema` object under a logits processor that permits only tokens keeping the
+   output a valid grammar prefix, so a malformed object or an undeclared key is unreachable and
+   there is no free-text to re-parse (the `fenrir.md` 3.1 property). Implemented natively on
+   mlx_lm's `logits_processors` hook (no outlines/xgrammar dependency), the grammar proven
+   deterministically without a model (`phase2/tests/harness.py` obligation 7) and demonstrated
+   on Qwen2.5-7B end to end (`phase2/grammar_slot_demo.py`). Residual, unchanged: it constrains
+   STRUCTURE, not value TRUTH, so value poisoning stays a Gjoll concern.
+
+   The remaining named work, now that tasks 1 to 3 are addressed: the EXTERNAL-HUMAN corpus
+   (task 1's residual), and the declaration follow-ons C (attest who may declare) and D (verify
+   the effect primitive against behaviour) from `plans/declaration_attestation_scoping.md`.
 
 **Traps that have already caught someone in this repo:**
 
@@ -226,7 +238,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 89 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 90 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -433,11 +445,16 @@ corpus the author never saw.
    auditable table rather than removing it, so a sink declaring the WRONG primitive still
    defeats the gate. The remaining follow-ons are C (attest WHO may declare) and D (verify the
    primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
-3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
-   generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
-   grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the
-   named refinement: higher fidelity to the eventual design, a new dependency, and it removes
-   the last "stand-in" caveat on the structural-extraction layer.
+3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
+   per-field stand-in with a real token-level grammar mask over the `SlotExtractionSchema`
+   (the model emits the whole object under a logits processor that permits only grammar-valid
+   tokens, so malformed structure and undeclared keys are unreachable, the `fenrir.md` 3.1
+   property). Native on mlx_lm's `logits_processors` hook, no outlines/xgrammar dependency; the
+   grammar is proven deterministically without a model and demonstrated on Qwen2.5-7B end to
+   end. This removed the last "stand-in" caveat on the structural-extraction layer. Residual:
+   it constrains structure, not value truth, so value poisoning stays a Gjoll concern. The
+   remaining declaration follow-ons are C (attest who may declare) and D (verify the effect
+   primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
 4. **Decide the layer-one break's disposition (D67-fix); it is bounded by invariant 3.1.**
    Now less urgent since the pipeline contains it, but still worth closing on the
    classification side. The two honest directions are a deterministic
