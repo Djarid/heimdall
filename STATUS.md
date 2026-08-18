@@ -54,16 +54,14 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Get an EXTERNAL-HUMAN third-party corpus.** D88 built the strongest independence
-   obtainable inside an agent session: a blind-authored corpus whose scenarios came from a
-   fresh sub-agent with no rule or repo access (`false_inert_thirdparty.json`). It measures a
-   layer-one rate of 5/36 (about 14 percent), LOWER than the rules-aware 48 percent, and the
-   pipeline contains 33 of 36 with zero escapes. The lower blind rate is the finding: a
-   rules-aware author targets the blind spots more precisely than a blind one, so the two
-   rates bound different adversaries. What is STILL wanted (G2, and D88 does not claim to be
-   it) is a corpus labelled by an external human who has never seen the rules, plus, for the
-   pipeline layer specifically, structural bindings authored by that human rather than derived
-   by the D88 builder from the blind author's consequence_domain.
+1. **Third-party corpus (G2): DELEGATED externally, not an in-repo task (D91).** A colleague
+   is independently developing and running this exact false-inert attack vector against models
+   with no exposure to Heimdall's rules, and will test the classifier when his work completes.
+   That is the true external independence D88's blind corpus explicitly could not manufacture
+   from inside a session. So do NOT re-attempt this in-repo: the honest in-session ceiling was
+   already reached (D88, 5/36 blind; D77, 16/33 rules-aware, both lower bounds). When the
+   external result lands it is the first unbiased measurement; record it as its own decision
+   and let it drive D67-fix's disposition. Nothing to build here meanwhile.
 2. **Attest the declarations (NARROWED by D89, not closed).** D81 closed declaration ERROR or
    DRIFT; D89 then narrowed the HONESTY seam on two axes: B derives sink consequentiality from
    an attested effect-primitive table (so a money sink flagged non-consequential is still
@@ -238,7 +236,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 90 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 91 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -426,18 +424,15 @@ pattern closes it; the guarantee does not rest on it. With the real-model struct
 extraction now demonstrated, the highest-value work is testing the whole thing against a
 corpus the author never saw.
 
-1. **Get an EXTERNAL-HUMAN third-party corpus.** The independent scenario-authored corpus
-   (D77) raised the measured layer-one rate from 1/17 to 16/33, demonstrating the circularity
-   the self-authored number hid. D88 went one step further with a BLIND-authored corpus
-   (`false_inert_thirdparty.json`): scenarios from a fresh sub-agent with no rule or repo
-   access, the strongest independence obtainable inside an agent session. It measures 5/36
-   (about 14 percent) at layer one, LOWER than the rules-aware 48 percent, which is the
-   finding: a rules-aware author targets the classifier's blind spots more precisely than a
-   blind one, so the two rates bound different adversaries. D88 is still not fully third-party
-   (orchestrator session knowledge, shared model family, and its structural bindings are
-   builder-derived so the pipeline score carries a heavier caveat than the layer-one rate).
-   What remains is a corpus labelled by an external HUMAN who has never seen the rules, with
-   that human also authoring the structural bindings; that is the last independence step (G2).
+1. **Third-party corpus (G2): DELEGATED externally (D91), not an in-repo task.** The
+   independent scenario-authored corpus (D77) raised the measured layer-one rate from 1/17 to
+   16/33, and the BLIND-authored corpus (D88, `false_inert_thirdparty.json`) reached 5/36, the
+   strongest independence obtainable inside a session; both are lower bounds on difficulty, not
+   unbiased estimates. The remaining external-human step is now OWNED OUT-OF-BAND: a colleague
+   is independently running this exact false-inert attack vector against models with no
+   exposure to the rules, and will test the classifier when complete (D91). Do not re-attempt
+   it in-repo. When the external result lands it is the first unbiased measurement; record it
+   as its own decision and let it drive the D67-fix disposition.
 2. **Attest the declarations (NARROWED by D89).** D81 closed declaration ERROR or DRIFT; D89
    narrowed the HONESTY seam: B derives sink consequentiality from an attested effect-primitive
    table (a money sink flagged non-consequential is still gated), and A blocks an
