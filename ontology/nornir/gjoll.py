@@ -35,9 +35,25 @@ Why all three conditions matter, and why the gate is not just the PoC gate:
 The gate does not choose the wiring; it proves a given wiring safe or unsafe, exactly
 as the PoC gate did. A real system must still declare, per sink, how each parameter is
 consumed; that declaration is trusted input (the PoC's honest limit, invariant section
-4, sink-wiring honesty), and deriving it from real data flow is future work. What Gjoll
-adds here is that the action-critical determination is now computed by reachability,
-not self-asserted per sink.
+4, sink-wiring honesty). What Gjoll adds here is that the action-critical determination
+is now computed by reachability, not self-asserted per sink.
+
+Two dishonest-declaration seams are now narrowed (D89, the two halves of the root seam
+5.1 fix; scoping in `plans/declaration_attestation_scoping.md`):
+
+- Direction B (in `sink_declaration.py`): sink consequentiality is DERIVED from a
+  declared effect primitive over an attested table, not read from a per-sink boolean, so
+  an author cannot mark a money-moving sink non-consequential to disarm the gate.
+- Direction A (below): a value consumed as CONSUME_INERT that flow reachability has
+  ALREADY proved action-critical, at a consequential sink, no longer silently passes. An
+  inert claim that contradicts the derived reachability is blocked, because the inert
+  declaration must not be trusted over the flow graph. Inert only passes unchecked when
+  the value is not action-critical.
+
+Both RELOCATE trust rather than remove it (a sink that declares the WRONG effect
+primitive is still defeated; that is the C/D follow-on). The gate contains no model on
+any of these paths (invariant 3.1): the derivation is set membership over an authored
+table and the A check reads the already-computed action-critical label.
 """
 
 from __future__ import annotations
@@ -130,9 +146,33 @@ def evaluate(
         sink_is_consequential = proposal.sink in agent_consequential_sinks
 
     for param_id, mode in proposal.consumes.items():
-        if mode != CONSUME_ACTION:
-            continue  # consuming as inert data is always fine (describe, not obey)
         c: ClassifiedAssertion | None = classified_by_id.get(param_id)
+
+        if mode != CONSUME_ACTION:
+            # A: the fail-closed consume mode (D89, direction A). Consuming a value as inert
+            # data is normally fine (describe, not obey), and that is still the common case.
+            # But a declaration of CONSUME_INERT on a value that flow reachability has ALREADY
+            # proved action-critical, at a consequential sink, is a claim that CONTRADICTS the
+            # flow graph: the value can reach a consequential effect, yet the sink declares it
+            # will not act on it. That is exactly the dishonest-inert-mode seam (5.1). We do not
+            # trust the inert claim over the derived reachability; we block and let review
+            # settle it. An inert declaration only passes unchecked when the value is NOT
+            # action-critical (so the inert claim cannot be laundering a live path). This is a
+            # fail-closed default, not a blacklist: inert on an action-critical value must be
+            # EARNED by the value being non-reachable, never granted by the declaration alone.
+            if c is None:
+                continue  # not action-critical (no provenance to make it so); genuinely inert
+            untrusted_derived = c.trust_level == "trust:TAINTED"
+            if sink_is_consequential and untrusted_derived and c.action_critical:
+                reasons.append(
+                    f"consequential sink {proposal.sink!r} declares untrusted-derived, "
+                    f"action-critical value {param_id!r} (type {c.type_name}) as CONSUME_INERT, "
+                    f"which contradicts its flow reachability to a consequential effect; the "
+                    f"inert claim is not trusted over the derived action-critical status "
+                    f"(fail closed, D89-A)"
+                )
+            continue
+
         if c is None:
             # A parameter with no classified provenance is unknown-origin. Fail closed:
             # we cannot confirm it is safe to act on, so we do not authorise.

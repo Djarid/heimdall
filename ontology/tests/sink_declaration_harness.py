@@ -20,6 +20,8 @@ from __future__ import annotations
 from ..nornir.sink_declaration import (
     CONSUME_ACTION,
     CONSUME_INERT,
+    DISPLAY_ONLY,
+    MOVE_MONEY,
     SinkDeclaration,
     SinkRegistry,
     effective_consequential,
@@ -48,15 +50,21 @@ class Report:
 
 def build_registry() -> SinkRegistry:
     r = SinkRegistry()
+    # Honest declarations under direction B: the effect primitive is the source of truth for
+    # consequentiality. A payments sink moves money (effect-producing); a log sink is
+    # display/store only (honestly inert). consequential_by_default is retained for the D81
+    # tests and reporting but no longer decides consequentiality.
     r.declare(SinkDeclaration(
         name="sink:payments.execute",
         parameters=frozenset({"amount", "destination"}),
         consequential_by_default=True,
+        effect_primitive=MOVE_MONEY,
     ))
     r.declare(SinkDeclaration(
         name="sink:log.write",
         parameters=frozenset({"message"}),
         consequential_by_default=False,
+        effect_primitive=DISPLAY_ONLY,
     ))
     return r
 
@@ -143,21 +151,71 @@ def test_correct_declaration_passes(rep: Report) -> None:
     rep.line()
 
 
-def test_agent_scoping_preserved(rep: Report) -> None:
-    """D24 agent scoping must survive: a DECLARED sink that is not consequential for this agent
-    is still legitimately ungated, with no error and no friction. The fix must distinguish
-    'declared and out of scope' from 'not declared at all'."""
-    rep.line("=== 6. Agent scoping (D24) is preserved for DECLARED sinks ===")
+def test_intrinsically_inert_sink_ungated(rep: Report) -> None:
+    """No false friction: a sink that HONESTLY declares an inert effect primitive
+    (display/store only) stays ungated, with no error. Under D89 (direction B) this is now the
+    RIGHT reason a log sink is ungated: not because it is out of the agent's scope, but because
+    its effect primitive is not effect-producing. The fix must not gate a genuinely inert
+    sink (that would be pure friction), while still gating a real effect sink."""
+    rep.line("=== 6. Control: an HONESTLY inert sink (display/store primitive) stays ungated ===")
     reg = build_registry()
     agent_sinks = frozenset({"sink:payments.execute"})
 
     res = validate_proposal("sink:log.write", {"message": CONSUME_ACTION}, reg, KNOWN)
     rep.check(res.valid,
-              "a declared, out-of-scope sink is NOT a validation error (no false friction)")
+              "a declared display-only sink is NOT a validation error (no false friction)")
     rep.check(effective_consequential("sink:log.write", reg, agent_sinks) is False,
-              "and it is correctly not consequential for this agent, so it stays ungated")
+              "and it is correctly non-consequential by its inert effect primitive, so ungated")
     rep.check(effective_consequential("sink:payments.execute", reg, agent_sinks) is True,
-              "while the in-scope consequential sink is still gated as before")
+              "while the money-moving sink is consequential by its effect primitive")
+    rep.line()
+
+
+def test_dishonest_flag_still_gated(rep: Report) -> None:
+    """D89, direction B, the point of the whole change: an author declares a genuinely
+    consequential sink with consequential_by_default=False (a dishonest flag), and it is NOT in
+    the agent's consequential set. Under D81 this defeated the gate (effective_consequential
+    returned False). Under B, consequentiality is DERIVED from the effect primitive, so the
+    money-moving sink stays consequential however the flag is set and whatever the agent set
+    contains."""
+    rep.line("=== 7. A dishonestly-flagged consequential sink is STILL gated (direction B) ===")
+    reg = SinkRegistry()
+    # The dishonest declaration: a money mover flagged non-consequential, and the empty agent
+    # set, so nothing but the derivation can catch it.
+    reg.declare(SinkDeclaration(
+        name="sink:payments.execute",
+        parameters=frozenset({"amount", "destination"}),
+        consequential_by_default=False,          # the lie
+        effect_primitive=MOVE_MONEY,             # the truth the derivation reads
+    ))
+    empty_agent_sinks = frozenset()
+
+    res = validate_proposal(
+        "sink:payments.execute",
+        {"amount": CONSUME_ACTION, "destination": CONSUME_ACTION},
+        reg, KNOWN,
+    )
+    rep.check(res.valid, "the dishonest declaration is well-FORMED, so D81 validation passes it")
+    rep.check(effective_consequential("sink:payments.execute", reg, empty_agent_sinks) is True,
+              "but B DERIVES consequentiality from the money-movement primitive, so it is gated "
+              "despite the false flag and the empty agent set")
+    rep.line()
+
+
+def test_undeclared_primitive_fails_closed(rep: Report) -> None:
+    """Silence never earns inert. A sink declared with NO effect primitive (effect_primitive is
+    None) fails closed to consequential, the same inversion as an undeclared sink, so an author
+    cannot dodge the derivation by simply omitting the primitive."""
+    rep.line("=== 8. A sink with NO declared effect primitive fails closed to consequential ===")
+    reg = SinkRegistry()
+    reg.declare(SinkDeclaration(
+        name="sink:mystery.op",
+        parameters=frozenset({"payload"}),
+        consequential_by_default=False,
+        effect_primitive=None,                   # omitted entirely
+    ))
+    rep.check(effective_consequential("sink:mystery.op", reg, frozenset()) is True,
+              "an omitted effect primitive is treated as consequential (silence fails closed)")
     rep.line()
 
 
@@ -172,7 +230,9 @@ def main() -> int:
     test_invalid_mode_caught(rep)
     test_phantom_parameter_caught(rep)
     test_correct_declaration_passes(rep)
-    test_agent_scoping_preserved(rep)
+    test_intrinsically_inert_sink_ungated(rep)
+    test_dishonest_flag_still_gated(rep)
+    test_undeclared_primitive_fails_closed(rep)
 
     rep.dump()
     print()
@@ -180,13 +240,19 @@ def main() -> int:
         print(f"SUITE FAIL: {rep.failures} failing check(s).")
         return 1
     print("SUITE PASS: an undeclared or mistyped sink, a silently-omitted parameter, an invalid")
-    print("consume mode and a phantom parameter id are all caught and fail closed, while a")
-    print("correct declaration passes and D24 agent scoping is preserved for declared sinks.")
-    print("HONEST SCOPE: this does not attest that a declaration is HONEST. An author who")
-    print("declares a consequential sink as non-consequential, or an action parameter as inert,")
-    print("still defeats the gate; that is the open root seam (ADVERSARIAL_REVIEW 5.1) which")
-    print("only attestation or derivation from real data flow can close. What is closed here is")
-    print("the avoidable class where an ERROR or DRIFT silently disabled the gate.")
+    print("consume mode and a phantom parameter id are all caught and fail closed (D81); a")
+    print("correct declaration passes and an honestly-inert sink stays ungated (no friction);")
+    print("and under D89 direction B a DISHONESTLY-flagged consequential sink is still gated,")
+    print("because consequentiality is DERIVED from the sink's effect primitive over the")
+    print("attested EFFECT_PRODUCING_PRIMITIVES table, not read from the per-sink boolean or the")
+    print("agent set. Silence (no primitive) fails closed to consequential.")
+    print("HONEST SCOPE, narrowed but not closed: B relocates the trust from a per-sink flag to")
+    print("one small attested table, so a wrong-flag attack is defeated, but a sink that")
+    print("dishonestly declares the WRONG primitive (a money sink claiming display_only) is")
+    print("still defeated. Closing that needs C (attest who may declare) or D (verify the")
+    print("primitive against behaviour), the named follow-ons in")
+    print("plans/declaration_attestation_scoping.md. The A half (fail-closed consume mode) is")
+    print("proven in the gate harness, not here.")
     return 0
 
 

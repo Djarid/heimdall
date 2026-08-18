@@ -61,10 +61,16 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
    it) is a corpus labelled by an external human who has never seen the rules, plus, for the
    pipeline layer specifically, structural bindings authored by that human rather than derived
    by the D88 builder from the blind author's consequence_domain.
-2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
-   silently disabled the gate, but an author who declares a consequential sink as
-   non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1) and
-   remains open.
+2. **Attest the declarations (NARROWED by D89, not closed).** D81 closed declaration ERROR or
+   DRIFT; D89 then narrowed the HONESTY seam on two axes: B derives sink consequentiality from
+   an attested effect-primitive table (so a money sink flagged non-consequential is still
+   gated), and A blocks an action-critical value dishonestly declared CONSUME_INERT. Both
+   relocate trust to a small auditable table, they do not remove it, so a sink that declares
+   the WRONG primitive still defeats the gate. The remaining follow-ons (named in
+   `plans/declaration_attestation_scoping.md`) are C (attest WHO may declare, for the
+   config-tamper adversary) and D (verify the primitive against behaviour, the strongest
+   evidence). That residual is the still-open part of the root seam (`ADVERSARIAL_REVIEW.md`
+   5.1).
 3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
    generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
    grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the
@@ -220,7 +226,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 88 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 89 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -420,10 +426,13 @@ corpus the author never saw.
    builder-derived so the pipeline score carries a heavier caveat than the layer-one rate).
    What remains is a corpus labelled by an external HUMAN who has never seen the rules, with
    that human also authoring the structural bindings; that is the last independence step (G2).
-2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
-   silently disabled the gate, but an author who declares a consequential sink as
-   non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1)
-   and remains open; only attestation or derivation from real data flow closes it.
+2. **Attest the declarations (NARROWED by D89).** D81 closed declaration ERROR or DRIFT; D89
+   narrowed the HONESTY seam: B derives sink consequentiality from an attested effect-primitive
+   table (a money sink flagged non-consequential is still gated), and A blocks an
+   action-critical value dishonestly declared CONSUME_INERT. Both relocate trust to a small
+   auditable table rather than removing it, so a sink declaring the WRONG primitive still
+   defeats the gate. The remaining follow-ons are C (attest WHO may declare) and D (verify the
+   primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
 3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
    generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
    grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the

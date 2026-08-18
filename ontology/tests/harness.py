@@ -603,6 +603,79 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
         rep.gjoll_failures += 1
         rep.line(f"  [CRITICAL] a non-action-critical value was wrongly blocked: {d2.reasons}")
 
+    # D89 direction B, end to end through the gate: a DISHONESTLY-flagged consequential sink
+    # (a money mover declared non-consequential, and NOT in the agent's set) is still gated,
+    # because effective_consequential DERIVES consequentiality from the effect primitive. This
+    # exercises the registry path the D81 tests validate structurally, but through the live
+    # gate on the staged cross-domain chain, with an empty agent sink set so ONLY the derivation
+    # can catch it.
+    from ontology.nornir.sink_declaration import (
+        SinkDeclaration, SinkRegistry, MOVE_MONEY,
+    )
+    actuator.reset()
+    dishonest_registry = SinkRegistry()
+    dishonest_registry.declare(SinkDeclaration(
+        name="sink:payments.execute",
+        parameters=frozenset({"email.newdetails"}),
+        consequential_by_default=False,      # the lie
+        effect_primitive=MOVE_MONEY,         # the derived truth
+    ))
+    empty_sinks = frozenset()  # the flag and the agent set both say "not consequential"
+    b_unsafe = ActionProposal("pay-b", "sink:payments.execute",
+                              {"email.newdetails": CONSUME_ACTION}, declared_safe=False)
+    d_b = enforce(b_unsafe, by_id, empty_sinks, actuator, sink_registry=dishonest_registry)
+    if (not d_b.authorised) and (not d_b.fired) and not actuator.action_effects:
+        rep.line("  [PASS] D89-B: a dishonestly-flagged money sink is still gated by derived "
+                 "consequentiality (false flag + empty agent set both bypassed)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-B: dishonest-flag sink was NOT gated: "
+                 f"authorised={d_b.authorised} fired={d_b.fired}")
+
+    # D89 direction A: a value flow reachability has proved action-critical, declared
+    # CONSUME_INERT at a consequential sink, no longer silently passes. Same staged chain, an
+    # honest money-sink declaration, the value consumed as INERT (the dishonest inert claim).
+    actuator.reset()
+    honest_registry = SinkRegistry()
+    honest_registry.declare(SinkDeclaration(
+        name="sink:payments.execute",
+        parameters=frozenset({"email.newdetails"}),
+        consequential_by_default=True,
+        effect_primitive=MOVE_MONEY,
+    ))
+    money_sinks = frozenset({"sink:payments.execute"})
+    a_inert = ActionProposal("pay-a", "sink:payments.execute",
+                             {"email.newdetails": CONSUME_INERT}, declared_safe=True)
+    d_a = enforce(a_inert, by_id, money_sinks, actuator, sink_registry=honest_registry)
+    if (not d_a.authorised) and (not d_a.fired) and not actuator.action_effects:
+        rep.line("  [PASS] D89-A: an action-critical value declared CONSUME_INERT at a "
+                 "consequential sink is blocked (inert claim not trusted over flow reachability)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-A: dishonest inert claim on an action-critical value "
+                 f"passed: authorised={d_a.authorised} fired={d_a.fired}")
+
+    # D89-A control against pure friction: a NON-action-critical value declared CONSUME_INERT
+    # must still pass. The readonly agent's note has no path to a consequential sink, so
+    # declaring it inert is honest and must authorise. A registry declaring the sink honestly
+    # (so validation passes) with 'note' as its parameter isolates the A check.
+    actuator.reset()
+    note_registry = SinkRegistry()
+    note_registry.declare(SinkDeclaration(
+        name="sink:payments.execute", parameters=frozenset({"note"}),
+        consequential_by_default=True, effect_primitive=MOVE_MONEY,
+    ))
+    a_ok = ActionProposal("log-note", "sink:payments.execute",
+                          {"note": CONSUME_INERT}, declared_safe=True)
+    d_a_ok = enforce(a_ok, by_id2, money_sinks, actuator, sink_registry=note_registry)
+    if d_a_ok.authorised and d_a_ok.fired:
+        rep.line("  [PASS] D89-A control: a NON-action-critical value declared inert still "
+                 "passes (the fail-closed default is not pure friction)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-A control: an honestly-inert value was wrongly blocked: "
+                 f"{d_a_ok.reasons}")
+
     rep.line("")
 
 
