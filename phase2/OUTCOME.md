@@ -42,7 +42,11 @@ passively than surface text is.
 - `false_inert_catch.py` routes the false-inert corpus through Fenrir + Huginn and
   measures the behavioural catch.
 - `tests/harness.py` the deterministic logic suite (six obligations, all passing).
-- `real_model_demo.py` the optional mlx demonstration.
+- `real_model_demo.py` the optional mlx demonstration of the attempt-introspection catch.
+- `real_slot_extraction.py` + `real_slot_demo.py` (D87) the optional real-model
+  demonstration of the STRUCTURAL slot extraction: a `MlxSlotProducer` reuses the PoC's
+  proven bounded generation to fill the `SlotExtractionSchema` values, run end to end
+  through `marshal_fenrir_run` into the live Nornir engine.
 
 ## 3. What the deterministic suite proves (green)
 
@@ -64,9 +68,15 @@ The detection LOGIC holds, tested by failure mode:
   inert by the classifier, yet the engine denies effective inertness on the structural
   state-delta signal and grades it HIGH review, while a benign case binds no slot and
   fabricates no delta (the fail-closed control). This closes D83's honesty condition that
-  the slot bindings were corpus-supplied rather than produced by a live extraction, and is
-  demonstrated against a deterministic mock producer; true grammar-constrained decoding
-  with the real model is the remaining piece.
+  the slot bindings were corpus-supplied rather than produced by a live extraction.
+- (D87, optional real-model demo) The same structural pipeline is demonstrated with a REAL
+  model: `MlxSlotProducer` fills the schema values via the PoC's bounded generation, and on
+  Qwen2.5-7B at temperature 0 the model bound `salary_destination='4471'` from the payroll
+  redirect the classifier still typed inert, the live engine denied effective inertness on
+  the state-delta signal, and the benign control bound nothing (fail-closed). So the slot
+  bindings are now produced by a real model, not a mock. Honest limits unchanged: bounded
+  per-field generation, not true grammar-constrained decoding (fenrir.md 3.1); value
+  poisoning stays a Gjöll concern (FR-6); non-deterministic, so evidence, not a gate.
 
 The suite green means: IF a model is steered into an action attempt, the pipeline catches
 it correctly and fails closed. That machinery is sound.

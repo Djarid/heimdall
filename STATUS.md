@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D86)
+## 0. Resume here (handoff, last updated after D87)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -21,9 +21,10 @@ is committed and pushed; the working tree is clean.
 independent corpus: 33 of 33, defence in depth (D83, D84, D85). That is the headline, and it
 is now a property of the BUILT system: the D79 to D82 mitigations are wired into the live
 engine and gate (D84), the last residual class was closed by growing the consequential-slot
-vocabulary rather than by a keyword (D85), and Fenrir now performs the STRUCTURAL slot
-extraction that feeds the state-delta layer, demonstrated end to end against the live engine
-(D86), so the slot bindings the later layers need are produced rather than corpus-supplied.
+vocabulary rather than by a keyword (D85), and Fenrir performs the STRUCTURAL slot extraction
+that feeds the state-delta layer, now demonstrated with a REAL model (D86 built it and proved
+it against a mock, D87 proved it against Qwen2.5-7B via the PoC's bounded generation), so the
+slot bindings the later layers need are produced by a real model rather than corpus-supplied.
 Underneath that, the first-layer classifier on its own is deliberately weak: it types about
 48 percent (16 of 33) of consequential content inert, and that layer-one break stays OPEN and
 RED (17 findings, all false-inert) because no content pattern can separate a passively-phrased
@@ -32,9 +33,8 @@ consequence from a genuine informational statement without world knowledge, whic
 guarantee does not rest on the first layer: five later layers, none depending on the
 classifier being right, catch what it misses. So read the 48 percent as the pessimistic
 single-layer figure and the 33-of-33 as what the whole pipeline does, under the remaining
-honesty conditions (same-author bindings, and the structural extraction is demonstrated
-against a deterministic mock producer; true grammar-constrained decoding with the real model
-is the remaining piece, D86).
+honesty conditions (same-author bindings; the structural extraction uses bounded per-field
+generation, not yet true token-level grammar-constrained decoding, D87).
 
 **Run this first, to see the state for yourself:**
 
@@ -45,21 +45,19 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness   # 48 percent lay
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Real-model grammar-constrained decoding for the structural extraction.** D86 built the
-   structural slot extraction and wired it into the live engine, but demonstrated it against a
-   deterministic mock producer (the repo's mock-first discipline). The remaining piece is
-   true grammar-constrained decoding into the `SlotExtractionSchema` with the real mlx model,
-   the analogue of the `e2e_harness` real-model check, so the 33-of-33 becomes a live-traffic
-   property rather than a mock demonstration. `plans/dd/fenrir.md` section 3.1 (FR-2) specifies
-   this.
-2. **Build a genuinely third-party corpus.** The bindings and the rules share one author, so
-   both the 48 percent and the 33-of-33 are lower bounds on difficulty, not unbiased
-   estimates. A corpus labelled by someone who has never read the rules is the remaining
-   highest-information artefact (G2).
-3. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
+1. **Build a genuinely third-party corpus.** With the real-model structural extraction now
+   demonstrated (D87), this is the highest-information remaining artefact (G2). The bindings
+   and the rules share one author, so both the 48 percent and the 33-of-33 are lower bounds on
+   difficulty, not unbiased estimates. A corpus labelled by someone who has never read the
+   rules would test the real generalisation.
+2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
    silently disabled the gate, but an author who declares a consequential sink as
    non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1) and
    remains open.
+3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
+   generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
+   grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the
+   named refinement, higher fidelity to the eventual design and a new dependency.
 
 **Traps that have already caught someone in this repo:**
 
@@ -132,16 +130,18 @@ into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine'
 output and its integration banner reports every mitigation as wired. D85 closed the residual
 CLASS the first 100 percent score had hidden (three cases, an asset transfer, a trademark
 assignment, an insurance lapse) by growing the consequential-slot vocabulary, not a keyword.
-D86 then built the structural slot extraction that produces those bindings: Fenrir binds
-values to typed slots and feeds the state-delta layer end to end, demonstrated against the
-live engine. What still bounds the 100 percent is that this is demonstrated against a
-deterministic mock producer (the repo's mock-first discipline); true grammar-constrained
-decoding with the real model is the remaining piece (D86, task 1). So the 100 percent is a
-realistic estimate of the built pipeline whose structural-extraction mechanism now exists, a
-lower bound on difficulty because the corpus and the rules share one author, and not yet a
-live-traffic guarantee until the real-model decoding lands. A fresh probe whose effect falls
-outside every declared consequential slot could still re-open a residual; the limit is the
-slot vocabulary's breadth, which grows on demand (D60, D85).
+D86 then built the structural slot extraction that produces those bindings, and D87
+demonstrated it with a REAL model: Fenrir binds values to typed slots and feeds the
+state-delta layer end to end, proven against Qwen2.5-7B via the PoC's bounded generation (the
+model bound `salary_destination` from an inertly-phrased payroll redirect the classifier
+still typed inert, and the live engine denied effective inertness). What still bounds the
+100 percent is that the extraction uses bounded per-field generation, the Phase-2 stand-in
+`plans/dd/fenrir.md` 3.1 sanctions, not yet true token-level grammar-constrained decoding
+(D87, a named refinement); the corpus and the rules share one author, so the figure is a
+lower bound on difficulty; and value poisoning stays open (a model can bind a schema-valid
+wrong value, contained by Gjöll, FR-6). A fresh probe whose effect falls outside every
+declared consequential slot could still re-open a residual; the limit is the slot
+vocabulary's breadth, which grows on demand (D60, D85).
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -203,7 +203,7 @@ slot vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 86 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 43 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 87 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 43 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -270,8 +270,14 @@ D79 to D82 (the mitigations) and D83 (the pipeline score and its residual).
   fail-closed (an unbound or low-confidence field fabricates no delta). Phase2 harness
   obligation 6 proves it end to end against the live engine: an inertly-phrased payroll
   redirect is still typed inert by the classifier yet the engine denies effective
-  inertness on the structural signal. Demonstrated against a deterministic mock; real
-  grammar-constrained decoding with the model is the remaining piece.
+  inertness on the structural signal. Demonstrated against a deterministic mock (D86), and
+  now also against a REAL model (D87, `phase2/real_slot_extraction.py` and
+  `phase2/real_slot_demo.py`): a `MlxSlotProducer` reuses the PoC's proven bounded
+  generation (`_StopOnNewline`, isolated-payload splice) to fill the schema values, and on
+  Qwen2.5-7B it bound `salary_destination` from an inertly-phrased payroll redirect the
+  classifier still typed inert, with the benign control binding nothing (fail-closed). The
+  demo is optional and skip-if-absent, like `e2e_harness.py`. Bounded per-field generation,
+  not yet true grammar-constrained decoding, is the named remaining refinement.
 - **False-inert mitigations in depth, now WIRED** (`ontology/nornir/`, D79 to D82, wired by
   D84): four modules, each with its own green harness, none depending on the classifier being
   right, and all now called by the live engine and gate. `state_delta.py` judges consequence
@@ -342,14 +348,16 @@ WIRED into the live engine and gate (D84), closing the integration gap that had 
 score the designed pipeline, and the D83 residual class was closed by growing the
 consequential-slot vocabulary (D85, `holder_of_record` and `entitlement_status`), so the
 pipeline score rose to 33 of 33 (100 percent) as a built property. Fenrir then gained STRUCTURAL slot
-extraction feeding the state-delta layer end to end (D86), demonstrated against a
-deterministic mock, so the slot bindings the later layers need are produced rather than
-corpus-supplied. Open items now: the false-inert fix (D67-fix, still OPEN as a classification
-break and RED at layer one but mitigated in depth and wired), real-model grammar-constrained
-decoding for the structural extraction (D86 built the mechanism and demonstrated it on a
-mock; the real-model decoding is the remaining piece), declaration attestation (the
+extraction feeding the state-delta layer end to end (D86), demonstrated first against a
+deterministic mock and then against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
+generation), so the slot bindings the later layers need are produced by a real model rather
+than corpus-supplied. Open items now: the false-inert fix (D67-fix, still OPEN as a
+classification break and RED at layer one but mitigated in depth and wired), true
+token-level grammar-constrained decoding (D87 uses bounded per-field generation, the Phase-2
+stand-in; the true grammar constraint is the named refinement), declaration attestation (the
 honest-declaration seam D81 left open, `ADVERSARIAL_REVIEW.md` 5.1), a genuinely third-party
-corpus (D77 is same-author), and the research questions D33 to D36.
+corpus (D77 is same-author), value poisoning (contained by Gjöll, FR-6, not closed at the
+extraction layer), and the research questions D33 to D36.
 
 An HLD and a Phase 1-3 Detailed Design have been authored for the build-out (D73,
 `plans/hld.md` and `plans/dd/`), grounded in an achievement audit against the real
@@ -374,30 +382,29 @@ trust models aligned.
 
 The pipeline now contains every consequential case on the independent corpus, 33 of 33, as a
 BUILT property: the D79 to D82 mitigations are wired into the live engine and gate (D84), the
-last residual class was closed by slot-vocabulary growth (D85), and Fenrir now performs the
-structural slot extraction that feeds the state-delta layer end to end (D86). The layer-one
-classifier on its own still misses 48 percent (D77, D83) and stays OPEN and RED (17 findings),
-because that break is bounded by invariant 3.1 and no content pattern closes it; the guarantee
-does not rest on it. The highest-value work is now turning the demonstrated structural
-extraction into a real-model property.
+last residual class was closed by slot-vocabulary growth (D85), and Fenrir performs the
+structural slot extraction that feeds the state-delta layer end to end, demonstrated first
+against a mock (D86) and now against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
+generation). The layer-one classifier on its own still misses 48 percent (D77, D83) and stays
+OPEN and RED (17 findings), because that break is bounded by invariant 3.1 and no content
+pattern closes it; the guarantee does not rest on it. With the real-model structural
+extraction now demonstrated, the highest-value work is testing the whole thing against a
+corpus the author never saw.
 
-1. **Real-model grammar-constrained decoding for the structural extraction.** D86 built the
-   `SlotExtractionSchema`, the deterministic `bind_slots` and the `marshal_fenrir_run` bridge,
-   and proved end to end against the LIVE engine that a structural binding denies effective
-   inertness on content the classifier types inert. But it is demonstrated against a
-   deterministic mock producer. The remaining piece is true grammar-constrained decoding into
-   the schema with the real mlx model, the analogue of `e2e_harness`, so the model fills the
-   schema values under token-level constraint. That turns the 100 percent from a mock
-   demonstration into a live-traffic property. `plans/dd/fenrir.md` section 3.1, FR-2.
-2. **Build a genuinely THIRD-PARTY corpus.** The independent scenario-authored corpus (D77)
+1. **Build a genuinely THIRD-PARTY corpus.** The independent scenario-authored corpus (D77)
    raised the measured layer-one rate from 1/17 to 16/33, demonstrating the circularity the
    self-authored number hid, but it is still same-author, so both the 48 percent and the
    33-of-33 are lower bounds on difficulty, not unbiased estimates. A corpus labelled by
    someone who has never read the rules is the remaining highest-information artefact (G2).
-3. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
+2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
    silently disabled the gate, but an author who declares a consequential sink as
    non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1)
    and remains open; only attestation or derivation from real data flow closes it.
+3. **True token-level grammar-constrained decoding.** D87 uses the PoC's bounded per-field
+   generation, the Phase-2 stand-in `plans/dd/fenrir.md` 3.1 sanctions. Replacing it with true
+   grammar-constrained decoding (outlines/xgrammar) into the `SlotExtractionSchema` is the
+   named refinement: higher fidelity to the eventual design, a new dependency, and it removes
+   the last "stand-in" caveat on the structural-extraction layer.
 4. **Decide the layer-one break's disposition (D67-fix); it is bounded by invariant 3.1.**
    Now less urgent since the pipeline contains it, but still worth closing on the
    classification side. The two honest directions are a deterministic
