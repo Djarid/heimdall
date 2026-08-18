@@ -81,6 +81,7 @@ from ..yggdrasil.control_surface import AgentContext
 from .harness import high_risk_types, inert_types, load
 
 CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
+THIRDPARTY_CORPUS = Path(__file__).parent / "corpora" / "false_inert_thirdparty.json"
 
 # The mitigation modules whose layers this harness scores, and the live pipeline modules that
 # would have to call them for the score to describe the BUILT system rather than the designed
@@ -267,7 +268,10 @@ def score(nornir: Nornir, cases: list, INERT: frozenset, HIGH: frozenset) -> lis
 
 
 def main() -> int:
-    data = json.loads(CORPUS.read_text())
+    import sys
+    thirdparty = "--thirdparty" in sys.argv[1:]
+    corpus_path = THIRDPARTY_CORPUS if thirdparty else CORPUS
+    data = json.loads(corpus_path.read_text())
     cases = data["cases"]
     onto = load()
     nornir = Nornir(onto)
@@ -277,7 +281,16 @@ def main() -> int:
     outcomes = score(nornir, cases, INERT, HIGH)
     n = len(outcomes)
 
-    print("Pipeline score: defence in depth over the independent false-inert corpus")
+    if thirdparty:
+        print("Pipeline score: defence in depth over the BLIND-AUTHORED third-party corpus (D88)")
+        print("HEAVIER CAVEAT than the default D77 run: the structural bindings this score depends")
+        print("on (layers 2 to 5) were added by the D88 builder from the blind author's stated")
+        print("consequence_domain, NOT by the blind author, so this pipeline score is designed")
+        print("behaviour under same-author bindings even though the LAYER-1 classification input is")
+        print("blind-authored. Quote the blind layer-1 rate (5/36) as the independent figure and")
+        print("this pipeline score only as designed behaviour. See the corpus independence_discipline.")
+    else:
+        print("Pipeline score: defence in depth over the independent false-inert corpus")
     print("See the module docstring for the four honesty conditions before quoting any number")
     print("from this. Layers 2 to 5 also consume structural inputs (slot bindings, flow edges)")
     print("that Fenrir and Mimisbrunnr do not yet produce from a live extraction.")
@@ -287,7 +300,8 @@ def main() -> int:
 
     # The single-layer number, for contrast.
     false_inert = [o for o in outcomes if o.classified in INERT]
-    print(f"LAYER 1 ONLY (the D77 headline): false-inert {len(false_inert)}/{n} "
+    headline = "the blind-authored D88 figure" if thirdparty else "the D77 headline"
+    print(f"LAYER 1 ONLY ({headline}): false-inert {len(false_inert)}/{n} "
           f"({100*len(false_inert)//n} percent) typed inert by the classifier.")
     print()
 

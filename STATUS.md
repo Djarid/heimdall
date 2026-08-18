@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D87)
+## 0. Resume here (handoff, last updated after D88)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -26,10 +26,15 @@ that feeds the state-delta layer, now demonstrated with a REAL model (D86 built 
 it against a mock, D87 proved it against Qwen2.5-7B via the PoC's bounded generation), so the
 slot bindings the later layers need are produced by a real model rather than corpus-supplied.
 Underneath that, the first-layer classifier on its own is deliberately weak: it types about
-48 percent (16 of 33) of consequential content inert, and that layer-one break stays OPEN and
-RED (17 findings, all false-inert) because no content pattern can separate a passively-phrased
+48 percent (16 of 33) of consequential content inert on the rules-aware independent corpus,
+and that layer-one break stays OPEN and RED (now 22 findings, all false-inert, after D88 added
+a blind-authored corpus) because no content pattern can separate a passively-phrased
 consequence from a genuine informational statement without world knowledge, which invariant
-3.1 keeps off the classification path. The point of the architecture is exactly that the
+3.1 keeps off the classification path. D88 is the strongest independence obtainable inside an
+agent session (a fresh sub-agent authored the scenarios with no rule or repo access): it reads
+LOWER, 5 of 36 (about 14 percent), because a rules-aware author targets the classifier's blind
+spots more precisely than a blind one, so the two rates bound different adversaries and neither
+is fully third-party. The point of the architecture is exactly that the
 guarantee does not rest on the first layer: five later layers, none depending on the
 classifier being right, catch what it misses. So read the 48 percent as the pessimistic
 single-layer figure and the 33-of-33 as what the whole pipeline does, under the remaining
@@ -39,17 +44,23 @@ generation, not yet true token-level grammar-constrained decoding, D87).
 **Run this first, to see the state for yourself:**
 
 ```
-poc/.venv/bin/python -m ontology.tests.harness                  # RED at 17 layer-one, expected
-poc/.venv/bin/python -m ontology.tests.pipeline_score_harness   # 48 percent layer-one, 100 percent pipeline
+poc/.venv/bin/python -m ontology.tests.harness                              # RED at 22 layer-one, expected
+poc/.venv/bin/python -m ontology.tests.pipeline_score_harness               # D77: 48% layer-one, 33/33 pipeline
+poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D88 blind: 14% layer-one, 33/36 pipeline
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Build a genuinely third-party corpus.** With the real-model structural extraction now
-   demonstrated (D87), this is the highest-information remaining artefact (G2). The bindings
-   and the rules share one author, so both the 48 percent and the 33-of-33 are lower bounds on
-   difficulty, not unbiased estimates. A corpus labelled by someone who has never read the
-   rules would test the real generalisation.
+1. **Get an EXTERNAL-HUMAN third-party corpus.** D88 built the strongest independence
+   obtainable inside an agent session: a blind-authored corpus whose scenarios came from a
+   fresh sub-agent with no rule or repo access (`false_inert_thirdparty.json`). It measures a
+   layer-one rate of 5/36 (about 14 percent), LOWER than the rules-aware 48 percent, and the
+   pipeline contains 33 of 36 with zero escapes. The lower blind rate is the finding: a
+   rules-aware author targets the blind spots more precisely than a blind one, so the two
+   rates bound different adversaries. What is STILL wanted (G2, and D88 does not claim to be
+   it) is a corpus labelled by an external human who has never seen the rules, plus, for the
+   pipeline layer specifically, structural bindings authored by that human rather than derived
+   by the D88 builder from the blind author's consequence_domain.
 2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
    silently disabled the gate, but an author who declares a consequential sink as
    non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1) and
@@ -69,6 +80,12 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness   # 48 percent lay
 - Do not quote the 48 percent as "the system's containment" or the 100 percent as "no risk".
   The 48 percent is layer one alone; the 100 percent is the whole pipeline under stated
   honesty conditions. Both are lower bounds on difficulty (same-author corpus).
+- Do not read D88's LOWER blind rate (14 percent) as the break being smaller than D77's 48
+  percent. They bound different adversaries: a rules-aware author targets the blind spots
+  precisely, a blind one trips them by accident. The break is still real and structural, and
+  D67-fix stays OPEN. D88 is BLIND, not fully third-party (orchestrator session knowledge,
+  shared model family, same-author structural bindings); its pipeline score carries a heavier
+  caveat than its layer-one rate because the structural bindings are builder-derived.
 - Anything added under `ontology/yggdrasil/`, `ontology/nornir/` or `poc/symbolic.py` is on
   the authorisation path and may import only roots on `ALLOWED_IMPORT_ROOTS` in
   `ontology/nornir/symbolic_guard.py`. The 3.1 guard is fatal and runs first. The D84 wiring
@@ -203,7 +220,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 87 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 43 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 88 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -391,11 +408,18 @@ pattern closes it; the guarantee does not rest on it. With the real-model struct
 extraction now demonstrated, the highest-value work is testing the whole thing against a
 corpus the author never saw.
 
-1. **Build a genuinely THIRD-PARTY corpus.** The independent scenario-authored corpus (D77)
-   raised the measured layer-one rate from 1/17 to 16/33, demonstrating the circularity the
-   self-authored number hid, but it is still same-author, so both the 48 percent and the
-   33-of-33 are lower bounds on difficulty, not unbiased estimates. A corpus labelled by
-   someone who has never read the rules is the remaining highest-information artefact (G2).
+1. **Get an EXTERNAL-HUMAN third-party corpus.** The independent scenario-authored corpus
+   (D77) raised the measured layer-one rate from 1/17 to 16/33, demonstrating the circularity
+   the self-authored number hid. D88 went one step further with a BLIND-authored corpus
+   (`false_inert_thirdparty.json`): scenarios from a fresh sub-agent with no rule or repo
+   access, the strongest independence obtainable inside an agent session. It measures 5/36
+   (about 14 percent) at layer one, LOWER than the rules-aware 48 percent, which is the
+   finding: a rules-aware author targets the classifier's blind spots more precisely than a
+   blind one, so the two rates bound different adversaries. D88 is still not fully third-party
+   (orchestrator session knowledge, shared model family, and its structural bindings are
+   builder-derived so the pipeline score carries a heavier caveat than the layer-one rate).
+   What remains is a corpus labelled by an external HUMAN who has never seen the rules, with
+   that human also authoring the structural bindings; that is the last independence step (G2).
 2. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
    silently disabled the gate, but an author who declares a consequential sink as
    non-consequential still defeats it. That is the root seam (`ADVERSARIAL_REVIEW.md` 5.1)

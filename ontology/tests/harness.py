@@ -647,6 +647,7 @@ def run_mitigations(rep: Report) -> None:
 
 FALSE_INERT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_adversarial.json"
 FALSE_INERT_INDEPENDENT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
+FALSE_INERT_THIRDPARTY_CORPUS = Path(__file__).parent / "corpora" / "false_inert_thirdparty.json"
 
 
 def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
@@ -655,13 +656,19 @@ def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
     the classifier types to an inert type, so it skips both the Gjoll gate and human
     review. This is the true bound of the guarantee (ADVERSARIAL_REVIEW.md 5.2).
 
-    Two corpora are run (D77). The original `false_inert_adversarial.json` was authored
-    by the same person who wrote the rules and measures 1/17: a lower bound tuned to the
-    rules. The larger `false_inert_independent.json` is scenario-authored across more
+    Three corpora are run (D77, D88). The original `false_inert_adversarial.json` was
+    authored by the same person who wrote the rules and measures 1/17: a lower bound tuned
+    to the rules. The larger `false_inert_independent.json` is scenario-authored across more
     consequence domains and inert wrappers, labelled purely by the external consequence
-    test, and measures a much higher rate (13/30): the self-authored number badly
-    understated the bound. Both are still same-author, so both are lower bounds, not
-    unbiased estimates; a true third-party corpus remains wanted.
+    test, and measures a much higher rate (16/33): the self-authored number badly
+    understated the bound. The `false_inert_thirdparty.json` is BLIND-authored (D88): its
+    scenarios and phrasings were produced by a fresh sub-agent with no access to the rules
+    or repository, the strongest independence obtainable inside an agent session. It measures
+    5/36 (about 14 percent), LOWER than the rules-aware 48 percent, which is itself the
+    finding: a rules-aware author targets the classifier's blind spots more precisely than a
+    blind one, so the two rates bound different things. All three are still not fully
+    third-party (see each corpus's independence_discipline); a corpus labelled by an external
+    human who has never seen the rules remains the wanted artefact.
 
     A consequential case that lands INERT is a false-inert and a critical finding
     (invariant 3.11 obligation 8.2). A consequential case routed to review or typed
@@ -730,6 +737,8 @@ def main() -> int:
                     "self-authored corpus, a lower bound tuned to the rules")
     run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
                     "independent scenario-authored corpus, D77")
+    run_false_inert(nornir, rep, inert, FALSE_INERT_THIRDPARTY_CORPUS,
+                    "blind-authored corpus (fresh sub-agent, no rule access), D88")
     run_mitigations(rep)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
@@ -754,15 +763,19 @@ def main() -> int:
     print(f"SUITE FAIL: {fatal} critical finding(s). Detail above.")
     if rep.false_inert_failures and fatal == rep.false_inert_failures:
         print()
-        print("The only failures are false-inert findings from the two adversarial corpora")
-        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77). This red bar is EXPECTED")
-        print("and RECORDED: consequential content that positively earns an inert signal defeats")
-        print("the fail-closed default, because inertness is earned by a content pattern an")
-        print("attacker can also satisfy. TWO measurements, both lower bounds: the self-authored")
+        print("The only failures are false-inert findings from the three adversarial corpora")
+        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77, D88). This red bar is")
+        print("EXPECTED and RECORDED: consequential content that positively earns an inert signal")
+        print("defeats the fail-closed default, because inertness is earned by a content pattern")
+        print("an attacker can also satisfy. THREE measurements, all lower bounds: the self-authored")
         print("corpus reads 1/17 after the D69 and D72 guards (each fixed the cases it was shown,")
-        print("each re-opened by a fresh probe), but the larger independent scenario-authored")
-        print("corpus reads 16/33 (D77, D83), so the self-authored number badly understated the")
-        print("bound. The break is large, not an edge case: the classifier is blind to consequence")
+        print("each re-opened by a fresh probe); the larger independent scenario-authored corpus")
+        print("reads 16/33 (D77, D83), so the self-authored number badly understated the bound; and")
+        print("the blind-authored corpus (fresh sub-agent, no rule access, D88) reads 5/36 (about")
+        print("14 percent), LOWER than the rules-aware 48 percent, which is itself the finding: a")
+        print("rules-aware author targets the classifier's blind spots more precisely than a blind")
+        print("one, so the rates bound different things and none is fully third-party. The break is")
+        print("real and structural, not an edge case: the classifier is blind to consequence")
         print("expressed without imperative or movement vocabulary, across config changes,")
         print("deletion, contract renewal, access grants, payroll redirects and security-state")
         print("changes. No content pattern separates a passively-phrased or metaphorical")
