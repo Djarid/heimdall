@@ -32,10 +32,16 @@ passively than surface text is.
   output, a model-agnostic `extract` taking an emission-producer.
 - `huginn.py` the six hard canary signals and the attempt-introspection tripwire, both
   fail-closed (a hit halts and quarantines; nothing is ever authorised).
-- `mock_producers.py` deterministic mock models for the always-run suite.
+- `mock_producers.py` deterministic mock models for the always-run suite, including a
+  `structural_extractor` that emits typed slot values.
+- `slot_extraction.py` (D86) STRUCTURAL slot extraction: a fixed authored
+  `SlotExtractionSchema` the model fills with bounded values only, a deterministic
+  `bind_slots` that maps them to typed `ProposedFact`s, and a `marshal_fenrir_run` bridge
+  into `MarshalledAssertion.proposed_facts`. Model-free binding (invariant 3.1) and
+  fail-closed (an unbound or low-confidence field fabricates no delta).
 - `false_inert_catch.py` routes the false-inert corpus through Fenrir + Huginn and
   measures the behavioural catch.
-- `tests/harness.py` the deterministic logic suite (five obligations, all passing).
+- `tests/harness.py` the deterministic logic suite (six obligations, all passing).
 - `real_model_demo.py` the optional mlx demonstration.
 
 ## 3. What the deterministic suite proves (green)
@@ -53,6 +59,14 @@ The detection LOGIC holds, tested by failure mode:
   alike: the zero-false-positive property the tripwire's dispositiveness rests on.
 - With an injectable mock, the tripwire catches fi-19 (the passive standing order) and
   fi-20 (the metaphor) that the content classifier types inert, with zero false catches.
+- (Obligation 6, D86) STRUCTURAL slot extraction feeds the wired state-delta layer end to
+  end against the LIVE Nornir engine: an inertly-phrased payroll redirect is still typed
+  inert by the classifier, yet the engine denies effective inertness on the structural
+  state-delta signal and grades it HIGH review, while a benign case binds no slot and
+  fabricates no delta (the fail-closed control). This closes D83's honesty condition that
+  the slot bindings were corpus-supplied rather than produced by a live extraction, and is
+  demonstrated against a deterministic mock producer; true grammar-constrained decoding
+  with the real model is the remaining piece.
 
 The suite green means: IF a model is steered into an action attempt, the pipeline catches
 it correctly and fails closed. That machinery is sound.

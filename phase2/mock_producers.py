@@ -139,3 +139,50 @@ def token_dropping_extractor(wrapped_prompt: str) -> FenrirEmission:
         output="A summary with no canary token at all.",
         tool_calls=(),
     )
+
+
+# Structural-extraction mock (D86). A grammar-constrained extractor fills bounded VALUES
+# into a fixed schema; this mock models that by mapping recognised facts in the content to
+# schema field values. It is NOT a detector and NOT the security boundary: it stands in for
+# a model emitting slot values, exactly as the other mocks stand in for a model emitting
+# free text. The security property is that the schema and the binding (slot_extraction.py)
+# are fixed and deterministic, so whatever this mock emits can only fill declared values,
+# never invent a slot. Deliberately keyed on the EFFECT a value would have (a new bank
+# destination, a cleared flag), which is what a competent reader binds, so the state-delta
+# layer catches consequence even when the surface wording is inert. That is the division of
+# labour: the classifier is blind to passive phrasing, the structural binding is not,
+# because it reads what the value WOULD DO, not how it reads.
+_STRUCTURAL_PATTERNS = (
+    # (schema field, regex over the content) -> the value bound is the matched group
+    ("new_bank_details", re.compile(r"\b(?:remittance|bank|payment) (?:coordinates|details|account) (?:have )?(?:moved|changed|updated) (?:to )?(?:the )?([\w -]+)", re.I)),
+    ("new_salary_destination", re.compile(r"\bsalary (?:will |to )?(?:now )?(?:land|go|paid) (?:in|to) (?:the )?([\w -]+?)(?:\.|$)", re.I)),
+    ("changed_feature_flag", re.compile(r"\bflag (?:that was holding[\w ]+ )?(?:has been |is )?(cleared|enabled|disabled|set)", re.I)),
+    ("changed_firewall_rule", re.compile(r"\b(?:firewall|rule) (?:is )?(open|opened|added|removed|changed)\b", re.I)),
+    ("changed_retention_policy", re.compile(r"\bretention (?:is |set to )?([\w ]+?minutes|purge[\w ]*)", re.I)),
+    ("new_holder_of_record", re.compile(r"\b(?:registration|mark|name|title) (?:moves|is (?:now )?recorded|transferred) (?:to |under )(?:the )?([\w -]+)", re.I)),
+    ("changed_entitlement_status", re.compile(r"\bcover (?:on[\w ]+ )?(?:is )?set to (lapse|expire|end)\b", re.I)),
+)
+
+
+def structural_extractor(wrapped_prompt: str) -> FenrirEmission:
+    """A model that emits STRUCTURAL slot values as well as a neutral summary. Compliant
+    (echoes the token, attempts no action); its value is that it BINDS the consequential
+    fact in the content to a typed schema field, which the free-text path cannot. Used to
+    drive the end-to-end structural pipeline: bind_slots turns these into ProposedFacts and
+    the wired state-delta layer catches the consequence downstream even for content the
+    classifier types inert."""
+    token = _echo_token(wrapped_prompt)
+    content = extract_content(wrapped_prompt)
+    slot_values: dict = {}
+    for field_name, pattern in _STRUCTURAL_PATTERNS:
+        m = pattern.search(content)
+        if m:
+            # The bound value is the first captured group if present, else the whole match.
+            slot_values[field_name] = (m.group(1) if m.groups() else m.group(0)).strip()
+    summary = f"The content appears to concern: {content[:80]}"
+    return FenrirEmission(
+        reasoning_trace="Reading external content as inert data; binding declared fields only.",
+        output=f"{summary} {token}",
+        tool_calls=(),
+        slot_values=slot_values,
+    )

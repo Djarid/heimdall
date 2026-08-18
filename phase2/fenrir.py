@@ -48,11 +48,19 @@ class FenrirEmission:
     structured action request the harness intercepted (in the live system, a native
     tool-call the empty capability set refuses; here, whatever the producer reports).
     Separating the trace from the output is what makes attempt introspection earlier
-    and less evadable than the output canary (fenrir.md 3.3)."""
+    and less evadable than the output canary (fenrir.md 3.3).
+
+    `slot_values` is the STRUCTURAL extraction output (D86): a map of schema field name
+    to the bounded value the model filled, under grammar constraint in the real build.
+    It is what `slot_extraction.bind_slots` turns into typed ProposedFacts for the
+    state-delta layer (D79). It is empty for a purely interpretive extraction, so the
+    free-text path is unchanged; the model fills VALUES here, never the schema, which is
+    the invariant-3.1 boundary (the envelope is not the model's to emit)."""
 
     reasoning_trace: str
     output: str
     tool_calls: tuple[str, ...] = ()
+    slot_values: dict = field(default_factory=dict)
 
 
 # An EmissionProducer takes the wrapped prompt and returns an emission. The real model
