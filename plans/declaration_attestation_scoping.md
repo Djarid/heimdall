@@ -1,7 +1,7 @@
 # Scoping: attesting the sink and flow declarations (the root seam, 5.1)
 
 **Author:** scoping pass for STATUS section 0 task 2
-**Status:** A and B built (D89); D built for observable sinks (D93). C is the one direction not yet built.
+**Status:** All four directions built in-repo: A and B (D89), D for observable sinks (D93), C (D94). What remains is deployment-phase (public-key signing, runtime-taint D, opaque-sink handling) and flow-edge honesty.
 **Reads with:** `ADVERSARIAL_REVIEW.md` 5.1, `DECISIONS.md` D78, D81, `ontology/nornir/sink_declaration.py`, `ontology/nornir/gjoll.py`
 
 This note scopes the open root seam so the fix direction can be chosen from an
@@ -113,7 +113,7 @@ author set.
   and a derivation pass, and it reshapes how `effective_consequential` is computed.
   Aligns with `plans/dd/gjoll.md` naming this as the Phase-3 gap to close first.
 
-### C. Attest the declaration (strong on integrity, needs infrastructure)
+### C. Attest the declaration (strong on integrity, needs infrastructure): BUILT as a keyed digest (D94)
 
 Sign declarations and refuse an unsigned or unverified one at load time. A
 declaration becomes a fact with provenance: who declared it, verified against a
@@ -132,6 +132,20 @@ on the authorisation path) from imports to configuration.
 - **Cost:** key management, a signing step in the authoring pipeline, a verified
   set at load. New infrastructure and a new operational burden. Mirrors the
   verified-tokenizer-set idea (5.7).
+
+**Built (D94), keyed-digest form.** C is now built in-repo. `ontology/nornir/sink_attestation.py`
+gives each declaration an `authoriser` id and a keyed `attestation` digest (`hashlib` SHA-256
+over the declaration's canonical bytes plus a per-authoriser secret from a `TrustedAuthoriserSet`
+loaded at startup); `verify_attestation` fails closed (an unattested, unknown-authoriser or
+tampered declaration is refused) and `SinkRegistry.declare_attested` refuses an unverified one at
+load. `ontology/tests/sink_attestation_harness.py` proves tamper, unknown-authoriser and
+unattested are refused, an honest one loads, and asserts the malicious-authoriser limit
+explicitly (obligation 5). `hashlib` was added to the 3.1 allowlist as a reviewed decision (a
+hashing primitive, not a model or network module); the guard stays clean at 33 files. What stays
+unbuilt, as this section anticipated: the ASYMMETRIC-KEY signing pipeline (D94 is a keyed digest,
+which proves integrity against tampering but not public-key non-repudiation, 5.7), and C's
+intrinsic limit that it binds identity and integrity, NOT honesty, so a malicious authoriser's
+lie still verifies (B and D are the honesty backstop). See D94.
 
 ### D. Behaviour-derivation / runtime cross-check (strongest evidence, heaviest): BUILT for observable sinks (D93)
 
@@ -188,11 +202,14 @@ auditable, rarely-changing base table. **A** is a cheap complementary default
 worth measuring for friction. **C** and **D** are follow-on phases (C when a
 config-integrity pipeline exists, D when sinks are instrumentable).
 
-**Update (D89, D93).** B and A were built (D89). D was then built in its test-harness form
+**Update (D89, D93, D94).** B and A were built (D89). D was then built in its test-harness form
 (D93): where a sink is instrumentable, its declared primitive is now verified against observed
-behaviour, which DISCHARGES the wrong-primitive trust B could only relocate, rather than
-deferring it to a later phase. So the recommendation's ordering held, and only C remains
-unbuilt (plus the opaque-sink and runtime-taint residuals of D).
+behaviour, which DISCHARGES the wrong-primitive trust B could only relocate. C was then built in
+its keyed-digest form (D94), closing the config-tamper adversary at load. So the recommendation's
+ordering held and all four scoped directions are now built in-repo. What remains is
+deployment-phase and needs real non-mock sinks (public-key signing rather than the keyed digest,
+the runtime-taint form of D, opaque-sink handling), plus the flow-EDGE honesty, which this note
+treated as the same shape of seam but did not build.
 
 A first buildable step that stays inside the repo's current depth and does not
 need new infrastructure: implement **B** as a demonstration over the seed sinks

@@ -126,6 +126,16 @@ class SinkDeclaration:
     parameters: frozenset[str]
     consequential_by_default: bool = True
     effect_primitive: "str | None" = None
+    # Provenance (D94, direction C). `authoriser` is the identity that declared this sink;
+    # `attestation` is the keyed digest over the declaration's canonical bytes (see
+    # `sink_attestation.py`). Both default to None so existing and test declarations still
+    # construct; verification is only enforced where a caller supplies a trusted authoriser set,
+    # exactly as effect-primitive derivation (B) and behaviour verification (D) are opt-in on the
+    # gate. When enforced, an absent authoriser or digest is REFUSED (fail closed): silence never
+    # earns trust. Attestation binds WHO declared it and that it is UNALTERED, never that it is
+    # TRUE (the malicious-authoriser limit, addressed by B and D, not C).
+    authoriser: "str | None" = None
+    attestation: "str | None" = None
 
 
 @dataclass
@@ -136,6 +146,18 @@ class SinkRegistry:
     declarations: dict = field(default_factory=dict)
 
     def declare(self, declaration: SinkDeclaration) -> None:
+        self.declarations[declaration.name] = declaration
+
+    def declare_attested(self, declaration: SinkDeclaration, trusted) -> None:
+        """Register a declaration ONLY if its provenance verifies against the trusted authoriser
+        set (D94, direction C). An unattested, unknown-authoriser or tampered declaration is
+        REFUSED with a ValueError, never silently admitted: this is the fail-closed load gate.
+        `trusted` is a `TrustedAuthoriserSet`. Import is local to avoid a module-level cycle and
+        to keep this module usable without attestation for the existing callers."""
+        from .sink_attestation import verify_attestation
+        result = verify_attestation(declaration, trusted)
+        if not result.verified:
+            raise ValueError(result.reason)
         self.declarations[declaration.name] = declaration
 
     def get(self, name: str) -> "SinkDeclaration | None":

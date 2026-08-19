@@ -68,6 +68,14 @@ ALLOWED_IMPORT_ROOTS = frozenset({
     # standard library used by the deterministic classifier/reasoner
     "__future__", "collections", "dataclasses", "email", "enum", "json",
     "pathlib", "re", "sys", "typing",
+    # hashlib (D94, direction C): stdlib SHA-256 for the declaration-attestation
+    # integrity check. Added as a DELIBERATE, REVIEWED trust-boundary decision in the
+    # spirit of D71: it is a hashing primitive, not a model client and not a network
+    # module, and it reaches neither the network nor a model. It computes a keyed digest
+    # over a declaration's canonical bytes to verify who declared it; there is no other
+    # use of it on the authorisation path. This is exactly the "adding a root is a
+    # reviewed decision" case the allowlist is designed to force.
+    "hashlib",
     # the graph-DB substrate Nornir runs over (not a model)
     "neo4j", "memgraph_store",
 })
@@ -264,6 +272,11 @@ _MUST_NOT_CATCH = (
     ("a 'model' comment", "# the model fills values only\nx = 1\n"),
     ("an allowlisted stdlib import", "import json\nimport re\n"),
     ("a relative intra-package import", "from . import yggdrasil\nfrom ..core import Node\n"),
+    # hashlib is allowlisted for the D94 declaration-attestation digest (a hashing
+    # primitive, not a model or network module). This probe documents that it is
+    # intentionally permitted and would fail if a future edit dropped it from the
+    # allowlist, so the reviewed decision cannot silently regress.
+    ("the attestation hashing primitive", "import hashlib\nhashlib.sha256(b'x')\n"),
 )
 
 
