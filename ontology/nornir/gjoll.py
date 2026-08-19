@@ -54,6 +54,24 @@ Both RELOCATE trust rather than remove it (a sink that declares the WRONG effect
 primitive is still defeated; that is the C/D follow-on). The gate contains no model on
 any of these paths (invariant 3.1): the derivation is set membership over an authored
 table and the A check reads the already-computed action-critical label.
+
+A named, bounded residual of the NO-registry fallback (D97). When `sink_registry` is
+supplied, `sink_is_consequential` is DERIVED (D89-B) and cannot be disarmed by a
+hollow or mismatched `agent_consequential_sinks` argument at THIS call. Without one,
+`sink_is_consequential` is `proposal.sink in agent_consequential_sinks` and nothing
+else: the raw membership test has no independent source of truth to check that
+argument against, so a caller that passes an empty or wrong set (a bug, a drifted
+config, or a tampered/unattested `AgentContext`, since `AgentContext` itself carries no
+attestation) silently disarms the gate for that call, however action-critical the value
+already is. This is real and reproduces (see `ontology/tests/control_surface_harness.py`,
+D97), and it is not fixed here: closing it needs either requiring a registry
+unconditionally (a backward-compatibility break for every existing no-registry caller,
+including `ontology/tests/harness.py`'s own D10 mandatory safe/unsafe proof, `e2e_harness.py`
+and `memgraph_integration_harness.py`) or threading an attested `AgentContext` through
+every gate call so the sink set cannot be swapped between the classify-time and gate-time
+calls (a materially larger change touching every caller's signature). Both are named
+follow-ons for their own decision, not built here. The registry-supplied path is
+unaffected and remains the closed, recommended way to call this gate.
 """
 
 from __future__ import annotations
@@ -130,6 +148,13 @@ def evaluate(
     RAISES consequentiality (a fail-closed OR with B's derived answer), so an honest
     non-consequential sink with a clean observation stays ungated; and no observation for a
     sink means D adds nothing (it defers to B), so the parameter is backward-compatible.
+
+    Named residual (D97): without `sink_registry`, `sink_is_consequential` is exactly
+    `proposal.sink in agent_consequential_sinks`, so an empty or mismatched
+    `agent_consequential_sinks` argument at THIS call disarms the block below,
+    regardless of the parameter's already-computed `action_critical` status. See the
+    module docstring's "named, bounded residual" section for why this is not closed
+    here. Always supply `sink_registry` for a real deployment.
     """
     reasons: list[str] = []
 

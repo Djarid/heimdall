@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D96)
+## 0. Resume here (handoff, last updated after D97)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -67,6 +67,23 @@ That absence is the phase-mapped intended state (D74 excludes Gjöll's action-ti
 R-1 exception; Himinbjörg, the intended caller, is Phase 3 and essentially unbuilt), not a
 defect, and the detector's job is to keep that statement accurate without human memory.
 
+**D97: the control surface's ceiling check is fixed; a gjoll gate residual is named, not
+closed.** A read-only audit (`.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md`,
+finding F4) claimed `control_surface.resolve()`'s docstring promised ceiling enforcement that
+the body never performed. Tested and confirmed real: `resolve()` now ranks an override's
+`trust_ceiling` against the global default's on the trust lattice and CLAMPS an escalation,
+fail closed on an unranked level, with a control proving an honest override still passes
+through untouched. The audit's second claim, that gjoll's no-registry fallback's
+`sink_is_consequential` check is exactly `proposal.sink in agent_consequential_sinks`, so an
+empty or mismatched sink set disarms it regardless of the value's `action_critical` status,
+also reproduced, and is NOT closed: it is verified, named and documented as a bounded residual
+(closed only when `sink_registry` is supplied, D89-B), because a narrower no-registry patch
+would reintroduce friction on an honestly-inert sink, and unconditionally requiring a registry
+would break every existing no-registry caller including this repo's own D10 mandatory
+safe/unsafe proof. `AgentContext` attestation (extending D93/D94's authoriser-plus-digest
+pattern to the agent binding itself) is named as a follow-on, not built: materially larger than
+the ceiling fix. See D97 in `DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -88,7 +105,14 @@ inspection, but it is also registered as obligation 3.6b inside `ontology.tests.
 so the main run already reports it:
 
 ```
-poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # four test call sites, zero non-test
+poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # five test call sites, zero non-test
+```
+
+D97 (the control-surface ceiling fix and the gjoll no-registry residual) is likewise registered
+inside `ontology.tests.harness` (obligation D97), but has a standalone entry point too:
+
+```
+poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; residual RECORDED
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
@@ -161,6 +185,17 @@ poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # four test c
   suite is the honest artefact; a green one that never tested the break is worth less.
 - Use the `sync-project-docs` skill when recording anything: the repo and the Tolaria vault
   at `~/git/tolaria1` both have to be updated, and the vault has a strict schema.
+- Do not trust a docstring's claim of enforcement without reading the body: D97 found
+  `control_surface.resolve()`'s docstring claimed a ceiling check that the body never
+  performed (`return agent`, no check at all). Verify a claimed check by probing it, the same
+  discipline D93 to D96 each applied to their own gap, before trusting or fixing it.
+- Gjoll's no-registry fallback (`sink_registry=None`) is a real, bounded, DOCUMENTED residual
+  (D97), not a bug to "fix" with a narrower rule: `sink_is_consequential` there is exactly
+  `proposal.sink in agent_consequential_sinks`, with no independent source of truth, so a
+  hollow or mismatched sink set at the gate call disarms it. Always supply `sink_registry` in
+  new code; do not OR the value's `action_critical` flag into `sink_is_consequential` to
+  "close" it without a registry, that reintroduces friction on an honestly-inert sink (checked
+  and rejected in D97's own text).
 
 ---
 
@@ -209,6 +244,11 @@ growth (D83, D84, D85). So the break is a degraded outer layer rather than an op
 classification layer is measurably weak and stays red, and the guarantee does not rest on it.
 This is an import-wiring fact (D84), not a claim that Gjöll's gate functions are called from
 any non-test code path; they are not, and D96's detector states that separately below.
+D97 fixed a further, DIFFERENT gap in the control surface itself: `resolve()` now actually
+enforces the trust ceiling it always claimed to (an escalating override is clamped, not
+silently honoured), and named, without closing, a bounded residual in gjoll's no-registry
+fallback (an empty or mismatched `agent_consequential_sinks` at the gate call can still disarm
+it; the registry-supplied path, D89-B, is unaffected).
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -289,7 +329,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 95 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 97 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -407,6 +447,8 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D35 Odin self-modification | OPEN (research) | Currently excluded |
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
+| D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first |
+| D97 follow-on: require `sink_registry` always, or thread an attested `AgentContext` through every gjoll call, closing the no-registry `agent_consequential_sinks` residual | OPEN (named, not scoped) | Either breaks backward compatibility with existing no-registry callers (this repo's own D10 proof) or is a materially larger API change; needs its own decision, not built in D97 |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -538,6 +580,20 @@ corpus the author never saw.
    starting it now would let a documentation/detector change (D96) drift into a Phase-3
    component build. Design question left open for when it starts: whether the gate reuses
    `promotion_policy.py`'s corroboration logic or is a separate mechanism.
+6. **Queued: two named D97 follow-ons on the control surface.** Not started. First,
+   `AgentContext` attestation: extend D93/D94's authoriser-plus-keyed-digest pattern from sink
+   declarations to the agent binding itself, so a compromised or unattested caller cannot
+   construct or alter an `AgentContext` (Gleipnir's G-1 failure, "the guard's own configuration
+   reachable/editable by the population it guards," reproduced inside Heimdall, per
+   `.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md` finding F4). Second, close
+   gjoll's no-registry `agent_consequential_sinks` residual: either require `sink_registry`
+   unconditionally (a backward-compatibility break for every existing no-registry caller,
+   including this repo's own D10 safe/unsafe proof) or thread an attested `AgentContext`
+   through every gate call so the sink set used at classify time cannot be swapped for a
+   different one at gate time. Both are queued rather than started because each is materially
+   larger than the concrete ceiling-check fix D97 closed, and each needs its own scoping
+   decision, the same discipline item 5 (Approach E) already applies to Gjöll's re-validation
+   gate.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

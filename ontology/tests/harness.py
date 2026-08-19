@@ -94,6 +94,7 @@ class Report:
         self.guard_failures = 0
         self.mitigation_failures = 0
         self.gjoll_invocation_failures = 0
+        self.control_surface_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -743,6 +744,34 @@ def run_gjoll_invocation_boundary(rep: Report) -> None:
     rep.line("")
 
 
+def run_control_surface(rep: Report) -> None:
+    """D97: control_surface.resolve() previously performed no ceiling check at all
+    despite its own docstring's claim ("we enforce the ceiling is not silently
+    escalated"), and gjoll's no-registry fallback has a named, bounded residual (an
+    empty or mismatched agent_consequential_sinks argument disarms it, closed only when
+    a sink_registry is supplied). Both are verified in `control_surface_harness.py`; run
+    it directly for detail (`python -m ontology.tests.control_surface_harness`). A
+    failure here (the ceiling check regressing) is fatal; the no-registry residual is
+    recorded inside that suite as RESIDUAL, not counted as a failure, the same
+    reporting-without-failing discipline the false-inert rate uses for its own known,
+    real, bounded gap."""
+    import contextlib
+    import io
+    from . import control_surface_harness
+
+    rep.line("=== D97 Control-surface ceiling enforcement and the gjoll no-registry residual ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = control_surface_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] resolve() clamps a ceiling-escalating override; the gjoll "
+                 "no-registry residual is checked and recorded (see D97, run the module "
+                 "directly for detail)")
+    else:
+        rep.control_surface_failures += 1
+        rep.line("  [CRITICAL] control-surface suite FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_mitigations(rep: Report) -> None:
     """Run the four false-inert mitigation suites (D79 to D82) as part of the main suite.
 
@@ -881,13 +910,14 @@ def main() -> int:
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
     run_gjoll_invocation_boundary(rep)
+    run_control_surface(rep)
 
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
              + rep.guard_failures + rep.mitigation_failures
-             + rep.gjoll_invocation_failures)
+             + rep.gjoll_invocation_failures + rep.control_surface_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

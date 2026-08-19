@@ -25,7 +25,9 @@ test or a later phase supplies them per agent.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+
+from .spine.trust import TRUST_ORDER
 
 
 @dataclass(frozen=True)
@@ -63,11 +65,43 @@ GLOBAL_DEFAULT = AgentContext(
 )
 
 
+def _trust_rank(level: str) -> int:
+    """Rank a `trust_ceiling` string against the trust lattice ordering (`TRUST_ORDER`,
+    `spine/trust.py`), low to high. This is the ONLY ordering defined anywhere in the
+    codebase today, and `trust_ceiling` values already use its literal names
+    ("TAINTED" and so on), so this fix uses it without resolving the separate, still-open
+    question of whether `AgentContext.trust_ceiling` should instead draw from a distinct
+    agent-authority scale (recorded as an open question elsewhere, not decided here; see
+    D97's note). An unrecognised level is not on the lattice at all, so it cannot be
+    ranked as low: it is treated as maximally escalated, fail closed, so a string this
+    module cannot place never earns a bypass by being unrankable."""
+    try:
+        return TRUST_ORDER.index(level)
+    except ValueError:
+        return len(TRUST_ORDER)
+
+
 def resolve(agent: AgentContext | None) -> AgentContext:
     """Resolve the effective control surface for an agent: the global default unless
     an agent-level override is supplied. An override may not raise the trust ceiling
     above the global default's in Phase 1 (an agent cannot grant itself a permission
-    above its ceiling); we enforce the ceiling is not silently escalated."""
+    above its ceiling); we enforce the ceiling is not silently escalated (D97: this
+    enforcement was previously undocumented in name only, `resolve` returned `agent`
+    unmodified and performed no check at all).
+
+    Fails closed: an override whose `trust_ceiling` ranks ABOVE the global default's is
+    refused, not silently honoured. Refusal here means CLAMPING the effective ceiling
+    down to the global default's, not raising, so a caller that already validated
+    everything else about the agent still gets a usable context back, one that can no
+    longer exceed what the docstring already promised. An override at or below the
+    global default's ceiling passes through untouched: this must never be friction on a
+    legitimately-scoped agent narrowing itself.
+
+    This closes the CEILING check only. It does not attest the `AgentContext` object
+    itself (who constructed it, whether it was tampered with in transit): that is a
+    materially larger change, named as a follow-on in D97 rather than built here."""
     if agent is None:
         return GLOBAL_DEFAULT
+    if _trust_rank(agent.trust_ceiling) > _trust_rank(GLOBAL_DEFAULT.trust_ceiling):
+        return replace(agent, trust_ceiling=GLOBAL_DEFAULT.trust_ceiling)
     return agent
