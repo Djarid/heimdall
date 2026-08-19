@@ -83,10 +83,20 @@ from .harness import high_risk_types, inert_types, load
 CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
 THIRDPARTY_CORPUS = Path(__file__).parent / "corpora" / "false_inert_thirdparty.json"
 
-# The mitigation modules whose layers this harness scores, and the live pipeline modules that
-# would have to call them for the score to describe the BUILT system rather than the designed
-# one. Checked at run time rather than asserted in prose, so the warning below cannot go stale:
-# the moment someone wires a mitigation in, this harness stops claiming it is unwired.
+# The mitigation modules whose layers this harness scores, and the modules that would have to
+# IMPORT them for the score to describe the BUILT system rather than the designed one. Checked
+# at run time rather than asserted in prose, so the warning below cannot go stale: the moment
+# someone wires a mitigation in, this harness stops claiming it is unwired.
+#
+# Naming note (D96): `_PIPELINE_MODULES` lists which files are checked for a mitigation IMPORT,
+# not which files run automatically outside a test. `engine.py` is invoked from the live Nornir
+# path. `gjoll.py` is included here because D84 wired the mitigation modules into it (an
+# intra-module import, so its layers are BUILT rather than DESIGNED once evaluate/enforce run),
+# but that is a different claim from gjoll.py's own functions being CALLED outside a test. The
+# import claim below is checked by this module; the call claim is checked by
+# `ontology.tests.gjoll_invocation_harness`, which currently finds only test call sites (D96).
+# Do not read a module's presence in this tuple as "gjoll.py runs live"; read it as "gjoll.py,
+# when it runs, imports the mitigation".
 _MITIGATION_MODULES = ("state_delta", "consequence_axis", "sink_declaration", "promotion_policy")
 _PIPELINE_MODULES = ("engine.py", "rules.py", "gjoll.py")
 
@@ -139,9 +149,12 @@ def print_integration_banner() -> bool:
         print(f"  - {m}.py")
     for m, importers in wired.items():
         if importers:
-            print(f"  + {m}.py is wired into {', '.join(sorted(set(importers)))}")
+            print(f"  + {m}.py is imported by {', '.join(sorted(set(importers)))}")
     print("Closing this gap is task 1 in STATUS.md section 0. Until it is closed, quote the")
     print("pipeline score as the designed pipeline, never as the system's current behaviour.")
+    print("Note (D96): this reports a mitigation IMPORT into engine.py/rules.py/gjoll.py, not")
+    print("whether gjoll.py's own gate functions are CALLED outside a test. See")
+    print("`python -m ontology.tests.gjoll_invocation_harness` for that separate claim.")
     return False
 
 # The consequential sinks the scoring deployment arms, and their declarations. A real

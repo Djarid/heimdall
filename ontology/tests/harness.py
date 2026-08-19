@@ -93,6 +93,7 @@ class Report:
         self.false_inert_failures = 0
         self.guard_failures = 0
         self.mitigation_failures = 0
+        self.gjoll_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -114,12 +115,14 @@ def run_symbolic_guard(rep: Report) -> None:
 
     # Mandatory negative control (invariant 3.10, D10): before trusting a clean scan,
     # confirm the guard actually catches planted violations (direct import, from-import,
-    # dynamic import, HTTP to an inference endpoint, model subprocess, and two
+    # dynamic import, HTTP to an inference endpoint, model subprocess, two
     # UNLISTED-egress probes, boto3 and smtplib, that no blacklist would name so the
-    # allowlist is proven to bite, D71) and does not flag benign controls (a graph-DB
-    # driver, the store binding, an allowlisted stdlib import, a relative import, a
-    # 'model' comment). A guard that cannot catch a planted model import is theatre,
-    # exactly as an uncontrolled soundness check would be.
+    # allowlist is proven to bite, D71, and string-smuggled code execution via
+    # eval/exec/compile, D95) and does not flag benign controls (a graph-DB driver, the
+    # store binding, an allowlisted stdlib import, a relative import, a 'model' comment,
+    # and an unrelated qualified call such as re.compile, D95). A guard that cannot
+    # catch a planted model import is theatre, exactly as an uncontrolled soundness
+    # check would be.
     control_failures = control_check()
     if control_failures:
         for cf in control_failures:
@@ -127,9 +130,11 @@ def run_symbolic_guard(rep: Report) -> None:
             rep.line(f"  [CRITICAL] negative control: {cf}")
     else:
         rep.line("  [PASS] negative control: the guard catches planted model imports, "
-                 "dynamic imports, inference HTTP, model subprocesses and unlisted egress "
-                 "(boto3, smtplib), and does not flag allowlisted stdlib, graph-DB drivers, "
-                 "relative imports or 'model' comments (the allowlist bites, not theatre).")
+                 "dynamic imports, inference HTTP, model subprocesses, unlisted egress "
+                 "(boto3, smtplib) and string-smuggled code execution (eval/exec/compile), "
+                 "and does not flag allowlisted stdlib, graph-DB drivers, relative imports, "
+                 "'model' comments or unrelated qualified calls (the allowlist bites, not "
+                 "theatre).")
 
     files = scanned_files()
     violations = scan()
@@ -679,6 +684,65 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
     rep.line("")
 
 
+def run_gjoll_invocation_boundary(rep: Report) -> None:
+    """Obligation 3.6b (the Gjoll invocation-boundary detector, D96): an AST scan finds
+    every site in the repo constructing `gjoll.ActionProposal` or calling
+    `gjoll.evaluate`/`gjoll.enforce`, and classifies each as test (`ontology/tests/`)
+    or non-test. The COUNT of test call sites is reporting-only, never a failure: it is
+    evidence for invariant 3.6 being DEMONSTRATED under harness invocation, not a defect
+    to close, and it is expected to grow. A non-test call site is fatal ONLY if it is
+    not on the designated `NON_TEST_ALLOWLIST`
+    (`ontology.tests.gjoll_invocation_harness`), which is empty today. This is the
+    mechanised form of the caveat `AGENTS.md` used to carry in prose: it does not go
+    stale, because the moment a real call site appears, this obligation stops reporting
+    a clean boundary and starts failing loudly."""
+    from ontology.tests.gjoll_invocation_harness import classify_call_sites, control_check
+
+    rep.line("=== 3.6b Gjoll invocation boundary (D96; reporting-only on the count, "
+             "fatal on an unallowlisted non-test call site) ===")
+
+    control_failures = control_check()
+    if control_failures:
+        for cf in control_failures:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] negative control: {cf}")
+    else:
+        rep.line("  [PASS] negative control: the detector catches a planted call site "
+                 "(direct import and module-alias-qualified) and does not flag a source "
+                 "that merely mentions or imports the names without calling them.")
+
+    status = classify_call_sites()
+    n_test = len(status["test_files"])
+    n_non_test = len(status["non_test_files"])
+    rep.line(f"  {n_test} test call site(s), {n_non_test} non-test call site(s). "
+             f"Invariant 3.6 is DEMONSTRATED under harness invocation only, not under "
+             f"live, non-test invocation.")
+    for f in status["test_files"]:
+        rep.line(f"    + test call site: {f}")
+    for f in status["allowlisted_non_test"]:
+        rep.line(f"    + allowlisted non-test call site: {f}")
+    if status["unallowlisted_non_test"]:
+        for f in status["unallowlisted_non_test"]:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] unallowlisted non-test call site constructs "
+                     f"ActionProposal or calls gjoll.evaluate/gjoll.enforce outside "
+                     f"ontology/tests/ and outside NON_TEST_ALLOWLIST: {f}")
+    else:
+        rep.line("  [PASS] no non-test call site outside the allowlist.")
+    # Important 2 (quality review, D96 follow-up): a file the detector could not parse
+    # is a failure to verify, never silent evidence of a clean boundary, on the same
+    # fail-closed discipline obligation 3.1 (symbolic_guard) already holds for its own
+    # parse failures.
+    if status["parse_failures"]:
+        for pf in status["parse_failures"]:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] could not parse (fail-closed, not silently "
+                     f"skipped): {pf}")
+    else:
+        rep.line("  [PASS] every scanned file parsed cleanly.")
+    rep.line("")
+
+
 def run_mitigations(rep: Report) -> None:
     """Run the four false-inert mitigation suites (D79 to D82) as part of the main suite.
 
@@ -816,12 +880,14 @@ def main() -> int:
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
+    run_gjoll_invocation_boundary(rep)
 
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
-             + rep.guard_failures + rep.mitigation_failures)
+             + rep.guard_failures + rep.mitigation_failures
+             + rep.gjoll_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
@@ -857,7 +923,7 @@ def main() -> int:
         print("suite that names a real break is worth more than a green one that never tested it.")
         print()
         print("This is LAYER ONE only, and it is the pessimistic figure. Since D84 the D79-D82")
-        print("mitigations are wired into the live engine and gate, and D85 closed the last")
+        print("mitigations are imported by engine.py and gjoll.py, and D85 closed the last")
         print("residual class by slot-vocabulary coverage: run")
         print("`python -m ontology.tests.pipeline_score_harness` for the defence-in-depth")
         print("picture, where every consequential case on this corpus is contained downstream")

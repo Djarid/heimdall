@@ -12,16 +12,17 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D94)
+## 0. Resume here (handoff, last updated after D96)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
 
 **State in one paragraph.** The pipeline contains every consequential case on the
 independent corpus: 33 of 33, defence in depth (D83, D84, D85). That is the headline, and it
-is now a property of the BUILT system: the D79 to D82 mitigations are wired into the live
-engine and gate (D84), the last residual class was closed by growing the consequential-slot
-vocabulary rather than by a keyword (D85), and Fenrir performs the STRUCTURAL slot extraction
+is now a property of the BUILT system: the D79 to D82 mitigations are imported by
+`engine.py` and `gjoll.py` (D84), the last residual class was closed by growing the
+consequential-slot vocabulary rather than by a keyword (D85), and Fenrir performs the
+STRUCTURAL slot extraction
 that feeds the state-delta layer, now demonstrated with a REAL model (D86 built it and proved
 it against a mock, D87 proved it against Qwen2.5-7B via the PoC's bounded generation), so the
 slot bindings the later layers need are produced by a real model rather than corpus-supplied.
@@ -54,6 +55,18 @@ real non-mock sinks) and flow-edge honesty, plus C's load-bearing honesty limit:
 binds identity and integrity, not honesty, so a malicious authoriser's lie still verifies and B
 and D remain the honesty backstop.
 
+**A separate caveat a fresh session must carry: import wiring is not call invocation (D96).**
+D84 wired the mitigation MODULES into `engine.py` and `gjoll.py`, an import-level fact, verified
+live by `pipeline_score_harness.integration_status()`. That is a different claim from whether
+Gjöll's own gate functions (`ActionProposal`, `evaluate`, `enforce`) are CALLED from any
+non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds four test
+call sites (`harness.py`, `e2e_harness.py`, `effect_probe_harness.py`,
+`memgraph_integration_harness.py`) and zero non-test call sites, so invariant 3.6 is
+DEMONSTRATED under harness invocation only, not under live invocation against a real action.
+That absence is the phase-mapped intended state (D74 excludes Gjöll's action-time gate from the
+R-1 exception; Himinbjörg, the intended caller, is Phase 3 and essentially unbuilt), not a
+defect, and the detector's job is to keep that statement accurate without human memory.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -63,6 +76,19 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
 poc/.venv/bin/python -m ontology.tests.sink_declaration_harness             # D89-B: derive-from-primitive, GREEN
 poc/.venv/bin/python -m ontology.tests.effect_probe_harness                 # D93 direction D: verify vs behaviour, GREEN
 poc/.venv/bin/python -m ontology.tests.sink_attestation_harness             # D94 direction C: attest who declared, GREEN
+```
+
+D95 (the guard's eval/exec/compile detection gap) has no standalone harness file: its three
+MUST_CATCH probes and one MUST_NOT_CATCH control live inside `symbolic_guard.py`'s own
+`control_check()`, so it is already exercised by `ontology.tests.harness` above (obligation
+3.1) and by `control_check()`/`scan()` directly; no new run command is needed for it.
+
+D96 (the Gjöll invocation-boundary detector) does have a standalone entry point for direct
+inspection, but it is also registered as obligation 3.6b inside `ontology.tests.harness` above,
+so the main run already reports it:
+
+```
+poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # four test call sites, zero non-test
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
@@ -176,11 +202,13 @@ reachability-derived), promotion into trusted memory is human-gated (D76), and f
 mitigations now stand between a mis-classification and harm (D79 state-delta consequence
 detection, D80 two-dimensional classification removing the inert override, D81 fail-closed
 sink-declaration validation, D82 corroboration for promotion and graded review), all now
-WIRED into the live engine and gate (D84). Scored as defence in depth rather than by the
+IMPORTED into `engine.py` and `gjoll.py` (D84). Scored as defence in depth rather than by the
 classifier alone, the pipeline contains 33 of 33 consequential cases, 100 percent, against
 the 48 percent layer-one rate, after D85 closed the last residual class by slot-vocabulary
 growth (D83, D84, D85). So the break is a degraded outer layer rather than an open door: the
 classification layer is measurably weak and stays red, and the guarantee does not rest on it.
+This is an import-wiring fact (D84), not a claim that Gjöll's gate functions are called from
+any non-test code path; they are not, and D96's detector states that separately below.
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -261,7 +289,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 94 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 95 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -401,9 +429,14 @@ review found D70's "whole class" network claim was in the code a ten-name blackl
 missed `boto3`, `google`, `smtplib`, `ctypes` and every other unlisted egress module, so
 enforcement was inverted to a known-good import allowlist that forbids the class by
 construction (D71). A referential-completeness guard then reduced the false-inert rate
-again and showed the residual is bounded by invariant 3.1 (D72). The mitigations were then
-WIRED into the live engine and gate (D84), closing the integration gap that had made the D83
-score the designed pipeline, and the D83 residual class was closed by growing the
+again and showed the residual is bounded by invariant 3.1 (D72). A later pass over the guard
+itself found that D68, D70 and D71 had all hunted for indirect MODULE routes and never named
+a call that interprets a string as code, so `eval`/`exec`/`compile` (bare or a
+`builtins`-aliased qualified call) went unflagged; the guard now catches all three
+unconditionally, without inspecting string content, closing that residual (D95). The
+mitigation modules were then
+IMPORTED into `engine.py` and `gjoll.py` (D84), closing the integration gap that had made the
+D83 score the designed pipeline, and the D83 residual class was closed by growing the
 consequential-slot vocabulary (D85, `holder_of_record` and `entitlement_status`), so the
 pipeline score rose to 33 of 33 (100 percent) as a built property. Fenrir then gained STRUCTURAL slot
 extraction feeding the state-delta layer end to end (D86), demonstrated first against a
@@ -439,7 +472,8 @@ trust models aligned.
 ## 6. Recommended next step
 
 The pipeline now contains every consequential case on the independent corpus, 33 of 33, as a
-BUILT property: the D79 to D82 mitigations are wired into the live engine and gate (D84), the
+BUILT property: the D79 to D82 mitigations are imported by `engine.py` and `gjoll.py` (D84,
+an import-wiring fact; Gjöll's own gate functions still have zero non-test callers, D96), the
 last residual class was closed by slot-vocabulary growth (D85), and Fenrir performs the
 structural slot extraction that feeds the state-delta layer end to end, demonstrated first
 against a mock (D86) and now against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
@@ -492,6 +526,18 @@ corpus the author never saw.
    cost first), or a fail-closed advisory model that only routes to review. "Accept a small
    residual" is ruled out (the layer-one rate is 48 percent, not small), and more keywords
    are barred (invariant 3.5).
+5. **Queued: build Gjöll's missing re-validation gate mechanism (Approach E, D96).** Not
+   started. `GatePolicy`, `GateResult` and the promotion-requirement gate (`plans/dd/gjoll.md`
+   section 5.1, lines 86-90; section 8; section 10) do not exist, so invariant 3.6's "has not
+   passed the gate" clause is currently vacuous: no branch of `evaluate` lets an
+   action-critical value pass, because there is no gate to pass. `gjoll.md` section 10 names
+   the promotion requirement as the one that "must be built", and section 8 lists gate
+   policies as data Gjöll itself owns, so this is inside Gjöll's own boundary and does not
+   pre-empt Himinbjörg's unfinalised design. It is queued rather than started because it
+   touches the authorisation path while the external test (item 1) is in flight, and because
+   starting it now would let a documentation/detector change (D96) drift into a Phase-3
+   component build. Design question left open for when it starts: whether the gate reuses
+   `promotion_policy.py`'s corroboration logic or is a separate mechanism.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
