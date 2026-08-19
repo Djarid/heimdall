@@ -1,7 +1,7 @@
 # Scoping: attesting the sink and flow declarations (the root seam, 5.1)
 
 **Author:** scoping pass for STATUS section 0 task 2
-**Status:** scoping only, no decision taken yet; feeds a future D-number
+**Status:** A and B built (D89); D built for observable sinks (D93). C is the one direction not yet built.
 **Reads with:** `ADVERSARIAL_REVIEW.md` 5.1, `DECISIONS.md` D78, D81, `ontology/nornir/sink_declaration.py`, `ontology/nornir/gjoll.py`
 
 This note scopes the open root seam so the fix direction can be chosen from an
@@ -133,7 +133,7 @@ on the authorisation path) from imports to configuration.
   set at load. New infrastructure and a new operational burden. Mirrors the
   verified-tokenizer-set idea (5.7).
 
-### D. Behaviour-derivation / runtime cross-check (strongest evidence, heaviest)
+### D. Behaviour-derivation / runtime cross-check (strongest evidence, heaviest): BUILT for observable sinks (D93)
 
 Verify a declaration against the sink's ACTUAL behaviour: instrument the sink so
 that if a parameter declared `CONSUME_INERT` in fact influences an effect, that
@@ -150,6 +150,22 @@ trust.
   D degrades to B plus C.
 - **Cost:** the heaviest. Per-sink instrumentation or a behavioural test harness,
   and a taint-tracking discipline on sink outputs. Probably a later phase.
+
+**Built (D93), test-harness form.** The test-time form of D is now built:
+`ontology/nornir/effect_probe.py` (`EffectObservation`, `verify_declaration`) cross-checks
+the effect primitive a behavioural probe OBSERVED a sink producing against the declared
+primitive; a divergence (observed effect-producing, declared inert) is caught and the sink
+treated as consequential by its observed behaviour, and the verdict enters the gate through
+`evaluate`/`enforce`'s new `effect_observations` parameter as a fail-closed OR into
+consequentiality (so it composes with B, neither can disarm the other). `ontology/tests/
+effect_probe_harness.py` plants the display_only-but-moves-money lie and proves it is caught
+and blocked end to end, with the mandatory controls (honest declarations verify clean; an
+opaque sink fails closed). No model on the path (set membership and equality over the attested
+table, invariant 3.1); fail-closed, not a blacklist (inert earned only by a positive clean
+observation). This DISCHARGES the wrong-primitive trust for every OBSERVABLE sink. What stays
+unbuilt: the RUNTIME taint form (a live taint check on sink outputs, for a sink whose behaviour
+must be watched in production rather than in a test harness), and the OPAQUE sink that cannot
+be instrumented at all, where D degrades to B plus C. See D93.
 
 ---
 
@@ -171,6 +187,12 @@ the dishonest-flag attack from a one-line config edit into an attack on a small,
 auditable, rarely-changing base table. **A** is a cheap complementary default
 worth measuring for friction. **C** and **D** are follow-on phases (C when a
 config-integrity pipeline exists, D when sinks are instrumentable).
+
+**Update (D89, D93).** B and A were built (D89). D was then built in its test-harness form
+(D93): where a sink is instrumentable, its declared primitive is now verified against observed
+behaviour, which DISCHARGES the wrong-primitive trust B could only relocate, rather than
+deferring it to a later phase. So the recommendation's ordering held, and only C remains
+unbuilt (plus the opaque-sink and runtime-taint residuals of D).
 
 A first buildable step that stays inside the repo's current depth and does not
 need new infrastructure: implement **B** as a demonstration over the seed sinks

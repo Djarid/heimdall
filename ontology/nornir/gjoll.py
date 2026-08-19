@@ -61,6 +61,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .assertions import ClassifiedAssertion
+from .effect_probe import EffectObservation, verify_declaration
 from .sink_declaration import (
     SinkRegistry,
     effective_consequential,
@@ -103,6 +104,7 @@ def evaluate(
     classified_by_id: dict,
     agent_consequential_sinks: frozenset,
     sink_registry: "SinkRegistry | None" = None,
+    effect_observations: "dict | None" = None,
 ) -> GateDecision:
     """Authorise or block a consequential action. Fails closed.
 
@@ -118,6 +120,16 @@ def evaluate(
     silently-omitted or phantom parameter is caught, and an invalid consume mode is not
     read as inert. Without a registry the gate keeps its prior behaviour, so existing
     callers are unaffected; a real deployment always supplies one.
+
+    When `effect_observations` is supplied (D93, direction D), it maps a sink id to an
+    `EffectObservation` recorded by a behavioural probe. The gate cross-checks the sink's
+    DECLARED effect primitive against its OBSERVED behaviour and, if the observation shows
+    the sink is consequential (whatever the declaration claims), treats it as consequential.
+    This closes the wrong-primitive seam B relocated: a money mover that declares itself
+    `display_only` passes B's derivation but is caught here by observation. It only ever
+    RAISES consequentiality (a fail-closed OR with B's derived answer), so an honest
+    non-consequential sink with a clean observation stays ungated; and no observation for a
+    sink means D adds nothing (it defers to B), so the parameter is backward-compatible.
     """
     reasons: list[str] = []
 
@@ -144,6 +156,22 @@ def evaluate(
         )
     else:
         sink_is_consequential = proposal.sink in agent_consequential_sinks
+
+    # D93, direction D: if a behavioural observation exists for this sink, verify the declared
+    # effect primitive against it and OR the verified-consequential verdict in. This is a
+    # fail-closed raise, never a lower: observation can only make a sink consequential (catching
+    # a dishonest inert primitive B trusted), it cannot make an intrinsically consequential sink
+    # inert. So B and D compose: whichever proves consequentiality wins, and neither can be
+    # disarmed by the other.
+    if effect_observations is not None:
+        observation = effect_observations.get(proposal.sink)
+        if observation is not None:
+            declaration = (
+                sink_registry.get(proposal.sink) if sink_registry is not None else None
+            )
+            verification = verify_declaration(declaration, observation)
+            if verification.verified_consequential:
+                sink_is_consequential = True
 
     for param_id, mode in proposal.consumes.items():
         c: ClassifiedAssertion | None = classified_by_id.get(param_id)
@@ -212,12 +240,18 @@ def enforce(
     agent_consequential_sinks: frozenset,
     actuator: Actuator,
     sink_registry: "SinkRegistry | None" = None,
+    effect_observations: "dict | None" = None,
 ) -> GateDecision:
     """Evaluate the gate and, only if authorised, let the effect run. A blocked action
     never reaches the actuator: the gate fires before the effect, exactly as the PoC's
     gate blocked the payment actuator before any mock money moved. `sink_registry`, when
-    supplied, runs the D81 fail-closed declaration validation before the gate (D84)."""
-    decision = evaluate(proposal, classified_by_id, agent_consequential_sinks, sink_registry)
+    supplied, runs the D81 fail-closed declaration validation before the gate (D84).
+    `effect_observations`, when supplied, feeds the D93 direction-D behavioural cross-check
+    (declared vs observed effect primitive) into the consequentiality determination."""
+    decision = evaluate(
+        proposal, classified_by_id, agent_consequential_sinks, sink_registry,
+        effect_observations,
+    )
     if not decision.authorised:
         return decision  # fired stays False; the effect never runs
     for param_id, mode in proposal.consumes.items():

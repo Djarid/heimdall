@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D88)
+## 0. Resume here (handoff, last updated after D93)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -42,7 +42,11 @@ honesty conditions (same-author bindings; and value poisoning, since the structu
 now uses true token-level grammar-constrained decoding, D90, which constrains structure but
 not value truth). D90 replaced the D87 bounded per-field stand-in with a real grammar mask, so
 the "not yet true grammar constraint" caveat is closed; what remains on that layer is value
-poisoning, contained by Gjoll at action time.
+poisoning, contained by Gjoll at action time. On the declaration seam itself (5.1), D93 built
+direction D: a sink's declared effect primitive is now verified against its OBSERVED behaviour,
+so the WRONG-primitive lie D89-B had only relocated (a money sink declaring `display_only`) is
+caught by evidence and blocked for every OBSERVABLE sink; what remains there is the opaque
+uninstrumentable sink (degrades to B plus C) and direction C proper (attest who may declare).
 
 **Run this first, to see the state for yourself:**
 
@@ -50,6 +54,8 @@ poisoning, contained by Gjoll at action time.
 poc/.venv/bin/python -m ontology.tests.harness                              # RED at 22 layer-one, expected
 poc/.venv/bin/python -m ontology.tests.pipeline_score_harness               # D77: 48% layer-one, 33/33 pipeline
 poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D88 blind: 14% layer-one, 33/36 pipeline
+poc/.venv/bin/python -m ontology.tests.sink_declaration_harness             # D89-B: derive-from-primitive, GREEN
+poc/.venv/bin/python -m ontology.tests.effect_probe_harness                 # D93 direction D: verify vs behaviour, GREEN
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
@@ -67,16 +73,21 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
    the result lands, record it as its own decision and update invariant 3.6's proof status and
    D67-fix's disposition; a pass is bounded containment (not universal), a fail is a genuine
    architecture finding.
-2. **Attest the declarations (NARROWED by D89, not closed).** D81 closed declaration ERROR or
-   DRIFT; D89 then narrowed the HONESTY seam on two axes: B derives sink consequentiality from
-   an attested effect-primitive table (so a money sink flagged non-consequential is still
-   gated), and A blocks an action-critical value dishonestly declared CONSUME_INERT. Both
-   relocate trust to a small auditable table, they do not remove it, so a sink that declares
-   the WRONG primitive still defeats the gate. The remaining follow-ons (named in
-   `plans/declaration_attestation_scoping.md`) are C (attest WHO may declare, for the
-   config-tamper adversary) and D (verify the primitive against behaviour, the strongest
-   evidence). That residual is the still-open part of the root seam (`ADVERSARIAL_REVIEW.md`
-   5.1).
+2. **Attest the declarations (NARROWED by D89 and D93; direction C is the one axis left).** D81
+   closed declaration ERROR or DRIFT; D89 narrowed the HONESTY seam on two axes (B derives sink
+   consequentiality from an attested effect-primitive table so a money sink flagged
+   non-consequential is still gated; A blocks an action-critical value dishonestly declared
+   CONSUME_INERT); D93 then built direction D, which closed the WRONG-primitive lie D89-B had
+   only relocated. D verifies a sink's declared effect primitive against its OBSERVED behaviour
+   (`ontology/nornir/effect_probe.py`, `verify_declaration`; the verdict enters the gate via
+   `evaluate`/`enforce`'s new `effect_observations` parameter as a fail-closed OR), so a money
+   mover declaring itself `display_only` is caught by evidence and BLOCKED, and an unobserved or
+   opaque sink fails closed. This DISCHARGES the wrong-primitive trust for every OBSERVABLE sink
+   rather than relocating it. What remains of the root seam (`ADVERSARIAL_REVIEW.md` 5.1): the
+   OPAQUE, uninstrumentable sink (where D degrades to B plus C), the heavier runtime-taint form
+   of D (a live taint check on sink outputs), and direction C proper (attest WHO may declare,
+   for the config-tamper adversary), which is now the one axis of the seam not yet touched. All
+   named in `plans/declaration_attestation_scoping.md`.
 3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
    per-field stand-in with a real token-level grammar mask: the model emits the whole
    `SlotExtractionSchema` object under a logits processor that permits only tokens keeping the
@@ -241,7 +252,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 92 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 93 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -441,13 +452,18 @@ corpus the author never saw.
    not reach. Do not re-attempt in-repo. When the result lands, record it as its own decision
    and update invariant 3.6's proof status and the D67-fix disposition; a pass is bounded
    containment, a fail is a genuine architecture finding.
-2. **Attest the declarations (NARROWED by D89).** D81 closed declaration ERROR or DRIFT; D89
-   narrowed the HONESTY seam: B derives sink consequentiality from an attested effect-primitive
-   table (a money sink flagged non-consequential is still gated), and A blocks an
-   action-critical value dishonestly declared CONSUME_INERT. Both relocate trust to a small
-   auditable table rather than removing it, so a sink declaring the WRONG primitive still
-   defeats the gate. The remaining follow-ons are C (attest WHO may declare) and D (verify the
-   primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
+2. **Attest the declarations (NARROWED by D89 and D93; direction C is the one axis left).** D81
+   closed declaration ERROR or DRIFT; D89 narrowed the HONESTY seam (B derives sink
+   consequentiality from an attested effect-primitive table so a money sink flagged
+   non-consequential is still gated; A blocks an action-critical value dishonestly declared
+   CONSUME_INERT); D93 built direction D, which closed the WRONG-primitive lie D89-B had only
+   relocated. D verifies a sink's declared effect primitive against its OBSERVED behaviour
+   (`ontology/nornir/effect_probe.py`; the verdict enters the gate through
+   `evaluate`/`enforce`'s new `effect_observations` parameter as a fail-closed OR), so a money
+   mover declaring `display_only` is caught and blocked for every OBSERVABLE sink, and an opaque
+   sink fails closed. Remaining: the opaque uninstrumentable sink (degrades to B plus C), the
+   runtime-taint form of D, and direction C proper (attest WHO may declare), scoped in
+   `plans/declaration_attestation_scoping.md`.
 3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
    per-field stand-in with a real token-level grammar mask over the `SlotExtractionSchema`
    (the model emits the whole object under a logits processor that permits only grammar-valid
