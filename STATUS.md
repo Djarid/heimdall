@@ -54,14 +54,19 @@ poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D8
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Third-party corpus (G2): DELEGATED externally, not an in-repo task (D91).** A colleague
-   is independently developing and running this exact false-inert attack vector against models
-   with no exposure to Heimdall's rules, and will test the classifier when his work completes.
-   That is the true external independence D88's blind corpus explicitly could not manufacture
-   from inside a session. So do NOT re-attempt this in-repo: the honest in-session ceiling was
-   already reached (D88, 5/36 blind; D77, 16/33 rules-aware, both lower bounds). When the
-   external result lands it is the first unbiased measurement; record it as its own decision
-   and let it drive D67-fix's disposition. Nothing to build here meanwhile.
+1. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
+   is running this exact false-inert attack vector against models independently, with no
+   exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
+   role and fire the attacks at the LIVE framework, so it tests the architecture's central claim
+   end to end, a model that WOULD be steered is still prevented from acting because trust is
+   structural at the boundary, which no corpus and no in-repo run has reached (a corpus only
+   ever exercises layer one). It is the first OBSERVED (not simulated) containment measurement
+   and inverts the D75 negative finding: a vulnerable model WILL attempt the action, so it
+   reaches the case D75's robust model could not. So do NOT re-attempt in-repo: the in-session
+   ceiling was already reached (D88 5/36 blind, D77 16/33 rules-aware, both lower bounds). When
+   the result lands, record it as its own decision and update invariant 3.6's proof status and
+   D67-fix's disposition; a pass is bounded containment (not universal), a fail is a genuine
+   architecture finding.
 2. **Attest the declarations (NARROWED by D89, not closed).** D81 closed declaration ERROR or
    DRIFT; D89 then narrowed the HONESTY seam on two axes: B derives sink consequentiality from
    an attested effect-primitive table (so a money sink flagged non-consequential is still
@@ -236,7 +241,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 91 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 92 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -424,15 +429,18 @@ pattern closes it; the guarantee does not rest on it. With the real-model struct
 extraction now demonstrated, the highest-value work is testing the whole thing against a
 corpus the author never saw.
 
-1. **Third-party corpus (G2): DELEGATED externally (D91), not an in-repo task.** The
+1. **External end-to-end test: DELEGATED (D91), STRONGER than a corpus (D92).** The
    independent scenario-authored corpus (D77) raised the measured layer-one rate from 1/17 to
    16/33, and the BLIND-authored corpus (D88, `false_inert_thirdparty.json`) reached 5/36, the
    strongest independence obtainable inside a session; both are lower bounds on difficulty, not
-   unbiased estimates. The remaining external-human step is now OWNED OUT-OF-BAND: a colleague
-   is independently running this exact false-inert attack vector against models with no
-   exposure to the rules, and will test the classifier when complete (D91). Do not re-attempt
-   it in-repo. When the external result lands it is the first unbiased measurement; record it
-   as its own decision and let it drive the D67-fix disposition.
+   unbiased estimates, and both only ever exercised LAYER ONE. The external work is owned
+   out-of-band AND is a stronger evidence class (D92): the colleague can put a VULNERABLE model
+   in the agentic role and fire the attacks at the LIVE framework, testing the architecture's
+   central claim end to end (a model that WOULD be steered is still prevented from acting), the
+   first OBSERVED (not simulated) containment measurement, and the case D75's robust model could
+   not reach. Do not re-attempt in-repo. When the result lands, record it as its own decision
+   and update invariant 3.6's proof status and the D67-fix disposition; a pass is bounded
+   containment, a fail is a genuine architecture finding.
 2. **Attest the declarations (NARROWED by D89).** D81 closed declaration ERROR or DRIFT; D89
    narrowed the HONESTY seam: B derives sink consequentiality from an attested effect-primitive
    table (a money sink flagged non-consequential is still gated), and A blocks an
