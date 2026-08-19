@@ -1,9 +1,9 @@
 # Heimdall Premise PoC: Outcome
 
 **Author:** Jason Huxley
-**Version:** 1.3
+**Version:** 1.4
 **Date:** August 2026
-**Status:** result after wiring a downstream sink and testing the provenance gate
+**Status:** result after wiring a downstream sink and testing the provenance gate; section 7.1 added to state the one remaining live code dependency (D62)
 
 ---
 
@@ -135,6 +135,12 @@ What remains true:
 ## 7. Next steps
 
 The PoC is complete and successful. Its findings and limits are carried into the live build as `NEUROSYMBOLIC_FILTER_INVARIANTS.md` (repo root), which states each invariant the filter must hold, marks it PROVEN, DEMONSTRATED or NOT YET TESTED, and maps it onto a design principle, a named component and a build phase. The ontology (classification coverage, reasoner soundness and flow-to-sink action-critical status) is recorded there as the largest untested dependency.
+
+### 7.1 The PoC is not purely historical: one live code dependency remains (D62)
+
+The findings above are transmitted as documented conclusions, but that is not the only way this PoC still matters to the live build. `ontology/tests/e2e_harness.py` imports and runs this PoC's code live, by deliberate design, not by leftover coupling: it calls `to_typed_record` from `poc/symbolic.py`, and `NeuralExtractor` plus `PROVENANCE_UNTRUSTED_DERIVED` from `poc/neural.py`, to run the actual mlx model through marshal, classify and gate (D62; `ontology/nornir/marshalling.py`). So a reader asking "is the PoC's code still relied upon, or only its findings" gets the accurate answer here: yes, one seam still runs it live, and D62 names the seam explicitly rather than leaving it to be rediscovered.
+
+Until this session, D87's Phase 2 stand-in (`phase2/real_slot_extraction.py`) was a second live importer of `poc/neural.py`, reusing its `_StopOnNewline` bounded-generation mechanism. D90 replaced that stand-in with true token-level grammar-constrained decoding, and D98 retired the now-superseded files, since nothing else imported them. After that retirement, `ontology/tests/e2e_harness.py` is the PoC's only remaining live code dependency.
 
 Remaining exercises that would further harden the PoC itself, if wanted before moving to the live build:
 

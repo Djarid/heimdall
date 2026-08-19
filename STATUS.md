@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D97)
+## 0. Resume here (handoff, last updated after D98)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -43,7 +43,9 @@ honesty conditions (same-author bindings; and value poisoning, since the structu
 now uses true token-level grammar-constrained decoding, D90, which constrains structure but
 not value truth). D90 replaced the D87 bounded per-field stand-in with a real grammar mask, so
 the "not yet true grammar constraint" caveat is closed; what remains on that layer is value
-poisoning, contained by Gjoll at action time. On the declaration seam itself (5.1), all four
+poisoning, contained by Gjoll at action time. D98 then retired D87's now-superseded stand-in
+files (`phase2/real_slot_extraction.py`, `phase2/real_slot_demo.py`), since nothing else
+imported them. On the declaration seam itself (5.1), all four
 scoped directions are now built in-repo: D93 built direction D (a sink's declared effect
 primitive is verified against its OBSERVED behaviour, so the WRONG-primitive lie D89-B had only
 relocated is caught by evidence for every observable sink), and D94 built direction C, the
@@ -329,7 +331,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 97 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 98 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -394,16 +396,20 @@ D79 to D82 (the mitigations) and D83 (the pipeline score and its residual).
   `MarshalledAssertion.proposed_facts`. The binding is model-free (invariant 3.1: phase2
   is not on the authorisation path and nornir has no dependency on phase2), and
   fail-closed (an unbound or low-confidence field fabricates no delta). Phase2 harness
-  obligation 6 proves it end to end against the live engine: an inertly-phrased payroll
-  redirect is still typed inert by the classifier yet the engine denies effective
-  inertness on the structural signal. Demonstrated against a deterministic mock (D86), and
-  now also against a REAL model (D87, `phase2/real_slot_extraction.py` and
-  `phase2/real_slot_demo.py`): a `MlxSlotProducer` reuses the PoC's proven bounded
-  generation (`_StopOnNewline`, isolated-payload splice) to fill the schema values, and on
-  Qwen2.5-7B it bound `salary_destination` from an inertly-phrased payroll redirect the
-  classifier still typed inert, with the benign control binding nothing (fail-closed). The
-  demo is optional and skip-if-absent, like `e2e_harness.py`. Bounded per-field generation,
-  not yet true grammar-constrained decoding, is the named remaining refinement.
+obligation 6 proves it end to end against the live engine: an inertly-phrased payroll
+redirect is still typed inert by the classifier yet the engine denies effective
+inertness on the structural signal. Demonstrated against a deterministic mock (D86), and
+against a REAL model (D87): a bounded per-field generation stand-in reused the PoC's proven
+mechanism (`_StopOnNewline`, isolated-payload splice) to fill the schema values, and on
+Qwen2.5-7B it bound `salary_destination` from an inertly-phrased payroll redirect the
+classifier still typed inert, with the benign control binding nothing (fail-closed). D90
+then replaced that stand-in with true token-level grammar-constrained decoding
+(`phase2/grammar_slot_extraction.py`, `phase2/grammar_slot_demo.py`), demonstrated end to
+end on Qwen2.5-7B the same way; D98 retired D87's now-superseded stand-in files
+(`phase2/real_slot_extraction.py`, `phase2/real_slot_demo.py`), confirming first that
+nothing else imported them. The demo is optional and skip-if-absent, like
+`e2e_harness.py`. Value poisoning, not structural or well-formedness failure, is the
+named remaining refinement, contained by Gjoll at action time, not here.
 - **False-inert mitigations in depth, now WIRED** (`ontology/nornir/`, D79 to D82, wired by
   D84): four modules, each with its own green harness, none depending on the classifier being
   right, and all now called by the live engine and gate. `state_delta.py` judges consequence
