@@ -97,6 +97,8 @@ class Report:
         self.gjoll_invocation_failures = 0
         self.control_surface_failures = 0
         self.anchor_failures = 0
+        self.effect_probe_failures = 0
+        self.sink_attestation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -781,6 +783,87 @@ def run_control_surface(rep: Report) -> None:
     rep.line("")
 
 
+def run_effect_probe(rep: Report) -> None:
+    """D93: verifies the declared effect primitive against observed behaviour, so an
+    observed money sink declaring itself display_only is caught by evidence, not
+    trusted by assertion. Wired in following the D97/D100 `run_control_surface`
+    precedent: this standalone suite's own `main()` already returns a real
+    pass/fail code (0 clean, 1 on failure), so a failure here is folded into the
+    main suite's fatal count rather than left unregistered. Run it directly for
+    detail (`python -m ontology.tests.effect_probe_harness`)."""
+    import contextlib
+    import io
+    from . import effect_probe_harness
+
+    rep.line("=== D93 Effect-probe: declared primitive verified against observed "
+             "behaviour ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = effect_probe_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] a sink that declares display_only but is OBSERVED to move "
+                  "money is caught and blocked; an honest declaration verifies clean; "
+                  "an opaque, unobservable sink fails closed (run the module directly "
+                  "for detail)")
+    else:
+        rep.effect_probe_failures += 1
+        rep.line("  [CRITICAL] effect-probe suite FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_sink_attestation(rep: Report) -> None:
+    """D94: attests WHO declared a sink, refusing an unattested or tampered
+    declaration at load, closing the config-tamper / supply-chain axis of the root
+    seam. Wired in following the D97/D100 `run_control_surface` precedent: this
+    standalone suite's own `main()` already returns a real pass/fail code (0 clean,
+    1 on failure), so a failure here is folded into the main suite's fatal count
+    rather than left unregistered. Run it directly for detail (`python -m
+    ontology.tests.sink_attestation_harness`)."""
+    import contextlib
+    import io
+    from . import sink_attestation_harness
+
+    rep.line("=== D94 Sink attestation: declaration identity and integrity, refused "
+              "if unattested or tampered ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = sink_attestation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] a tampered declaration, an unknown/forged authoriser and an "
+                  "unattested declaration are all refused at load; a properly attested "
+                  "declaration loads with no friction (run the module directly for "
+                  "detail)")
+    else:
+        rep.sink_attestation_failures += 1
+        rep.line("  [CRITICAL] sink-attestation suite FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_pipeline_score_reporting(rep: Report) -> None:
+    """D83/D102: `pipeline_score_harness` is deliberately a measurement/report
+    harness, not a pass/fail gate; its own docstring and code say so directly ("The
+    verdict is a report, not a pass/fail: this is a measurement harness"), and its
+    `main()` always returns 0, even when it finds an escaped case that no layer
+    contained. Folding that always-0 return into this suite's fatal count the same
+    way as `run_effect_probe` and `run_sink_attestation` would misrepresent a
+    deliberately-reported figure as a pass/fail bug, in direct conflict with this
+    repository's own stated principle (AGENTS.md: "mark what is proven as proven
+    and what is untested as untested"). This call exists only to confirm the
+    sub-harness still runs without raising; it deliberately does not add anything
+    to `fatal`, and there is deliberately no dedicated failure counter for it."""
+    import contextlib
+    import io
+    from . import pipeline_score_harness
+
+    rep.line("=== D83/D102 Pipeline-score: reporting-only, not fatal-gated (deliberate "
+              "asymmetry) ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        pipeline_score_harness.main()
+    rep.line("  [INFO] pipeline_score_harness ran without raising; it is intentionally "
+              "excluded from the fatal count because its own main() is a measurement "
+              "harness that always returns 0 by design, not a pass/fail gate (run it "
+              "directly for the defence-in-depth figure)")
+    rep.line("")
+
+
 # The node kinds this obligation covers. D99 named only DOMAIN_TYPE in its literal
 # wording; widened here to include FAILSAFE too, because `unclassified.py`'s two
 # nodes (UNCLASSIFIED, HIGH_RISK_UNRESOLVED) carry the identical relatedness claim
@@ -1059,6 +1142,9 @@ def main() -> int:
     run_gjoll_invocation_boundary(rep)
     run_control_surface(rep)
     run_bfo_relatedness(rep, onto)
+    run_effect_probe(rep)
+    run_sink_attestation(rep)
+    run_pipeline_score_reporting(rep)
 
     rep.dump()
 
@@ -1066,7 +1152,8 @@ def main() -> int:
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
              + rep.guard_failures + rep.mitigation_failures
              + rep.gjoll_invocation_failures + rep.control_surface_failures
-             + rep.anchor_failures)
+             + rep.anchor_failures + rep.effect_probe_failures
+             + rep.sink_attestation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
