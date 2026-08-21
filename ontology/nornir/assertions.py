@@ -88,3 +88,22 @@ class ClassifiedAssertion:
     effective_inert: bool | None = None        # None until the engine computes it
     consequence_reasons: tuple = ()            # audit strings for the axis
     review_priority: str = ""                  # graded review priority (D82)
+    # The RESOLVED classify-time consequential sink set this value was labelled
+    # against (D100). Gjoll's no-registry branch derives consequentiality from THIS
+    # stamp rather than from the `agent_consequential_sinks` argument supplied at the
+    # gate call, so hollowing or swapping that argument no longer disarms the block.
+    #
+    #   None            = no classify-time provenance for this value. The gate FAILS
+    #                     CLOSED and treats the sink as consequential (invariant 3.5).
+    #                     Set only by a caller that hand-builds a ClassifiedAssertion.
+    #   frozenset()     = classified against an agent with NO consequential sinks. This
+    #                     is legitimate and common (the Phase 1 default), and must NEVER
+    #                     be read as absent. Test with `is None`, never for truthiness.
+    #   frozenset({..}) = the resolved classify-time consequential sink set.
+    #
+    # This carries NO NEW TRUST ROOT. It is engine output on exactly the same footing
+    # as `action_critical` and `trust_level`, which the gate already trusts. A caller
+    # able to rewrite `classified_by_id` in process can rewrite this too, and can
+    # already rewrite those two; that is an integrity assumption the gate makes today,
+    # not one this build introduces.
+    consequential_sinks_at_classify: "frozenset[str] | None" = None
