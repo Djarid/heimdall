@@ -33,6 +33,7 @@ from pathlib import Path
 
 from ontology.yggdrasil import load
 from ontology.yggdrasil.control_surface import AgentContext
+from ontology.yggdrasil.core import NodeKind, Ontology, Relation, RelationKind, TypeNode
 from ontology.yggdrasil.unclassified import UNCLASSIFIED
 from ontology.nornir import Nornir, MarshalledAssertion
 
@@ -95,6 +96,7 @@ class Report:
         self.mitigation_failures = 0
         self.gjoll_invocation_failures = 0
         self.control_surface_failures = 0
+        self.anchor_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -779,6 +781,144 @@ def run_control_surface(rep: Report) -> None:
     rep.line("")
 
 
+# The node kinds this obligation covers. D99 named only DOMAIN_TYPE in its literal
+# wording; widened here to include FAILSAFE too, because `unclassified.py`'s two
+# nodes (UNCLASSIFIED, HIGH_RISK_UNRESOLVED) carry the identical relatedness claim
+# ("still information content", per that module's own docstring) and are exactly the
+# kind of type a literal reading of D99 would silently forget to check.
+_BFO_RELATEDNESS_KINDS: tuple = (NodeKind.DOMAIN_TYPE, NodeKind.FAILSAFE)
+
+
+def _bfo_orphans(onto: Ontology, kinds: tuple = _BFO_RELATEDNESS_KINDS) -> list[str]:
+    """Every node of the given kinds whose `anchor_of()` (direct ANCHORS_TO, or
+    inherited by walking IS_A parents) is None: a type that does not relate to BFO at
+    all."""
+    return sorted(
+        n.name for n in onto.nodes.values()
+        if n.kind in kinds and onto.anchor_of(n.name) is None
+    )
+
+
+def _bfo_roots(onto: Ontology, kinds: tuple = _BFO_RELATEDNESS_KINDS) -> list[str]:
+    """Every node of the given kinds with no IS_A parent: the domain/failsafe roots
+    the D23/D29/D59 relatedness claim is actually about (a subtype's anchor is only
+    ever inherited from one of these, so checking the roots is sufficient)."""
+    return sorted(
+        n.name for n in onto.nodes.values()
+        if n.kind in kinds and not onto.parents(n.name)
+    )
+
+
+def _bfo_relatedness_control_check() -> list[str]:
+    """Mandatory negative control (invariant 3.10, D10; the D95/D97 precedent that a
+    check never observed to fail is not evidence). Builds two tiny synthetic
+    `Ontology` graphs directly from the core primitives (`Ontology`, `TypeNode`,
+    `Relation`, `NodeKind`, `RelationKind`), not through any domain module, and
+    confirms:
+
+    - check 1 (orphans) catches a DOMAIN_TYPE node with no ANCHORS_TO relation and no
+      IS_A parent;
+    - check 2 (relatedness) catches two root DOMAIN_TYPE nodes anchored to two
+      different BFO-anchor-shaped strings.
+
+    Returns a list of failure descriptions (empty if both checks bite)."""
+    failures: list[str] = []
+
+    # Check 1 control: one orphaned DOMAIN_TYPE node, no anchor, no parent.
+    onto1 = Ontology()
+    onto1.add_node(TypeNode("test:orphan", NodeKind.DOMAIN_TYPE, "orphan probe"))
+    if "test:orphan" not in _bfo_orphans(onto1):
+        failures.append(
+            "check 1 (no orphan types) negative control FAILED to catch a synthetic "
+            "DOMAIN_TYPE node with no ANCHORS_TO relation and no IS_A parent"
+        )
+
+    # Check 2 control: two DOMAIN_TYPE roots anchored to two DIFFERENT BFO classes.
+    onto2 = Ontology()
+    onto2.add_node(TypeNode("test:root_a", NodeKind.DOMAIN_TYPE, "root a probe"))
+    onto2.add_node(TypeNode("test:root_b", NodeKind.DOMAIN_TYPE, "root b probe"))
+    onto2.add_relation(Relation("test:root_a", RelationKind.ANCHORS_TO,
+                                "bfo:generically_dependent_continuant"))
+    onto2.add_relation(Relation("test:root_b", RelationKind.ANCHORS_TO, "bfo:process"))
+    roots2 = _bfo_roots(onto2)
+    anchors2 = {name: onto2.anchor_of(name) for name in roots2}
+    distinct2 = {a for a in anchors2.values() if a is not None}
+    if len(distinct2) <= 1:
+        failures.append(
+            "check 2 (relatedness among roots) negative control FAILED to catch two "
+            "synthetic root DOMAIN_TYPE nodes anchored to two different BFO classes "
+            f"({anchors2}) as a mismatch"
+        )
+
+    return failures
+
+
+def run_bfo_relatedness(rep: Report, onto: Ontology) -> None:
+    """D99 remediation: the D23/D29/D59 cross-domain relatedness claim (every domain
+    anchors to the same BFO class) had zero code-side check. `Ontology.ancestors()`,
+    `parents()` and `anchor_of()` had zero callers since genesis (D99's own finding
+    from a real coverage audit), so the claim lived only in prose and in the domain
+    attach test, which proves isolation (adding a domain does not disturb the
+    others), not relatedness (the new domain's root actually anchors to the same BFO
+    class as the others). This obligation closes that gap with two machine-checked
+    properties, over every node of kind DOMAIN_TYPE or FAILSAFE
+    (`_BFO_RELATEDNESS_KINDS`; see its comment for why FAILSAFE is included though
+    D99's literal wording named only DOMAIN_TYPE):
+
+    1. No orphan types: every such node's `anchor_of()` (direct ANCHORS_TO, or
+       IS_A-inherited) must be non-None. An orphan is a type that D23/D29/D59's claim
+       simply does not reach.
+    2. Relatedness among roots: among the same nodes, the ones with no IS_A parent
+       (the domain/failsafe roots the claim is actually about, since every subtype's
+       anchor is inherited from exactly one of these) must all share exactly one
+       anchor. Two roots anchored to two different BFO classes would mean the domains
+       have drifted into separate dialects rather than genuinely relating.
+
+    Mandatory negative control first: both checks run against synthetic ontologies
+    built from the core primitives directly, proving each check can fail, before
+    either runs against the real, loaded ontology (invariant 3.10, D10)."""
+    rep.line("=== D99 BFO cross-domain relatedness (D23/D29/D59): no orphan types, "
+             "one shared anchor among domain/failsafe roots ===")
+
+    control_failures = _bfo_relatedness_control_check()
+    if control_failures:
+        for cf in control_failures:
+            rep.anchor_failures += 1
+            rep.line(f"  [CRITICAL] negative control: {cf}")
+    else:
+        rep.line("  [PASS] negative control: check 1 catches a synthetic DOMAIN_TYPE "
+                 "node with no anchor and no IS_A parent as an orphan; check 2 catches "
+                 "two synthetic root nodes anchored to two different BFO classes as a "
+                 "mismatch (the checks bite, they are not theatre).")
+
+    checked = sorted(n.name for n in onto.nodes.values() if n.kind in _BFO_RELATEDNESS_KINDS)
+    orphans = _bfo_orphans(onto)
+    if orphans:
+        for name in orphans:
+            rep.anchor_failures += 1
+            rep.line(f"  [CRITICAL] orphan type: {name!r} has no anchor, direct or "
+                     f"inherited (a DOMAIN_TYPE/FAILSAFE type must relate to BFO, D23)")
+    else:
+        rep.line(f"  [PASS] no orphan types: all {len(checked)} DOMAIN_TYPE/FAILSAFE "
+                 f"node(s) resolve a non-None anchor, direct or IS_A-inherited.")
+
+    roots = _bfo_roots(onto)
+    root_anchors = {name: onto.anchor_of(name) for name in roots}
+    # Roots with no anchor at all are already reported as orphans above; excluding
+    # them here (per the spec) avoids double-counting the same finding under check 2.
+    resolved = {name: a for name, a in root_anchors.items() if a is not None}
+    distinct = set(resolved.values())
+    if len(distinct) > 1:
+        rep.anchor_failures += 1
+        rep.line(f"  [CRITICAL] domain/failsafe roots anchor to DIFFERENT BFO classes "
+                 f"(D23/D29/D59 claims they all relate to one): {sorted(resolved.items())}")
+    else:
+        anchor = next(iter(distinct)) if distinct else None
+        rep.line(f"  [PASS] all {len(roots)} domain/failsafe root(s) share one anchor "
+                 f"{anchor!r}: {roots}")
+    rep.line("")
+
+
 def run_mitigations(rep: Report) -> None:
     """Run the four false-inert mitigation suites (D79 to D82) as part of the main suite.
 
@@ -918,13 +1058,15 @@ def main() -> int:
     run_gjoll(nornir, rep)
     run_gjoll_invocation_boundary(rep)
     run_control_surface(rep)
+    run_bfo_relatedness(rep, onto)
 
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
              + rep.guard_failures + rep.mitigation_failures
-             + rep.gjoll_invocation_failures + rep.control_surface_failures)
+             + rep.gjoll_invocation_failures + rep.control_surface_failures
+             + rep.anchor_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
