@@ -399,7 +399,11 @@ D79 to D82 (the mitigations) and D83 (the pipeline score and its residual).
   check with a negative control (D56), the Gjoll action-critical gate (obligation
   3.6, D58) that blocks an unsafe wiring before it fires while passing a safe one, a
   coverage-gap capture that reports the review queue by reason (D60), a
-  marshalling-contract check (D62), and the false-inert measurement (D67). The suite
+  marshalling-contract check (D62), the false-inert measurement (D67), and the
+  BFO cross-domain relatedness check (D101, `run_bfo_relatedness`): every
+  `DOMAIN_TYPE`/`FAILSAFE` node resolves a non-None anchor and every domain/failsafe
+  root shares one BFO anchor, closing the gap D99 named (the domain attach test
+  proved isolation, not relatedness). The suite
    is currently RED: the false-inert measurement finds 1/17 on the self-authored corpus but
    13/30 (about 43 percent) on a larger independent corpus (D77), a large real break, left red and named;
    the other checks pass. Coverage measured at 36/38; domain attach test
@@ -483,7 +487,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first. Would NOT close D100's narrow remaining gap either: attestation binds identity and integrity, never honesty (D94's limit), not an in-process caller rewriting the stamp after the value is produced |
-| D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | OPEN (research/build) | Needs a new harness obligation that computes `anchor_of()` for each domain root type, asserts they are all equal, and asserts every `DOMAIN_TYPE` node has a non-None anchor (closing the orphan-type hole too) |
+| D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
