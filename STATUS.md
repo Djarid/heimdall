@@ -61,9 +61,9 @@ and D remain the honesty backstop.
 D84 wired the mitigation MODULES into `engine.py` and `gjoll.py`, an import-level fact, verified
 live by `pipeline_score_harness.integration_status()`. That is a different claim from whether
 Gjöll's own gate functions (`ActionProposal`, `evaluate`, `enforce`) are CALLED from any
-non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds four test
-call sites (`harness.py`, `e2e_harness.py`, `effect_probe_harness.py`,
-`memgraph_integration_harness.py`) and zero non-test call sites, so invariant 3.6 is
+non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds five test
+call sites (`control_surface_harness.py`, `e2e_harness.py`, `effect_probe_harness.py`,
+`harness.py`, `memgraph_integration_harness.py`) and zero non-test call sites, so invariant 3.6 is
 DEMONSTRATED under harness invocation only, not under live invocation against a real action.
 That absence is the phase-mapped intended state (D74 excludes Gjöll's action-time gate from the
 R-1 exception; Himinbjörg, the intended caller, is Phase 3 and essentially unbuilt), not a
@@ -131,6 +131,20 @@ standalone entry point too:
 ```
 poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; narrowed residual RECORDED
 ```
+
+**D102 registers D93 and D94 as main-suite fatal-gated obligations, and deliberately leaves
+D83 reporting-only.** `effect_probe_harness.py` (D93) and `sink_attestation_harness.py` (D94)
+already had standalone entry points but were not wired into `ontology.tests.harness`'s own
+fatal count, unlike D96, D97, D100 and D101. Both now are (`run_effect_probe`,
+`run_sink_attestation`), following the same pattern as `run_control_surface`: each
+sub-harness's own `main()` already returns a real pass/fail code, so a failure there now
+folds into the main suite's `fatal` sum instead of staying silent unless run directly.
+`pipeline_score_harness.py` (D83) is NOT folded in the same way: its own `main()` is
+deliberately a measurement harness, not a pass/fail gate, and always returns 0 even when it
+finds an uncontained case, so `run_pipeline_score_reporting` only confirms it still runs
+without raising and does not add anything to `fatal`. Forcing that harness's always-0 return
+into a fatal count would misrepresent a deliberately reported figure as a bug, against this
+repository's own stated preference for honesty over reassurance. See D102 in `DECISIONS.md`.
 
 **The next piece of work, in priority order (detail in section 6):**
 
