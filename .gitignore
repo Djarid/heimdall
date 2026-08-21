@@ -56,3 +56,10 @@ desktop.ini
 .env.*
 *.local
 secrets.*
+
+# AI agent tooling and local env config (not part of the project)
+.aetos/
+.opencode/
+.envrc
+.coverage
+opencode.jsonc
