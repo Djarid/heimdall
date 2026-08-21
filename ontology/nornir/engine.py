@@ -228,6 +228,11 @@ class Nornir:
         critical = self.flow_backend(flow_edges, ctx.consequential_sinks)
         for c in classified:
             c.action_critical = c.assertion_id in critical
+            # D100: stamp the RESOLVED classify-time set that produced the label just
+            # above, from the same expression already passed to self.flow_backend, so
+            # the stamp and the reachability determination cannot diverge without two
+            # separate edits. Taken from `ctx` (resolved), never from the raw `agent`.
+            c.consequential_sinks_at_classify = ctx.consequential_sinks
 
         # 2b. False-inert mitigations in depth (D84, wiring D79/D80/D82). For each
         # assertion, judge consequence on the SECOND axis the inert speech-act type

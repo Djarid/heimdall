@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D98)
+## 0. Resume here (handoff, last updated after D100)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -86,6 +86,20 @@ safe/unsafe proof. `AgentContext` attestation (extending D93/D94's authoriser-pl
 pattern to the agent binding itself) is named as a follow-on, not built: materially larger than
 the ceiling fix. See D97 in `DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
 
+**D100 then narrowed the gjoll half of D97's residual, without closing it in full.**
+`ClassifiedAssertion` now carries an additive `consequential_sinks_at_classify` stamp, set by
+`engine.run` from the RESOLVED `AgentContext`, and the no-registry branch derives
+consequentiality from that stamp rather than from the unbound `agent_consequential_sinks`
+argument supplied at the gate call. This closes the REACHABLE half of D97's item (b): a
+hollowed or swapped gate-time argument no longer disarms the block, and a value carrying no
+classify-time provenance at all is now also treated fail closed. It does NOT close item (b) in
+full: a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate
+call, still disarms the branch, exactly the in-process label-rewrite assumption the gate already
+makes for `action_critical` and `trust_level`. The registry-supplied path (D89-B) is untouched.
+`AgentContext` attestation (D97's item (c)) stays a named, triggered follow-on, not built here
+and not given its own `DECISIONS.md` row. See D100 in `DECISIONS.md` and
+`ontology/tests/control_surface_harness.py`.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -110,11 +124,12 @@ so the main run already reports it:
 poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # five test call sites, zero non-test
 ```
 
-D97 (the control-surface ceiling fix and the gjoll no-registry residual) is likewise registered
-inside `ontology.tests.harness` (obligation D97), but has a standalone entry point too:
+D97 (the control-surface ceiling fix) and D100 (the gjoll no-registry residual, narrowed) are
+likewise registered inside `ontology.tests.harness` (obligation D97/D100), but have a
+standalone entry point too:
 
 ```
-poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; residual RECORDED
+poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; narrowed residual RECORDED
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
@@ -191,13 +206,21 @@ poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() cl
   `control_surface.resolve()`'s docstring claimed a ceiling check that the body never
   performed (`return agent`, no check at all). Verify a claimed check by probing it, the same
   discipline D93 to D96 each applied to their own gap, before trusting or fixing it.
-- Gjoll's no-registry fallback (`sink_registry=None`) is a real, bounded, DOCUMENTED residual
-  (D97), not a bug to "fix" with a narrower rule: `sink_is_consequential` there is exactly
-  `proposal.sink in agent_consequential_sinks`, with no independent source of truth, so a
-  hollow or mismatched sink set at the gate call disarms it. Always supply `sink_registry` in
-  new code; do not OR the value's `action_critical` flag into `sink_is_consequential` to
-  "close" it without a registry, that reintroduces friction on an honestly-inert sink (checked
-  and rejected in D97's own text).
+- Gjoll's no-registry fallback (`sink_registry=None`) carried a real, bounded, DOCUMENTED
+  residual (D97): `sink_is_consequential` there was exactly `proposal.sink in
+  agent_consequential_sinks`, with no independent source of truth, so a hollow or mismatched
+  sink set at the gate call disarmed it. D100 NARROWED this: the branch now derives
+  consequentiality from the classify-time `consequential_sinks_at_classify` stamp the value
+  already carries, so a hollowed or swapped gate-time argument no longer disarms it, and a
+  value with no stamp at all is fail closed too. What remains is narrower and still a real,
+  DOCUMENTED residual, not a bug to "fix" here: a caller able to rewrite the stamp on a
+  `ClassifiedAssertion` in process, before the gate call, still disarms the branch, exactly the
+  in-process label-rewrite assumption the gate already makes for `action_critical` and
+  `trust_level`, and this is out of the threat model, not mitigated. Always supply
+  `sink_registry` in new code; do not OR the value's `action_critical` flag into
+  `sink_is_consequential` to "close" the no-registry branch further, that reintroduces friction
+  on an honestly-inert sink (checked and rejected in D97's own text, and still forbidden by
+  D100, REQ-7 and REQ-8).
 
 ---
 
@@ -249,8 +272,13 @@ any non-test code path; they are not, and D96's detector states that separately 
 D97 fixed a further, DIFFERENT gap in the control surface itself: `resolve()` now actually
 enforces the trust ceiling it always claimed to (an escalating override is clamped, not
 silently honoured), and named, without closing, a bounded residual in gjoll's no-registry
-fallback (an empty or mismatched `agent_consequential_sinks` at the gate call can still disarm
-it; the registry-supplied path, D89-B, is unaffected).
+fallback (an empty or mismatched `agent_consequential_sinks` at the gate call could still
+disarm it; the registry-supplied path, D89-B, is unaffected). D100 then narrowed that residual:
+the branch now derives consequentiality from the classify-time stamp a value already carries
+rather than from the gate-time argument, so neither a hollowed argument nor a value with no
+stamp at all disarms the block any more. What survives is narrower still: a caller able to
+rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call, is out of the
+threat model, exactly as it already is for `action_critical` and `trust_level`.
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -453,8 +481,8 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D35 Odin self-modification | OPEN (research) | Currently excluded |
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
-| D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first |
-| D97 follow-on: require `sink_registry` always, or thread an attested `AgentContext` through every gjoll call, closing the no-registry `agent_consequential_sinks` residual | OPEN (named, not scoped) | Either breaks backward compatibility with existing no-registry callers (this repo's own D10 proof) or is a materially larger API change; needs its own decision, not built in D97 |
+| D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
+| D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first. Would NOT close D100's narrow remaining gap either: attestation binds identity and integrity, never honesty (D94's limit), not an in-process caller rewriting the stamp after the value is produced |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | OPEN (research/build) | Needs a new harness obligation that computes `anchor_of()` for each domain root type, asserts they are all equal, and asserts every `DOMAIN_TYPE` node has a non-None anchor (closing the orphan-type hole too) |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
@@ -587,20 +615,20 @@ corpus the author never saw.
    starting it now would let a documentation/detector change (D96) drift into a Phase-3
    component build. Design question left open for when it starts: whether the gate reuses
    `promotion_policy.py`'s corroboration logic or is a separate mechanism.
-6. **Queued: two named D97 follow-ons on the control surface.** Not started. First,
-   `AgentContext` attestation: extend D93/D94's authoriser-plus-keyed-digest pattern from sink
-   declarations to the agent binding itself, so a compromised or unattested caller cannot
-   construct or alter an `AgentContext` (Gleipnir's G-1 failure, "the guard's own configuration
-   reachable/editable by the population it guards," reproduced inside Heimdall, per
-   `.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md` finding F4). Second, close
-   gjoll's no-registry `agent_consequential_sinks` residual: either require `sink_registry`
-   unconditionally (a backward-compatibility break for every existing no-registry caller,
-   including this repo's own D10 safe/unsafe proof) or thread an attested `AgentContext`
-   through every gate call so the sink set used at classify time cannot be swapped for a
-   different one at gate time. Both are queued rather than started because each is materially
-   larger than the concrete ceiling-check fix D97 closed, and each needs its own scoping
-   decision, the same discipline item 5 (Approach E) already applies to Gjöll's re-validation
-   gate.
+6. **Queued: one named D97 follow-on on the control surface, `AgentContext` attestation.** Not
+   started. D97 named two follow-ons here; D100 built the first (the no-registry
+   `agent_consequential_sinks` residual is now narrowed, not requiring `sink_registry`
+   unconditionally or an attested `AgentContext` threaded through every gate call, see D100),
+   so only the second remains queued: extend D93/D94's authoriser-plus-keyed-digest pattern
+   from sink declarations to the agent binding itself, so a compromised or unattested caller
+   cannot construct or alter an `AgentContext` (Gleipnir's G-1 failure, "the guard's own
+   configuration reachable/editable by the population it guards," reproduced inside Heimdall,
+   per `.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md` finding F4). Queued
+   rather than started because it is materially larger than the concrete ceiling-check fix D97
+   closed, and needs its own scoping decision, the same discipline item 5 (Approach E) already
+   applies to Gjöll's re-validation gate. It would not close D100's own narrow remaining gap
+   either (a caller rewriting the stamp in process): attestation binds identity and integrity,
+   never honesty (D94's limit).
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

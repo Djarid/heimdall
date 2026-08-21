@@ -745,26 +745,33 @@ def run_gjoll_invocation_boundary(rep: Report) -> None:
 
 
 def run_control_surface(rep: Report) -> None:
-    """D97: control_surface.resolve() previously performed no ceiling check at all
+    """D97/D100: control_surface.resolve() previously performed no ceiling check at all
     despite its own docstring's claim ("we enforce the ceiling is not silently
-    escalated"), and gjoll's no-registry fallback has a named, bounded residual (an
-    empty or mismatched agent_consequential_sinks argument disarms it, closed only when
-    a sink_registry is supplied). Both are verified in `control_surface_harness.py`; run
-    it directly for detail (`python -m ontology.tests.control_surface_harness`). A
-    failure here (the ceiling check regressing) is fatal; the no-registry residual is
-    recorded inside that suite as RESIDUAL, not counted as a failure, the same
-    reporting-without-failing discipline the false-inert rate uses for its own known,
-    real, bounded gap."""
+    escalated"), and gjoll's no-registry fallback carried a named residual now narrowed
+    by D100: a value carrying no reachability provenance at all is now treated fail
+    closed rather than authorised. What survives is narrower: a caller able to rewrite
+    the classify-time stamp in process before the gate call still disarms that branch,
+    exactly the in-process label-rewrite assumption the gate already makes for
+    `action_critical` and `trust_level`. Both the ceiling fix and the narrowed residual
+    are verified in `control_surface_harness.py`; run it directly for detail (`python -m
+    ontology.tests.control_surface_harness`). A failure here (the ceiling check
+    regressing) is fatal; the narrowed residual is recorded inside that suite as
+    RESIDUAL, not counted as a failure, the same reporting-without-failing discipline
+    the false-inert rate uses for its own known, real, bounded gap."""
     import contextlib
     import io
     from . import control_surface_harness
 
-    rep.line("=== D97 Control-surface ceiling enforcement and the gjoll no-registry residual ===")
+    rep.line("=== D97/D100 Control-surface ceiling enforcement and the narrowed gjoll "
+             "no-registry residual ===")
     with contextlib.redirect_stdout(io.StringIO()):
         rc = control_surface_harness.main()
     if rc == 0:
         rep.line("  [PASS] resolve() clamps a ceiling-escalating override; the gjoll "
-                 "no-registry residual is checked and recorded (see D97, run the module "
+                 "no-registry branch now derives consequentiality from the classify-"
+                 "time stamp and fails closed on a value with no reachability "
+                 "provenance at all; the narrower, in-process label-rewrite residual "
+                 "that survives is checked and recorded (see D100, run the module "
                  "directly for detail)")
     else:
         rep.control_surface_failures += 1
