@@ -12,50 +12,192 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D83)
+## 0. Resume here (handoff, last updated after D98)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
 
-**State in one paragraph.** The false-inert classification break is measured, mitigated in
-depth, and still open. Layer one (the classifier) misses about 48 percent of consequential
-content on the independent corpus. Scored across all six layers the pipeline contains about
-90 percent, with a named three-case residual. The suite is deliberately RED at 17 findings,
-all of them false-inert, and must stay red until the break is actually closed.
+**State in one paragraph.** The pipeline contains every consequential case on the
+independent corpus: 33 of 33, defence in depth (D83, D84, D85). That is the headline, and it
+is now a property of the BUILT system: the D79 to D82 mitigations are imported by
+`engine.py` and `gjoll.py` (D84), the last residual class was closed by growing the
+consequential-slot vocabulary rather than by a keyword (D85), and Fenrir performs the
+STRUCTURAL slot extraction
+that feeds the state-delta layer, now demonstrated with a REAL model (D86 built it and proved
+it against a mock, D87 proved it against Qwen2.5-7B via the PoC's bounded generation), so the
+slot bindings the later layers need are produced by a real model rather than corpus-supplied.
+Underneath that, the first-layer classifier on its own is deliberately weak: it types about
+48 percent (16 of 33) of consequential content inert on the rules-aware independent corpus,
+and that layer-one break stays OPEN and RED (now 22 findings, all false-inert, after D88 added
+a blind-authored corpus) because no content pattern can separate a passively-phrased
+consequence from a genuine informational statement without world knowledge, which invariant
+3.1 keeps off the classification path. D88 is the strongest independence obtainable inside an
+agent session (a fresh sub-agent authored the scenarios with no rule or repo access): it reads
+LOWER, 5 of 36 (about 14 percent), because a rules-aware author targets the classifier's blind
+spots more precisely than a blind one, so the two rates bound different adversaries and neither
+is fully third-party. The point of the architecture is exactly that the
+guarantee does not rest on the first layer: five later layers, none depending on the
+classifier being right, catch what it misses. So read the 48 percent as the pessimistic
+single-layer figure and the 33-of-33 as what the whole pipeline does, under the remaining
+honesty conditions (same-author bindings; and value poisoning, since the structural extraction
+now uses true token-level grammar-constrained decoding, D90, which constrains structure but
+not value truth). D90 replaced the D87 bounded per-field stand-in with a real grammar mask, so
+the "not yet true grammar constraint" caveat is closed; what remains on that layer is value
+poisoning, contained by Gjoll at action time. D98 then retired D87's now-superseded stand-in
+files (`phase2/real_slot_extraction.py`, `phase2/real_slot_demo.py`), since nothing else
+imported them. On the declaration seam itself (5.1), all four
+scoped directions are now built in-repo: D93 built direction D (a sink's declared effect
+primitive is verified against its OBSERVED behaviour, so the WRONG-primitive lie D89-B had only
+relocated is caught by evidence for every observable sink), and D94 built direction C, the
+integrity axis (a declaration carries an `authoriser` id and a keyed attestation digest, and an
+unattested, unknown-authoriser or tampered declaration is refused at load, closing the
+config-tamper adversary). What remains on the seam is deployment-phase (public-key signing
+rather than the keyed digest, the runtime-taint form of D, opaque-sink handling, all needing
+real non-mock sinks) and flow-edge honesty, plus C's load-bearing honesty limit: attestation
+binds identity and integrity, not honesty, so a malicious authoriser's lie still verifies and B
+and D remain the honesty backstop.
+
+**A separate caveat a fresh session must carry: import wiring is not call invocation (D96).**
+D84 wired the mitigation MODULES into `engine.py` and `gjoll.py`, an import-level fact, verified
+live by `pipeline_score_harness.integration_status()`. That is a different claim from whether
+Gjöll's own gate functions (`ActionProposal`, `evaluate`, `enforce`) are CALLED from any
+non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds four test
+call sites (`harness.py`, `e2e_harness.py`, `effect_probe_harness.py`,
+`memgraph_integration_harness.py`) and zero non-test call sites, so invariant 3.6 is
+DEMONSTRATED under harness invocation only, not under live invocation against a real action.
+That absence is the phase-mapped intended state (D74 excludes Gjöll's action-time gate from the
+R-1 exception; Himinbjörg, the intended caller, is Phase 3 and essentially unbuilt), not a
+defect, and the detector's job is to keep that statement accurate without human memory.
+
+**D97: the control surface's ceiling check is fixed; a gjoll gate residual is named, not
+closed.** A read-only audit (`.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md`,
+finding F4) claimed `control_surface.resolve()`'s docstring promised ceiling enforcement that
+the body never performed. Tested and confirmed real: `resolve()` now ranks an override's
+`trust_ceiling` against the global default's on the trust lattice and CLAMPS an escalation,
+fail closed on an unranked level, with a control proving an honest override still passes
+through untouched. The audit's second claim, that gjoll's no-registry fallback's
+`sink_is_consequential` check is exactly `proposal.sink in agent_consequential_sinks`, so an
+empty or mismatched sink set disarms it regardless of the value's `action_critical` status,
+also reproduced, and is NOT closed: it is verified, named and documented as a bounded residual
+(closed only when `sink_registry` is supplied, D89-B), because a narrower no-registry patch
+would reintroduce friction on an honestly-inert sink, and unconditionally requiring a registry
+would break every existing no-registry caller including this repo's own D10 mandatory
+safe/unsafe proof. `AgentContext` attestation (extending D93/D94's authoriser-plus-digest
+pattern to the agent binding itself) is named as a follow-on, not built: materially larger than
+the ceiling fix. See D97 in `DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
 
 **Run this first, to see the state for yourself:**
 
 ```
-poc/.venv/bin/python -m ontology.tests.harness                  # RED at 17, expected
-poc/.venv/bin/python -m ontology.tests.pipeline_score_harness   # the 48 vs 90 percent picture
+poc/.venv/bin/python -m ontology.tests.harness                              # RED at 22 layer-one, expected
+poc/.venv/bin/python -m ontology.tests.pipeline_score_harness               # D77: 48% layer-one, 33/33 pipeline
+poc/.venv/bin/python -m ontology.tests.pipeline_score_harness --thirdparty  # D88 blind: 14% layer-one, 33/36 pipeline
+poc/.venv/bin/python -m ontology.tests.sink_declaration_harness             # D89-B: derive-from-primitive, GREEN
+poc/.venv/bin/python -m ontology.tests.effect_probe_harness                 # D93 direction D: verify vs behaviour, GREEN
+poc/.venv/bin/python -m ontology.tests.sink_attestation_harness             # D94 direction C: attest who declared, GREEN
+```
+
+D95 (the guard's eval/exec/compile detection gap) has no standalone harness file: its three
+MUST_CATCH probes and one MUST_NOT_CATCH control live inside `symbolic_guard.py`'s own
+`control_check()`, so it is already exercised by `ontology.tests.harness` above (obligation
+3.1) and by `control_check()`/`scan()` directly; no new run command is needed for it.
+
+D96 (the Gjöll invocation-boundary detector) does have a standalone entry point for direct
+inspection, but it is also registered as obligation 3.6b inside `ontology.tests.harness` above,
+so the main run already reports it:
+
+```
+poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # five test call sites, zero non-test
+```
+
+D97 (the control-surface ceiling fix and the gjoll no-registry residual) is likewise registered
+inside `ontology.tests.harness` (obligation D97), but has a standalone entry point too:
+
+```
+poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; residual RECORDED
 ```
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Wire D79 to D82 into the live pipeline.** They are proven in isolation and green, but
-   `engine.py`, `rules.py` and `gjoll.py` do not call them, and their harnesses are not in
-   the main suite. Until that is done the measured 48 percent is unchanged by them and the
-   D83 90 percent is the DESIGNED pipeline, not the built one. This is the single highest
-   value task and the reason the mitigations do not yet show up in the headline number.
-2. **Close the D83 residual class** by growing the consequential-slot vocabulary in
-   `ontology/nornir/state_delta.py` to cover asset and entitlement transfers. Three corpus
-   cases (`ind-41` to `ind-43`) escape every layer today. This is coverage growth in the D60
-   sense, and explicitly not another keyword rule.
-3. **Structural extraction in Fenrir**, since layers 2 to 5 need values bound to typed slots
-   rather than interpretive summaries. `plans/dd/fenrir.md` section 3.1 already prefers this.
+1. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
+   is running this exact false-inert attack vector against models independently, with no
+   exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
+   role and fire the attacks at the LIVE framework, so it tests the architecture's central claim
+   end to end, a model that WOULD be steered is still prevented from acting because trust is
+   structural at the boundary, which no corpus and no in-repo run has reached (a corpus only
+   ever exercises layer one). It is the first OBSERVED (not simulated) containment measurement
+   and inverts the D75 negative finding: a vulnerable model WILL attempt the action, so it
+   reaches the case D75's robust model could not. So do NOT re-attempt in-repo: the in-session
+   ceiling was already reached (D88 5/36 blind, D77 16/33 rules-aware, both lower bounds). When
+   the result lands, record it as its own decision and update invariant 3.6's proof status and
+   D67-fix's disposition; a pass is bounded containment (not universal), a fail is a genuine
+   architecture finding.
+2. **Attest the declarations: all four scoped directions (A, B, C, D) now built in-repo.** D81
+   closed declaration ERROR or DRIFT; D89 narrowed the HONESTY seam on two axes (B derives sink
+   consequentiality from an attested effect-primitive table so a money sink flagged
+   non-consequential is still gated; A blocks an action-critical value dishonestly declared
+   CONSUME_INERT); D93 built direction D, verifying the declared effect primitive against the
+   sink's OBSERVED behaviour so the WRONG-primitive lie is caught by evidence for every
+   observable sink; and D94 built direction C, the INTEGRITY axis: a sink declaration carries an
+   `authoriser` id and a keyed `attestation` digest (`ontology/nornir/sink_attestation.py`), and
+   `SinkRegistry.declare_attested` REFUSES an unattested, unknown-authoriser or tampered
+   declaration at load, closing the config-tamper / supply-chain adversary. The remaining
+   root-seam work is DEPLOYMENT-PHASE, not in-session buildable: public-key signing (D94 built a
+   keyed-digest demonstration, not asymmetric non-repudiation, 5.7), the runtime-taint form of D
+   (a live taint check on real sink outputs), and opaque-sink handling (both need real sinks,
+   which are still mocked); plus the flow-EDGE honesty. Two honest limits are load-bearing and
+   asserted, not smoothed: C binds IDENTITY and INTEGRITY, never HONESTY, so a MALICIOUS
+   AUTHORISER's lie still verifies (B and D are the honesty backstop, not C); and coverage
+   breadth stays untested. All named in `plans/declaration_attestation_scoping.md`.
+3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
+   per-field stand-in with a real token-level grammar mask: the model emits the whole
+   `SlotExtractionSchema` object under a logits processor that permits only tokens keeping the
+   output a valid grammar prefix, so a malformed object or an undeclared key is unreachable and
+   there is no free-text to re-parse (the `fenrir.md` 3.1 property). Implemented natively on
+   mlx_lm's `logits_processors` hook (no outlines/xgrammar dependency), the grammar proven
+   deterministically without a model (`phase2/tests/harness.py` obligation 7) and demonstrated
+   on Qwen2.5-7B end to end (`phase2/grammar_slot_demo.py`). Residual, unchanged: it constrains
+   STRUCTURE, not value TRUTH, so value poisoning stays a Gjoll concern.
+
+   The remaining named work, now that tasks 1 to 3 are addressed: the EXTERNAL-HUMAN corpus
+   (task 1's residual), and the declaration follow-ons C (attest who may declare) and D (verify
+   the effect primitive against behaviour) from `plans/declaration_attestation_scoping.md`.
 
 **Traps that have already caught someone in this repo:**
 
 - Never grow classification coverage by adding keyword rules that enumerate malicious
   phrasings. That is invariant 3.5's blacklist trap; it has been tried and re-opened twice
-  (D69, D72). The fail-closed property test in `ontology/tests/harness.py` enforces it.
+  (D69, D72). The fail-closed property test in `ontology/tests/harness.py` enforces it. Note
+  the distinction: D85 grew the consequential-SLOT vocabulary (what kind of fact is set),
+  which is not a keyword and is the sanctioned way to close a residual class.
+- Do not quote the 48 percent as "the system's containment" or the 100 percent as "no risk".
+  The 48 percent is layer one alone; the 100 percent is the whole pipeline under stated
+  honesty conditions. Both are lower bounds on difficulty (same-author corpus).
+- Do not read D88's LOWER blind rate (14 percent) as the break being smaller than D77's 48
+  percent. They bound different adversaries: a rules-aware author targets the blind spots
+  precisely, a blind one trips them by accident. The break is still real and structural, and
+  D67-fix stays OPEN. D88 is BLIND, not fully third-party (orchestrator session knowledge,
+  shared model family, same-author structural bindings); its pipeline score carries a heavier
+  caveat than its layer-one rate because the structural bindings are builder-derived.
 - Anything added under `ontology/yggdrasil/`, `ontology/nornir/` or `poc/symbolic.py` is on
   the authorisation path and may import only roots on `ALLOWED_IMPORT_ROOTS` in
-  `ontology/nornir/symbolic_guard.py`. The 3.1 guard is fatal and runs first.
-- Do not soften the RED bar or report a harness result you have not run. The red suite is
-  the honest artefact; a green one that never tested the break is worth less.
+  `ontology/nornir/symbolic_guard.py`. The 3.1 guard is fatal and runs first. The D84 wiring
+  uses only relative intra-package imports, which is why it stays clean.
+- Do not soften the RED bar or report a harness result you have not run. The red layer-one
+  suite is the honest artefact; a green one that never tested the break is worth less.
 - Use the `sync-project-docs` skill when recording anything: the repo and the Tolaria vault
   at `~/git/tolaria1` both have to be updated, and the vault has a strict schema.
+- Do not trust a docstring's claim of enforcement without reading the body: D97 found
+  `control_surface.resolve()`'s docstring claimed a ceiling check that the body never
+  performed (`return agent`, no check at all). Verify a claimed check by probing it, the same
+  discipline D93 to D96 each applied to their own gap, before trusting or fixing it.
+- Gjoll's no-registry fallback (`sink_registry=None`) is a real, bounded, DOCUMENTED residual
+  (D97), not a bug to "fix" with a narrower rule: `sink_is_consequential` there is exactly
+  `proposal.sink in agent_consequential_sinks`, with no independent source of truth, so a
+  hollow or mismatched sink set at the gate call disarms it. Always supply `sink_registry` in
+  new code; do not OR the value's `action_critical` flag into `sink_is_consequential` to
+  "close" it without a registry, that reintroduces friction on an honestly-inert sink (checked
+  and rejected in D97's own text).
 
 ---
 
@@ -96,20 +238,38 @@ action-time gate was never defeated by the break at all (D78, action-critical st
 reachability-derived), promotion into trusted memory is human-gated (D76), and five
 mitigations now stand between a mis-classification and harm (D79 state-delta consequence
 detection, D80 two-dimensional classification removing the inert override, D81 fail-closed
-sink-declaration validation, D82 corroboration for promotion and graded review). Scored as
-defence in depth rather than by the classifier alone, the pipeline contains 30 of 33
-consequential cases, about 90 percent, against the 48 percent layer-one rate (D83). So the
-break is a degraded outer layer rather than an open door: the classification layer is
-measurably weak and stays red, and the guarantee does not rest on it.
+sink-declaration validation, D82 corroboration for promotion and graded review), all now
+IMPORTED into `engine.py` and `gjoll.py` (D84). Scored as defence in depth rather than by the
+classifier alone, the pipeline contains 33 of 33 consequential cases, 100 percent, against
+the 48 percent layer-one rate, after D85 closed the last residual class by slot-vocabulary
+growth (D83, D84, D85). So the break is a degraded outer layer rather than an open door: the
+classification layer is measurably weak and stays red, and the guarantee does not rest on it.
+This is an import-wiring fact (D84), not a claim that Gjöll's gate functions are called from
+any non-test code path; they are not, and D96's detector states that separately below.
+D97 fixed a further, DIFFERENT gap in the control surface itself: `resolve()` now actually
+enforces the trust ceiling it always claimed to (an escalating override is clamped, not
+silently honoured), and named, without closing, a bounded residual in gjoll's no-registry
+fallback (an empty or mismatched `agent_consequential_sinks` at the gate call can still disarm
+it; the registry-supplied path, D89-B, is unaffected).
 
-**Two caveats a fresh session must carry, or the 90 percent is misleading.** First, D83
-scores the DESIGNED pipeline: the mitigations D79 to D82 are proven in isolation but are not
-yet called by `engine.py`, `rules.py` or `gjoll.py`, and their layers consume structural
-inputs (slot bindings, flow edges) that Fenrir and Mimisbrunnr do not yet produce, so the
-measured 48 percent is unchanged by them. Second, D83 found a residual CLASS the first
-100 percent score had hidden: three cases (`ind-41` to `ind-43`, an asset transfer, a
-trademark assignment, an insurance lapse) escape every layer because they are typed inert
-AND their effect falls outside the declared consequential-slot vocabulary.
+**One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
+score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
+into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
+output and its integration banner reports every mitigation as wired. D85 closed the residual
+CLASS the first 100 percent score had hidden (three cases, an asset transfer, a trademark
+assignment, an insurance lapse) by growing the consequential-slot vocabulary, not a keyword.
+D86 then built the structural slot extraction that produces those bindings, and D87
+demonstrated it with a REAL model: Fenrir binds values to typed slots and feeds the
+state-delta layer end to end, proven against Qwen2.5-7B via the PoC's bounded generation (the
+model bound `salary_destination` from an inertly-phrased payroll redirect the classifier
+still typed inert, and the live engine denied effective inertness). What still bounds the
+100 percent is that the extraction uses bounded per-field generation, the Phase-2 stand-in
+`plans/dd/fenrir.md` 3.1 sanctions, not yet true token-level grammar-constrained decoding
+(D87, a named refinement); the corpus and the rules share one author, so the figure is a
+lower bound on difficulty; and value poisoning stays open (a model can bind a schema-valid
+wrong value, contained by Gjöll, FR-6). A fresh probe whose effect falls outside every
+declared consequential slot could still re-open a residual; the limit is the slot
+vocabulary's breadth, which grows on demand (D60, D85).
 
 - **Proven (the PoC).** The neurosymbolic filter's structural half holds: a
   deterministic layer with no LLM quarantines untrusted content as typed data,
@@ -171,7 +331,7 @@ AND their effect falls outside the declared consequential-slot vocabulary.
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 83 tracked decisions (D73 the HLD plus Phase 1-3 Detailed Design, D74 the scoped R-1 exception to build the Fenrir+Huginn detection layer, D75 the honest negative finding that the attempt-introspection catch does not close the false-inert gap, D76 adopt Gleipnir's trust-tiered memory governance on success, D77 the independent corpus measuring false-inert at about 43 percent, seven times the self-authored 1/17, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived) plus the open D67-fix item, with consistency checks |
+| `DECISIONS.md` | The decision log: 98 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -229,22 +389,51 @@ D79 to D82 (the mitigations) and D83 (the pipeline score and its residual).
   false-inert payloads (including an overt injection), so the attempt-introspection
   catch (D67-fix direction d) does NOT close the false-inert gap for a resisting model;
   it is an injection-success detector, not a false-inert fix, and direction (d) is
-  demoted. See `phase2/OUTCOME.md`.
-- **False-inert mitigations in depth** (`ontology/nornir/`, D79 to D82): four modules, each
-  with its own green harness, none depending on the classifier being right. `state_delta.py`
-  judges consequence by what a value would CHANGE against a declared consequential-slot set
-  (catches 8 of the 13 D77 cases by effect, unevadable by rephrasing where extraction is
-  structural). `consequence_axis.py` splits classification into a speech-act type plus an
-  independent consequence axis, so an inert type can no longer SUPPRESS a co-present
-  consequence signal, and records whether the evidence is structural or evadable.
-  `sink_declaration.py` gives the sink declarations a schema and fail-closed validation,
-  closing three paths where an error or drift silently disabled the gate.
-  `promotion_policy.py` requires independent corroboration or human approval before a
-  consequential fact is promoted, and grades review priority so an inert-in-effect value
-  touching a consequential slot still gets reviewed. `ontology/tests/pipeline_score_harness.py`
-  (D83) scores all six layers together and reports where each consequential case is first
-  caught, which is how the 90 percent figure is produced; it is a measurement harness, not a
-  pass/fail obligation, and carries four honesty conditions in its docstring.
+  demoted. See `phase2/OUTCOME.md`. Fenrir also now performs STRUCTURAL slot extraction
+  (D86, `phase2/slot_extraction.py`): a fixed authored `SlotExtractionSchema` the model
+  fills with bounded values only, a deterministic `bind_slots` that maps them to typed
+  `ProposedFact`s, and a `marshal_fenrir_run` bridge that hands them to Nornir as
+  `MarshalledAssertion.proposed_facts`. The binding is model-free (invariant 3.1: phase2
+  is not on the authorisation path and nornir has no dependency on phase2), and
+  fail-closed (an unbound or low-confidence field fabricates no delta). Phase2 harness
+obligation 6 proves it end to end against the live engine: an inertly-phrased payroll
+redirect is still typed inert by the classifier yet the engine denies effective
+inertness on the structural signal. Demonstrated against a deterministic mock (D86), and
+against a REAL model (D87): a bounded per-field generation stand-in reused the PoC's proven
+mechanism (`_StopOnNewline`, isolated-payload splice) to fill the schema values, and on
+Qwen2.5-7B it bound `salary_destination` from an inertly-phrased payroll redirect the
+classifier still typed inert, with the benign control binding nothing (fail-closed). D90
+then replaced that stand-in with true token-level grammar-constrained decoding
+(`phase2/grammar_slot_extraction.py`, `phase2/grammar_slot_demo.py`), demonstrated end to
+end on Qwen2.5-7B the same way; D98 retired D87's now-superseded stand-in files
+(`phase2/real_slot_extraction.py`, `phase2/real_slot_demo.py`), confirming first that
+nothing else imported them. The demo is optional and skip-if-absent, like
+`e2e_harness.py`. Value poisoning, not structural or well-formedness failure, is the
+named remaining refinement, contained by Gjoll at action time, not here.
+- **False-inert mitigations in depth, now WIRED** (`ontology/nornir/`, D79 to D82, wired by
+  D84): four modules, each with its own green harness, none depending on the classifier being
+  right, and all now called by the live engine and gate. `state_delta.py` judges consequence
+  by what a value would CHANGE against a declared consequential-slot set (24 seed slots after
+  D85 added `holder_of_record` and `entitlement_status`; catches every wired case on the
+  independent corpus by effect, unevadable by rephrasing where extraction is structural).
+  `consequence_axis.py` splits classification into a speech-act type plus an independent
+  consequence axis, so an inert type can no longer SUPPRESS a co-present consequence signal,
+  and records whether the evidence is structural or evadable. `sink_declaration.py` gives the
+  sink declarations a schema and fail-closed validation, closing three paths where an error or
+  drift silently disabled the gate. `promotion_policy.py` requires independent corroboration or
+  human approval before a consequential fact is promoted, and grades review priority so an
+  inert-in-effect value touching a consequential slot still gets reviewed. The wiring (D84):
+  `MarshalledAssertion` carries `proposed_facts` (structural slot bindings) and `source`;
+  `engine.py` computes the consequence axis and promotion decisions per batch, so every
+  `ClassifiedAssertion` carries `effective_inert`, `consequence_reasons` and `review_priority`
+  and `NornirResult` carries `promotions`; `gjoll.py` takes an optional `sink_registry` and
+  runs the D81 fail-closed validation before the gate. The four mitigation harnesses now run in
+  the main suite (`run_mitigations`) and pass. `ontology/tests/pipeline_score_harness.py` (D83)
+  scores all six layers together, now reading the engine's own runtime output, and reports
+  where each consequential case is first caught; its integration banner reports every
+  mitigation as wired (self-maintaining) and it produces 33 of 33 (100 percent) after D85. It
+  is a measurement harness, not a pass/fail obligation, and carries four honesty conditions in
+  its docstring.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -264,6 +453,9 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D35 Odin self-modification | OPEN (research) | Currently excluded |
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
+| D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first |
+| D97 follow-on: require `sink_registry` always, or thread an attested `AgentContext` through every gjoll call, closing the no-registry `agent_consequential_sinks` residual | OPEN (named, not scoped) | Either breaks backward compatibility with existing no-registry callers (this repo's own D10 proof) or is a materially larger API change; needs its own decision, not built in D97 |
+| D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | OPEN (research/build) | Needs a new harness obligation that computes `anchor_of()` for each domain root type, asserts they are all equal, and asserts every `DOMAIN_TYPE` node has a non-None anchor (closing the orphan-type hole too) |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -286,13 +478,26 @@ review found D70's "whole class" network claim was in the code a ten-name blackl
 missed `boto3`, `google`, `smtplib`, `ctypes` and every other unlisted egress module, so
 enforcement was inverted to a known-good import allowlist that forbids the class by
 construction (D71). A referential-completeness guard then reduced the false-inert rate
-again and showed the residual is bounded by invariant 3.1 (D72). Open
-items: the false-inert fix (D67-fix, open as a classification break but mitigated in depth
-by D79 to D82, the suite is red), the D83 residual class (three cases escaping every layer
-because no declared consequential slot covers their effect, fixed by slot-vocabulary
-coverage rather than a keyword), the integration gap (D79 to D82 are not wired into the live
-pipeline, so the D83 score is of the designed pipeline not the built one), and the research
-questions D33 to D36.
+again and showed the residual is bounded by invariant 3.1 (D72). A later pass over the guard
+itself found that D68, D70 and D71 had all hunted for indirect MODULE routes and never named
+a call that interprets a string as code, so `eval`/`exec`/`compile` (bare or a
+`builtins`-aliased qualified call) went unflagged; the guard now catches all three
+unconditionally, without inspecting string content, closing that residual (D95). The
+mitigation modules were then
+IMPORTED into `engine.py` and `gjoll.py` (D84), closing the integration gap that had made the
+D83 score the designed pipeline, and the D83 residual class was closed by growing the
+consequential-slot vocabulary (D85, `holder_of_record` and `entitlement_status`), so the
+pipeline score rose to 33 of 33 (100 percent) as a built property. Fenrir then gained STRUCTURAL slot
+extraction feeding the state-delta layer end to end (D86), demonstrated first against a
+deterministic mock and then against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
+generation), so the slot bindings the later layers need are produced by a real model rather
+than corpus-supplied. Open items now: the false-inert fix (D67-fix, still OPEN as a
+classification break and RED at layer one but mitigated in depth and wired), true
+token-level grammar-constrained decoding (D87 uses bounded per-field generation, the Phase-2
+stand-in; the true grammar constraint is the named refinement), declaration attestation (the
+honest-declaration seam D81 left open, `ADVERSARIAL_REVIEW.md` 5.1), a genuinely third-party
+corpus (D77 is same-author), value poisoning (contained by Gjöll, FR-6, not closed at the
+extraction layer), and the research questions D33 to D36.
 
 An HLD and a Phase 1-3 Detailed Design have been authored for the build-out (D73,
 `plans/hld.md` and `plans/dd/`), grounded in an achievement audit against the real
@@ -315,44 +520,87 @@ trust models aligned.
 
 ## 6. Recommended next step
 
-The false-inert break is measured, mitigated in depth, and still open. The layer-one rate
-is 48 percent on the independent corpus (D77, D83), and the pipeline score is 90 percent
-containment with a named three-case residual (D83). Five mitigations were built, none of
-which depends on the classifier being right (D79 state-delta consequence detection, D80 the
-consequence axis that removes the inert override, D81 fail-closed sink-declaration
-validation, D82 promotion corroboration and graded review), and a correction established
-that the action-time gate was never defeated by the break at all (D78). The suite is RED at
-17 findings, all of them false-inert, which is the deliberate and expected state.
+The pipeline now contains every consequential case on the independent corpus, 33 of 33, as a
+BUILT property: the D79 to D82 mitigations are imported by `engine.py` and `gjoll.py` (D84,
+an import-wiring fact; Gjöll's own gate functions still have zero non-test callers, D96), the
+last residual class was closed by slot-vocabulary growth (D85), and Fenrir performs the
+structural slot extraction that feeds the state-delta layer end to end, demonstrated first
+against a mock (D86) and now against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
+generation). The layer-one classifier on its own still misses 48 percent (D77, D83) and stays
+OPEN and RED (17 findings), because that break is bounded by invariant 3.1 and no content
+pattern closes it; the guarantee does not rest on it. With the real-model structural
+extraction now demonstrated, the highest-value work is testing the whole thing against a
+corpus the author never saw.
 
-1. **Decide the false-inert break's disposition (D67-fix); it is now understood to be
-   bounded by invariant 3.1, not merely unfinished.** D69 and D72 reduced it with
-   structural guards (a verb shape, then a deferral shape), and a fresh probe re-opened
-   it each time. D72 established the limit: separating a passively-phrased or
-   metaphorical consequence from a genuine informational statement needs world
-   knowledge, which is a model, which 3.1 keeps off the classification path. The two
-    honest directions are a deterministic referential-completeness discipline stronger
-    than a regex (measure its review-friction cost first), or a fail-closed advisory
-    model that only routes to review. "Accept a small residual" is now ruled out: D77
-    measured the real rate at about 43 percent, not small. Not more keywords.
-2. **Build a genuinely THIRD-PARTY corpus.** Partly done: the independent
-   scenario-authored corpus (D77) already raised the measured rate from 1/17 to 13/30
-   (about 43 percent), demonstrating the circularity the self-authored number hid. But
-   D77 is still same-author, so it is a broader lower bound, not an unbiased estimate. A
-   corpus labelled by someone who has never read the rules is the remaining
-   highest-information artefact (G2) and would likely push the rate higher still.
-3. **Close the D83 residual class by growing the consequential-slot vocabulary.** Three
-   cases escape every layer because they are typed inert AND their effect falls outside the
-   declared consequential slots (an asset transfer, a trademark assignment, an insurance
-   lapse). This is a coverage problem with the same demand-driven answer as D60, and
-   explicitly not another keyword. It is the cheapest real reduction available.
-4. **Wire the mitigations into the live pipeline.** D79 to D82 are proven in isolation but
-   are not called by `engine.py`, `rules.py` or `gjoll.py`, and their harnesses are not in
-   the main suite, so the measured 48 percent is unchanged by them. The D83 pipeline score
-   is therefore the DESIGNED pipeline, not the built one. Integration plus structural
-   extraction in Fenrir is what turns the 90 percent into a real runtime property.
-5. **Attest the declarations.** D81 closed the class where a declaration ERROR or DRIFT
-   silently disabled the gate, but an author who declares a consequential sink as
-   non-consequential still defeats it. That is the root seam and remains open.
+1. **External end-to-end test: DELEGATED (D91), STRONGER than a corpus (D92).** The
+   independent scenario-authored corpus (D77) raised the measured layer-one rate from 1/17 to
+   16/33, and the BLIND-authored corpus (D88, `false_inert_thirdparty.json`) reached 5/36, the
+   strongest independence obtainable inside a session; both are lower bounds on difficulty, not
+   unbiased estimates, and both only ever exercised LAYER ONE. The external work is owned
+   out-of-band AND is a stronger evidence class (D92): the colleague can put a VULNERABLE model
+   in the agentic role and fire the attacks at the LIVE framework, testing the architecture's
+   central claim end to end (a model that WOULD be steered is still prevented from acting), the
+   first OBSERVED (not simulated) containment measurement, and the case D75's robust model could
+   not reach. Do not re-attempt in-repo. When the result lands, record it as its own decision
+   and update invariant 3.6's proof status and the D67-fix disposition; a pass is bounded
+   containment, a fail is a genuine architecture finding.
+2. **Attest the declarations: all four scoped directions (A, B, C, D) built in-repo.** D81
+   closed declaration ERROR or DRIFT; D89 narrowed the HONESTY seam (B derives sink
+   consequentiality from an attested effect-primitive table; A blocks an action-critical value
+   dishonestly declared CONSUME_INERT); D93 built direction D (verify the declared effect
+   primitive against OBSERVED behaviour, `ontology/nornir/effect_probe.py`, the verdict entering
+   the gate via `evaluate`/`enforce`'s `effect_observations` parameter as a fail-closed OR); D94
+   built direction C, the INTEGRITY axis (`ontology/nornir/sink_attestation.py`: an `authoriser`
+   id and keyed `attestation` digest on the declaration, `SinkRegistry.declare_attested` refuses
+   an unattested/unknown/tampered one at load, closing the config-tamper adversary). Remaining is
+   deployment-phase and needs real non-mock sinks: public-key signing (D94 is a keyed-digest
+   demonstration, 5.7), the runtime-taint form of D, and opaque-sink handling; plus flow-EDGE
+   honesty. Load-bearing limit: C binds identity/integrity, not honesty, so a malicious
+   authoriser's lie still verifies (B and D are the backstop). Scoped in
+   `plans/declaration_attestation_scoping.md`.
+3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
+   per-field stand-in with a real token-level grammar mask over the `SlotExtractionSchema`
+   (the model emits the whole object under a logits processor that permits only grammar-valid
+   tokens, so malformed structure and undeclared keys are unreachable, the `fenrir.md` 3.1
+   property). Native on mlx_lm's `logits_processors` hook, no outlines/xgrammar dependency; the
+   grammar is proven deterministically without a model and demonstrated on Qwen2.5-7B end to
+   end. This removed the last "stand-in" caveat on the structural-extraction layer. Residual:
+   it constrains structure, not value truth, so value poisoning stays a Gjoll concern. The
+   remaining declaration follow-ons are C (attest who may declare) and D (verify the effect
+   primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
+4. **Decide the layer-one break's disposition (D67-fix); it is bounded by invariant 3.1.**
+   Now less urgent since the pipeline contains it, but still worth closing on the
+   classification side. The two honest directions are a deterministic
+   referential-completeness discipline stronger than a regex (measure its review-friction
+   cost first), or a fail-closed advisory model that only routes to review. "Accept a small
+   residual" is ruled out (the layer-one rate is 48 percent, not small), and more keywords
+   are barred (invariant 3.5).
+5. **Queued: build Gjöll's missing re-validation gate mechanism (Approach E, D96).** Not
+   started. `GatePolicy`, `GateResult` and the promotion-requirement gate (`plans/dd/gjoll.md`
+   section 5.1, lines 86-90; section 8; section 10) do not exist, so invariant 3.6's "has not
+   passed the gate" clause is currently vacuous: no branch of `evaluate` lets an
+   action-critical value pass, because there is no gate to pass. `gjoll.md` section 10 names
+   the promotion requirement as the one that "must be built", and section 8 lists gate
+   policies as data Gjöll itself owns, so this is inside Gjöll's own boundary and does not
+   pre-empt Himinbjörg's unfinalised design. It is queued rather than started because it
+   touches the authorisation path while the external test (item 1) is in flight, and because
+   starting it now would let a documentation/detector change (D96) drift into a Phase-3
+   component build. Design question left open for when it starts: whether the gate reuses
+   `promotion_policy.py`'s corroboration logic or is a separate mechanism.
+6. **Queued: two named D97 follow-ons on the control surface.** Not started. First,
+   `AgentContext` attestation: extend D93/D94's authoriser-plus-keyed-digest pattern from sink
+   declarations to the agent binding itself, so a compromised or unattested caller cannot
+   construct or alter an `AgentContext` (Gleipnir's G-1 failure, "the guard's own configuration
+   reachable/editable by the population it guards," reproduced inside Heimdall, per
+   `.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md` finding F4). Second, close
+   gjoll's no-registry `agent_consequential_sinks` residual: either require `sink_registry`
+   unconditionally (a backward-compatibility break for every existing no-registry caller,
+   including this repo's own D10 safe/unsafe proof) or thread an attested `AgentContext`
+   through every gate call so the sink set used at classify time cannot be swapped for a
+   different one at gate time. Both are queued rather than started because each is materially
+   larger than the concrete ceiling-check fix D97 closed, and each needs its own scoping
+   decision, the same discipline item 5 (Approach E) already applies to Gjöll's re-validation
+   gate.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

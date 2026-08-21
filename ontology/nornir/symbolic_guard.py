@@ -22,7 +22,11 @@ them wrong in either direction is a failure:
   contains many times while importing no model.
 
 So the check parses each module with `ast` and inspects real `Import`, `ImportFrom`
-and `Call` nodes, plus `subprocess`/`os.system` shell-outs, never the source text.
+and `Call` nodes, plus `subprocess`/`os.system` shell-outs, never the source text. It
+also flags `eval`/`exec`/`compile` unconditionally (D95), because a forbidden import
+and call can both be smuggled inside a string literal passed to one of them, invisible
+to the `ast.Import`/`ast.ImportFrom`/call-target checks above since the smuggled code
+is never parsed by `ast.parse` on the outer module.
 
 Why an allowlist and not a forbidden list (D71). An earlier form of this guard (D70)
 enforced by a forbidden set of model-client modules plus an enumerated set of about
@@ -68,6 +72,14 @@ ALLOWED_IMPORT_ROOTS = frozenset({
     # standard library used by the deterministic classifier/reasoner
     "__future__", "collections", "dataclasses", "email", "enum", "json",
     "pathlib", "re", "sys", "typing",
+    # hashlib (D94, direction C): stdlib SHA-256 for the declaration-attestation
+    # integrity check. Added as a DELIBERATE, REVIEWED trust-boundary decision in the
+    # spirit of D71: it is a hashing primitive, not a model client and not a network
+    # module, and it reaches neither the network nor a model. It computes a keyed digest
+    # over a declaration's canonical bytes to verify who declared it; there is no other
+    # use of it on the authorisation path. This is exactly the "adding a root is a
+    # reviewed decision" case the allowlist is designed to force.
+    "hashlib",
     # the graph-DB substrate Nornir runs over (not a model)
     "neo4j", "memgraph_store",
 })
@@ -102,6 +114,18 @@ DYNAMIC_IMPORT_CALLS = frozenset({
     "__import__", "importlib.import_module", "importlib.__import__",
     "import_module",  # bare, when importlib is imported as a name
 })
+
+# Dynamic code-execution builtins (D95): the textbook route by which a forbidden import
+# AND a forbidden call can both be smuggled inside a string literal, invisible to the
+# ast.Import/ast.ImportFrom and call-target checks above, because the code inside the
+# string is never parsed by ast.parse on the outer module. For example, `exec("import
+# requests\nrequests.post(...)")` produces no ast.Import node the scanner can see. The
+# authorisation path has no legitimate need to evaluate or execute code assembled at
+# runtime, so ANY use is a violation, regardless of what the string contains. The
+# guard does not inspect the string content: scanning string content for suspicious
+# text is exactly the blacklist-by-content mistake this project rejects elsewhere
+# (invariant 3.5); the violation is triggered by the CALL ITSELF, unconditionally.
+DYNAMIC_CODE_EXECUTION_CALLS = frozenset({"eval", "exec", "compile"})
 
 # Roots of the authorisation path to scan.
 def _authorisation_files(repo_root: Path) -> list[Path]:
@@ -153,12 +177,44 @@ def _import_violation(dotted: str, path: Path, lineno: int) -> Violation | None:
     return Violation(path, lineno, detail)
 
 
+def _builtins_aliases(tree: ast.Module) -> set[str]:
+    """Names this module binds to the `builtins` module itself (Important 1, D95): a
+    narrowly-scoped alias resolver, only for `builtins`, not a general import-alias
+    resolver. `import builtins` binds the name `builtins`; `import builtins as bi`
+    binds `bi`. Used so a qualified call like `bi.eval(...)` is recognised as
+    code-execution even when aliased, WITHOUT a blind `target.endswith(".eval")`-style
+    check: that broad style is deliberately rejected here (see the comment on the
+    qualified-call check in `_scan_module`) because it would flag every unrelated
+    `re.compile(...)` call on the scanned path."""
+    aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "builtins":
+                    aliases.add(alias.asname or alias.name)
+    return aliases
+
+
+def _is_aliased_builtins_call(target: str, builtins_aliases: set[str]) -> bool:
+    """True if `target` is a qualified call whose object half is a name THIS module
+    bound to `builtins` (e.g. `bi.eval` when `import builtins as bi` was seen) and
+    whose attribute half is one of DYNAMIC_CODE_EXECUTION_CALLS. Deliberately not a
+    suffix match (Important 1, Important 3, D95): see the comment at the call site."""
+    obj, sep, attr = target.rpartition(".")
+    return bool(sep) and obj in builtins_aliases and attr in DYNAMIC_CODE_EXECUTION_CALLS
+
+
 def _scan_module(path: Path) -> list[Violation]:
     violations: list[Violation] = []
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     except SyntaxError as e:
         return [Violation(path, e.lineno or 0, f"could not parse: {e}")]
+
+    # Resolve names bound to the `builtins` module in THIS file only, so a qualified
+    # call like `bi.eval(...)` can be matched to DYNAMIC_CODE_EXECUTION_CALLS below
+    # without a blind suffix match (Important 1, D95).
+    builtins_aliases = _builtins_aliases(tree)
 
     for node in ast.walk(tree):
         # import json / import boto3 / import requests: every absolute root must be
@@ -187,19 +243,61 @@ def _scan_module(path: Path) -> list[Violation]:
                         path, node.lineno,
                         f"shells out to a model runner via {target} (invariant 3.1)"))
             # dynamic import: the textbook INDIRECT import of a module chosen at
-            # runtime, which a static import scan cannot otherwise see.
+            # runtime, which a static import scan cannot otherwise see. This uses a
+            # broad `endswith(".import_module")` suffix match deliberately: unlike the
+            # code-execution check below, there is no common unrelated call on the
+            # scanned path shaped like `x.import_module(...)`, so the wider net carries
+            # no false-positive risk here and a shared helper with the narrower
+            # code-execution check would only weaken that check for no benefit
+            # (Important 4, D95).
             elif target in DYNAMIC_IMPORT_CALLS or target.endswith(".import_module"):
                 violations.append(Violation(
                     path, node.lineno,
                     f"uses dynamic import {target!r}; the authorisation path must not "
                     f"import a module chosen at runtime (an indirect model import, "
                     f"invariant 3.1)"))
+            # dynamic code execution (D95): the textbook route by which a forbidden
+            # import AND a forbidden call can both be smuggled inside a string literal,
+            # invisible to the import/call-target checks above because the smuggled
+            # code is never parsed by ast.parse on the outer module. Any use is a
+            # violation, unconditionally; the string content is deliberately not
+            # inspected (invariant 3.5).
+            #
+            # The qualified form deliberately does NOT use a broad
+            # `target.endswith(".eval")`/`.endswith(".compile")` suffix match, unlike
+            # the dynamic-import check above (Important 1, Important 4, D95): `.compile`
+            # is the attribute name on `re.compile(...)`, used 11+ times in rules.py and
+            # every domain_rules/*.py module on the real scanned path, so that style
+            # would make the most load-bearing check in the repository fail on its own
+            # substrate. Instead the object half of the qualified name is checked
+            # against builtins_aliases, the names THIS module actually bound to the
+            # `builtins` module (see _builtins_aliases), so `bi.eval(...)` is caught
+            # when `bi` really is `builtins` and `re.compile(...)` is never touched
+            # because `re` is never bound to `builtins`.
+            elif target in DYNAMIC_CODE_EXECUTION_CALLS or _is_aliased_builtins_call(
+                target, builtins_aliases):
+                violations.append(Violation(
+                    path, node.lineno,
+                    f"uses {target!r}; the authorisation path must not evaluate or "
+                    f"execute code assembled at runtime, which can smuggle a forbidden "
+                    f"import and call inside a string literal invisible to static "
+                    f"import/call scanning (invariant 3.1)"))
     return violations
 
 
 def _call_target(func: ast.expr) -> str:
     """Dotted name of a call target, e.g. 'subprocess.run', or '' if not a plain
-    attribute/name chain."""
+    attribute/name chain.
+
+    Minor 3 (quality review): `ontology/tests/gjoll_invocation_harness.py`'s
+    `_call_target` (currently lines 185-206) duplicates this function almost
+    verbatim. Left duplicated rather than factored into a shared helper: the only
+    place a shared test-only helper could legally live is under `ontology/tests/`,
+    and this module (on the invariant-3.1 authorisation path) importing from
+    `ontology/tests/` for a ten-line function would add a real dependency edge from
+    the authorisation path onto test code, a worse module-boundary cost than the
+    duplication it would remove. If this function moves, update the line reference
+    in the other file; this copy is currently lines 288-308."""
     parts: list[str] = []
     cur = func
     while isinstance(cur, ast.Attribute):
@@ -257,6 +355,21 @@ _MUST_CATCH = (
     # smtplib = stdlib egress.
     ("unlisted hosted-inference SDK (boto3)", "import boto3\n"),
     ("unlisted stdlib egress (smtplib)", "import smtplib\n"),
+    # Dynamic code-execution probes: the smuggled import-and-call is inside a string
+    # literal, invisible to ast.Import/ast.ImportFrom and call-target detection on the
+    # outer module; only the unconditional eval/exec/compile check catches these.
+    ("string-smuggled exec of import and network call",
+     "exec(\"import requests\\nrequests.post('https://api.openai.com')\")\n"),
+    ("string-smuggled eval wrapping compile",
+     "eval(compile(\"import requests\\nrequests.post('https://api.openai.com')\", "
+     "'<string>', 'exec'))\n"),
+    ("bare compile call", "compile(\"import mlx_lm\", '<string>', 'exec')\n"),
+    # Qualified/aliased builtins call (Important 2, D95): the three probes above are
+    # all bare names (eval/exec/compile), so none of them exercise the qualified-call
+    # branch (_is_aliased_builtins_call). This probe does, so a future regression in
+    # that branch is caught by the guard's own self-test rather than silently missed.
+    ("aliased builtins.eval call",
+     "import builtins as bi\nbi.eval(\"import mlx_lm\")\n"),
 )
 _MUST_NOT_CATCH = (
     ("graph-DB driver", "from neo4j import GraphDatabase\n"),
@@ -264,6 +377,17 @@ _MUST_NOT_CATCH = (
     ("a 'model' comment", "# the model fills values only\nx = 1\n"),
     ("an allowlisted stdlib import", "import json\nimport re\n"),
     ("a relative intra-package import", "from . import yggdrasil\nfrom ..core import Node\n"),
+    # hashlib is allowlisted for the D94 declaration-attestation digest (a hashing
+    # primitive, not a model or network module). This probe documents that it is
+    # intentionally permitted and would fail if a future edit dropped it from the
+    # allowlist, so the reviewed decision cannot silently regress.
+    ("the attestation hashing primitive", "import hashlib\nhashlib.sha256(b'x')\n"),
+    # Locks in Important 1/3 (D95): re.compile(...) is the single most common
+    # qualified-call shape on the real scanned path (11+ uses in rules.py and every
+    # domain_rules/*.py module). A carelessly-widened code-execution check (e.g. a
+    # blind `target.endswith(".compile")` suffix match) would flag it; the
+    # alias-scoped check in _is_aliased_builtins_call must not.
+    ("an unrelated qualified .compile call (re.compile)", "import re\nre.compile('x')\n"),
 )
 
 

@@ -85,14 +85,24 @@ cheap; a lost decision is expensive.
   `ontology/tests/harness.py`; run it after any classification-rule change. See
   invariant 3.5, decisions D54 and D55, and the authoring checklist in
   `ONTOLOGY_CONSTRUCTION.md` section 6.
-- **Do not quote the pipeline score as the system's current behaviour.** The
-  false-inert mitigations (D79 to D82) are proven in isolation but are not yet
-  called by `engine.py`, `rules.py` or `gjoll.py`, so the roughly 90 percent
-  pipeline containment in D83 describes the DESIGNED pipeline while the measured
-  layer-one rate (about 48 percent) is the built one. You do not have to remember
-  this: `ontology/tests/pipeline_score_harness.py` detects the wiring live and
-  prints an INTEGRATION GAP banner naming each unwired module, and stops printing
-  it once they are wired. Closing that gap is task 1 in `STATUS.md` section 0.
+- **Do not quote the pipeline score as the system's current behaviour without its
+  wiring caveat.** The false-inert mitigations (D79 to D82) are now imported by
+  `engine.py` and `gjoll.py` (D84), so the roughly 90 percent (now 100 percent,
+  D85) pipeline containment describes the BUILT pipeline, not only the designed
+  one; the measured layer-one rate stays about 48 percent, unchanged, because the
+  mitigations only add caution downstream of the classifier. You do not have to
+  remember this: `ontology/tests/pipeline_score_harness.py` detects the import
+  wiring live and prints an INTEGRATION GAP banner naming each unwired module,
+  stopping once they are wired (it did stop, once D84 landed). A DIFFERENT and
+  still-open claim is whether Gjöll's gate functions (`ActionProposal`,
+  `evaluate`, `enforce`) are CALLED from any non-test code path: they are not,
+  by design (Himinbjörg, the intended caller, is Phase 3 and essentially
+  unbuilt), and `ontology/tests/gjoll_invocation_harness.py` detects that live
+  too, so a fresh session does not have to remember it in prose either. Do not
+  read "the mitigations are wired into the engine and gate" as "the gate is
+  invoked live against real actions": the first is a settled, built fact
+  (D84); the second remains a Phase 3 item, reported by that detector, not by
+  this file.
 - **Python runs in a venv.** The PoC uses `poc/.venv` with `mlx-lm` on Apple
   silicon. Do not install into the system interpreter.
 - **Licence boundary.** `ontology/reference/sumo` is GPL and reference-only:

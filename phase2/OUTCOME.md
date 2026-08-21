@@ -32,11 +32,24 @@ passively than surface text is.
   output, a model-agnostic `extract` taking an emission-producer.
 - `huginn.py` the six hard canary signals and the attempt-introspection tripwire, both
   fail-closed (a hit halts and quarantines; nothing is ever authorised).
-- `mock_producers.py` deterministic mock models for the always-run suite.
+- `mock_producers.py` deterministic mock models for the always-run suite, including a
+  `structural_extractor` that emits typed slot values.
+- `slot_extraction.py` (D86) STRUCTURAL slot extraction: a fixed authored
+  `SlotExtractionSchema` the model fills with bounded values only, a deterministic
+  `bind_slots` that maps them to typed `ProposedFact`s, and a `marshal_fenrir_run` bridge
+  into `MarshalledAssertion.proposed_facts`. Model-free binding (invariant 3.1) and
+  fail-closed (an unbound or low-confidence field fabricates no delta).
 - `false_inert_catch.py` routes the false-inert corpus through Fenrir + Huginn and
   measures the behavioural catch.
-- `tests/harness.py` the deterministic logic suite (five obligations, all passing).
-- `real_model_demo.py` the optional mlx demonstration.
+- `tests/harness.py` the deterministic logic suite (six obligations, all passing).
+- `real_model_demo.py` the optional mlx demonstration of the attempt-introspection catch.
+- `grammar_slot_extraction.py` + `grammar_slot_demo.py` (D90) true token-level
+  grammar-constrained decoding of the STRUCTURAL slot extraction: a pure-Python
+  `GrammarState` machine defines the schema's grammar and an mlx logits mask forces the
+  model to emit the whole schema object token by token, replacing D87's bounded
+  per-field stand-in. D87's stand-in files (`real_slot_extraction.py`,
+  `real_slot_demo.py`, the `MlxSlotProducer` that reused the PoC's `_StopOnNewline`) are
+  retired (D98): D90 supersedes them and nothing else imported them.
 
 ## 3. What the deterministic suite proves (green)
 
@@ -53,6 +66,24 @@ The detection LOGIC holds, tested by failure mode:
   alike: the zero-false-positive property the tripwire's dispositiveness rests on.
 - With an injectable mock, the tripwire catches fi-19 (the passive standing order) and
   fi-20 (the metaphor) that the content classifier types inert, with zero false catches.
+- (Obligation 6, D86) STRUCTURAL slot extraction feeds the wired state-delta layer end to
+  end against the LIVE Nornir engine: an inertly-phrased payroll redirect is still typed
+  inert by the classifier, yet the engine denies effective inertness on the structural
+  state-delta signal and grades it HIGH review, while a benign case binds no slot and
+  fabricates no delta (the fail-closed control). This closes D83's honesty condition that
+  the slot bindings were corpus-supplied rather than produced by a live extraction.
+- (D87, optional real-model demo) The same structural pipeline was first demonstrated with
+  a REAL model via a bounded per-field generation stand-in (`MlxSlotProducer`, reusing the
+  PoC's proven mechanism): on Qwen2.5-7B at temperature 0 the model bound
+  `salary_destination='4471'` from the payroll redirect the classifier still typed inert,
+  the live engine denied effective inertness on the state-delta signal, and the benign
+  control bound nothing (fail-closed). So the slot bindings were produced by a real model,
+  not a mock. D90 then replaced that stand-in with true token-level grammar-constrained
+  decoding (`grammar_slot_extraction.py`, `grammar_slot_demo.py`), demonstrated end to end
+  on Qwen2.5-7B the same way, and D98 retired D87's now-superseded stand-in files. Honest
+  limits unchanged: this constrains structure and well-formedness, not value truth, so
+  value poisoning stays a Gjöll concern (FR-6); the real-model run is non-deterministic, so
+  it is evidence, not a gate.
 
 The suite green means: IF a model is steered into an action attempt, the pipeline catches
 it correctly and fails closed. That machinery is sound.

@@ -82,6 +82,17 @@ CONSEQUENTIAL_SLOTS: frozenset[str] = frozenset({
     # contractual
     "contract_term",
     "supplier_of_record",
+    # durable rights and protections whose HOLDER OF RECORD or STATUS changing has a
+    # real-world effect (D85, closing the D83 residual class ind-41 to ind-43). These
+    # are SLOTS, not attack wording: a holder-of-record change transfers control of a
+    # registered asset or an intellectual-property mark, and an entitlement-status
+    # change turns a protection (insurance cover, a licence) on or off. Writing a new
+    # value to one of these moves control or protection, exactly the external-effect
+    # test the whole set is built on, so they belong here for the same reason
+    # `supplier_of_record` does. They are still bounded by structural extraction: an
+    # unbound euphemism binds no slot and so is not an actionable premise either.
+    "holder_of_record",       # who controls a registered asset or IP mark
+    "entitlement_status",     # whether a protection/licence is active or lapsed
 })
 
 

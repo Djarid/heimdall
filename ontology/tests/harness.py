@@ -92,6 +92,9 @@ class Report:
         self.gjoll_failures = 0
         self.false_inert_failures = 0
         self.guard_failures = 0
+        self.mitigation_failures = 0
+        self.gjoll_invocation_failures = 0
+        self.control_surface_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -113,12 +116,14 @@ def run_symbolic_guard(rep: Report) -> None:
 
     # Mandatory negative control (invariant 3.10, D10): before trusting a clean scan,
     # confirm the guard actually catches planted violations (direct import, from-import,
-    # dynamic import, HTTP to an inference endpoint, model subprocess, and two
+    # dynamic import, HTTP to an inference endpoint, model subprocess, two
     # UNLISTED-egress probes, boto3 and smtplib, that no blacklist would name so the
-    # allowlist is proven to bite, D71) and does not flag benign controls (a graph-DB
-    # driver, the store binding, an allowlisted stdlib import, a relative import, a
-    # 'model' comment). A guard that cannot catch a planted model import is theatre,
-    # exactly as an uncontrolled soundness check would be.
+    # allowlist is proven to bite, D71, and string-smuggled code execution via
+    # eval/exec/compile, D95) and does not flag benign controls (a graph-DB driver, the
+    # store binding, an allowlisted stdlib import, a relative import, a 'model' comment,
+    # and an unrelated qualified call such as re.compile, D95). A guard that cannot
+    # catch a planted model import is theatre, exactly as an uncontrolled soundness
+    # check would be.
     control_failures = control_check()
     if control_failures:
         for cf in control_failures:
@@ -126,9 +131,11 @@ def run_symbolic_guard(rep: Report) -> None:
             rep.line(f"  [CRITICAL] negative control: {cf}")
     else:
         rep.line("  [PASS] negative control: the guard catches planted model imports, "
-                 "dynamic imports, inference HTTP, model subprocesses and unlisted egress "
-                 "(boto3, smtplib), and does not flag allowlisted stdlib, graph-DB drivers, "
-                 "relative imports or 'model' comments (the allowlist bites, not theatre).")
+                 "dynamic imports, inference HTTP, model subprocesses, unlisted egress "
+                 "(boto3, smtplib) and string-smuggled code execution (eval/exec/compile), "
+                 "and does not flag allowlisted stdlib, graph-DB drivers, relative imports, "
+                 "'model' comments or unrelated qualified calls (the allowlist bites, not "
+                 "theatre).")
 
     files = scanned_files()
     violations = scan()
@@ -602,11 +609,211 @@ def run_gjoll(nornir: Nornir, rep: Report) -> None:
         rep.gjoll_failures += 1
         rep.line(f"  [CRITICAL] a non-action-critical value was wrongly blocked: {d2.reasons}")
 
+    # D89 direction B, end to end through the gate: a DISHONESTLY-flagged consequential sink
+    # (a money mover declared non-consequential, and NOT in the agent's set) is still gated,
+    # because effective_consequential DERIVES consequentiality from the effect primitive. This
+    # exercises the registry path the D81 tests validate structurally, but through the live
+    # gate on the staged cross-domain chain, with an empty agent sink set so ONLY the derivation
+    # can catch it.
+    from ontology.nornir.sink_declaration import (
+        SinkDeclaration, SinkRegistry, MOVE_MONEY,
+    )
+    actuator.reset()
+    dishonest_registry = SinkRegistry()
+    dishonest_registry.declare(SinkDeclaration(
+        name="sink:payments.execute",
+        parameters=frozenset({"email.newdetails"}),
+        consequential_by_default=False,      # the lie
+        effect_primitive=MOVE_MONEY,         # the derived truth
+    ))
+    empty_sinks = frozenset()  # the flag and the agent set both say "not consequential"
+    b_unsafe = ActionProposal("pay-b", "sink:payments.execute",
+                              {"email.newdetails": CONSUME_ACTION}, declared_safe=False)
+    d_b = enforce(b_unsafe, by_id, empty_sinks, actuator, sink_registry=dishonest_registry)
+    if (not d_b.authorised) and (not d_b.fired) and not actuator.action_effects:
+        rep.line("  [PASS] D89-B: a dishonestly-flagged money sink is still gated by derived "
+                 "consequentiality (false flag + empty agent set both bypassed)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-B: dishonest-flag sink was NOT gated: "
+                 f"authorised={d_b.authorised} fired={d_b.fired}")
+
+    # D89 direction A: a value flow reachability has proved action-critical, declared
+    # CONSUME_INERT at a consequential sink, no longer silently passes. Same staged chain, an
+    # honest money-sink declaration, the value consumed as INERT (the dishonest inert claim).
+    actuator.reset()
+    honest_registry = SinkRegistry()
+    honest_registry.declare(SinkDeclaration(
+        name="sink:payments.execute",
+        parameters=frozenset({"email.newdetails"}),
+        consequential_by_default=True,
+        effect_primitive=MOVE_MONEY,
+    ))
+    money_sinks = frozenset({"sink:payments.execute"})
+    a_inert = ActionProposal("pay-a", "sink:payments.execute",
+                             {"email.newdetails": CONSUME_INERT}, declared_safe=True)
+    d_a = enforce(a_inert, by_id, money_sinks, actuator, sink_registry=honest_registry)
+    if (not d_a.authorised) and (not d_a.fired) and not actuator.action_effects:
+        rep.line("  [PASS] D89-A: an action-critical value declared CONSUME_INERT at a "
+                 "consequential sink is blocked (inert claim not trusted over flow reachability)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-A: dishonest inert claim on an action-critical value "
+                 f"passed: authorised={d_a.authorised} fired={d_a.fired}")
+
+    # D89-A control against pure friction: a NON-action-critical value declared CONSUME_INERT
+    # must still pass. The readonly agent's note has no path to a consequential sink, so
+    # declaring it inert is honest and must authorise. A registry declaring the sink honestly
+    # (so validation passes) with 'note' as its parameter isolates the A check.
+    actuator.reset()
+    note_registry = SinkRegistry()
+    note_registry.declare(SinkDeclaration(
+        name="sink:payments.execute", parameters=frozenset({"note"}),
+        consequential_by_default=True, effect_primitive=MOVE_MONEY,
+    ))
+    a_ok = ActionProposal("log-note", "sink:payments.execute",
+                          {"note": CONSUME_INERT}, declared_safe=True)
+    d_a_ok = enforce(a_ok, by_id2, money_sinks, actuator, sink_registry=note_registry)
+    if d_a_ok.authorised and d_a_ok.fired:
+        rep.line("  [PASS] D89-A control: a NON-action-critical value declared inert still "
+                 "passes (the fail-closed default is not pure friction)")
+    else:
+        rep.gjoll_failures += 1
+        rep.line(f"  [CRITICAL] D89-A control: an honestly-inert value was wrongly blocked: "
+                 f"{d_a_ok.reasons}")
+
+    rep.line("")
+
+
+def run_gjoll_invocation_boundary(rep: Report) -> None:
+    """Obligation 3.6b (the Gjoll invocation-boundary detector, D96): an AST scan finds
+    every site in the repo constructing `gjoll.ActionProposal` or calling
+    `gjoll.evaluate`/`gjoll.enforce`, and classifies each as test (`ontology/tests/`)
+    or non-test. The COUNT of test call sites is reporting-only, never a failure: it is
+    evidence for invariant 3.6 being DEMONSTRATED under harness invocation, not a defect
+    to close, and it is expected to grow. A non-test call site is fatal ONLY if it is
+    not on the designated `NON_TEST_ALLOWLIST`
+    (`ontology.tests.gjoll_invocation_harness`), which is empty today. This is the
+    mechanised form of the caveat `AGENTS.md` used to carry in prose: it does not go
+    stale, because the moment a real call site appears, this obligation stops reporting
+    a clean boundary and starts failing loudly."""
+    from ontology.tests.gjoll_invocation_harness import classify_call_sites, control_check
+
+    rep.line("=== 3.6b Gjoll invocation boundary (D96; reporting-only on the count, "
+             "fatal on an unallowlisted non-test call site) ===")
+
+    control_failures = control_check()
+    if control_failures:
+        for cf in control_failures:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] negative control: {cf}")
+    else:
+        rep.line("  [PASS] negative control: the detector catches a planted call site "
+                 "(direct import and module-alias-qualified) and does not flag a source "
+                 "that merely mentions or imports the names without calling them.")
+
+    status = classify_call_sites()
+    n_test = len(status["test_files"])
+    n_non_test = len(status["non_test_files"])
+    rep.line(f"  {n_test} test call site(s), {n_non_test} non-test call site(s). "
+             f"Invariant 3.6 is DEMONSTRATED under harness invocation only, not under "
+             f"live, non-test invocation.")
+    for f in status["test_files"]:
+        rep.line(f"    + test call site: {f}")
+    for f in status["allowlisted_non_test"]:
+        rep.line(f"    + allowlisted non-test call site: {f}")
+    if status["unallowlisted_non_test"]:
+        for f in status["unallowlisted_non_test"]:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] unallowlisted non-test call site constructs "
+                     f"ActionProposal or calls gjoll.evaluate/gjoll.enforce outside "
+                     f"ontology/tests/ and outside NON_TEST_ALLOWLIST: {f}")
+    else:
+        rep.line("  [PASS] no non-test call site outside the allowlist.")
+    # Important 2 (quality review, D96 follow-up): a file the detector could not parse
+    # is a failure to verify, never silent evidence of a clean boundary, on the same
+    # fail-closed discipline obligation 3.1 (symbolic_guard) already holds for its own
+    # parse failures.
+    if status["parse_failures"]:
+        for pf in status["parse_failures"]:
+            rep.gjoll_invocation_failures += 1
+            rep.line(f"  [CRITICAL] could not parse (fail-closed, not silently "
+                     f"skipped): {pf}")
+    else:
+        rep.line("  [PASS] every scanned file parsed cleanly.")
+    rep.line("")
+
+
+def run_control_surface(rep: Report) -> None:
+    """D97: control_surface.resolve() previously performed no ceiling check at all
+    despite its own docstring's claim ("we enforce the ceiling is not silently
+    escalated"), and gjoll's no-registry fallback has a named, bounded residual (an
+    empty or mismatched agent_consequential_sinks argument disarms it, closed only when
+    a sink_registry is supplied). Both are verified in `control_surface_harness.py`; run
+    it directly for detail (`python -m ontology.tests.control_surface_harness`). A
+    failure here (the ceiling check regressing) is fatal; the no-registry residual is
+    recorded inside that suite as RESIDUAL, not counted as a failure, the same
+    reporting-without-failing discipline the false-inert rate uses for its own known,
+    real, bounded gap."""
+    import contextlib
+    import io
+    from . import control_surface_harness
+
+    rep.line("=== D97 Control-surface ceiling enforcement and the gjoll no-registry residual ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = control_surface_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] resolve() clamps a ceiling-escalating override; the gjoll "
+                 "no-registry residual is checked and recorded (see D97, run the module "
+                 "directly for detail)")
+    else:
+        rep.control_surface_failures += 1
+        rep.line("  [CRITICAL] control-surface suite FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_mitigations(rep: Report) -> None:
+    """Run the four false-inert mitigation suites (D79 to D82) as part of the main suite.
+
+    Until D84 these harnesses were standalone: proven in isolation but not run here and
+    not wired into the pipeline, so `pipeline_score_harness` printed an INTEGRATION GAP
+    banner. They are now imported by the live engine and gate (D84), so their obligations
+    belong in the primary run. Each is a self-contained suite returning 0 (pass) or 1
+    (fail); a failure here is fatal, exactly like any other boundary check. Their verbose
+    per-check output is suppressed to keep this run readable; run any of them directly for
+    the detail (`python -m ontology.tests.state_delta_harness`)."""
+    import contextlib
+    import io
+    from . import (
+        state_delta_harness,
+        consequence_axis_harness,
+        sink_declaration_harness,
+        promotion_policy_harness,
+    )
+
+    rep.line("=== False-inert mitigations in depth (D79-D82), now wired (D84) ===")
+    suites = [
+        ("D79 state-delta consequence detection", state_delta_harness.main),
+        ("D80 two-dimensional consequence axis", consequence_axis_harness.main),
+        ("D81 fail-closed sink-declaration validation", sink_declaration_harness.main),
+        ("D82 promotion corroboration and graded review", promotion_policy_harness.main),
+    ]
+    for label, run in suites:
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = run()
+        if rc == 0:
+            rep.line(f"  [PASS] {label}")
+        else:
+            rep.mitigation_failures += 1
+            rep.line(f"  [CRITICAL] {label}: mitigation suite FAILED (run it directly for detail)")
+    rep.line("  These layers hold regardless of the classifier being right; they are what turns")
+    rep.line("  the ~48 percent layer-one rate into ~90 percent pipeline containment (D83).")
     rep.line("")
 
 
 FALSE_INERT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_adversarial.json"
 FALSE_INERT_INDEPENDENT_CORPUS = Path(__file__).parent / "corpora" / "false_inert_independent.json"
+FALSE_INERT_THIRDPARTY_CORPUS = Path(__file__).parent / "corpora" / "false_inert_thirdparty.json"
 
 
 def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
@@ -615,13 +822,19 @@ def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
     the classifier types to an inert type, so it skips both the Gjoll gate and human
     review. This is the true bound of the guarantee (ADVERSARIAL_REVIEW.md 5.2).
 
-    Two corpora are run (D77). The original `false_inert_adversarial.json` was authored
-    by the same person who wrote the rules and measures 1/17: a lower bound tuned to the
-    rules. The larger `false_inert_independent.json` is scenario-authored across more
+    Three corpora are run (D77, D88). The original `false_inert_adversarial.json` was
+    authored by the same person who wrote the rules and measures 1/17: a lower bound tuned
+    to the rules. The larger `false_inert_independent.json` is scenario-authored across more
     consequence domains and inert wrappers, labelled purely by the external consequence
-    test, and measures a much higher rate (13/30): the self-authored number badly
-    understated the bound. Both are still same-author, so both are lower bounds, not
-    unbiased estimates; a true third-party corpus remains wanted.
+    test, and measures a much higher rate (16/33): the self-authored number badly
+    understated the bound. The `false_inert_thirdparty.json` is BLIND-authored (D88): its
+    scenarios and phrasings were produced by a fresh sub-agent with no access to the rules
+    or repository, the strongest independence obtainable inside an agent session. It measures
+    5/36 (about 14 percent), LOWER than the rules-aware 48 percent, which is itself the
+    finding: a rules-aware author targets the classifier's blind spots more precisely than a
+    blind one, so the two rates bound different things. All three are still not fully
+    third-party (see each corpus's independence_discipline); a corpus labelled by an external
+    human who has never seen the rules remains the wanted artefact.
 
     A consequential case that lands INERT is a false-inert and a critical finding
     (invariant 3.11 obligation 8.2). A consequential case routed to review or typed
@@ -690,15 +903,21 @@ def main() -> int:
                     "self-authored corpus, a lower bound tuned to the rules")
     run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
                     "independent scenario-authored corpus, D77")
+    run_false_inert(nornir, rep, inert, FALSE_INERT_THIRDPARTY_CORPUS,
+                    "blind-authored corpus (fresh sub-agent, no rule access), D88")
+    run_mitigations(rep)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
     run_gjoll(nornir, rep)
+    run_gjoll_invocation_boundary(rep)
+    run_control_surface(rep)
 
     rep.dump()
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
-             + rep.guard_failures)
+             + rep.guard_failures + rep.mitigation_failures
+             + rep.gjoll_invocation_failures + rep.control_surface_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
@@ -713,21 +932,32 @@ def main() -> int:
     print(f"SUITE FAIL: {fatal} critical finding(s). Detail above.")
     if rep.false_inert_failures and fatal == rep.false_inert_failures:
         print()
-        print("The only failures are false-inert findings from the two adversarial corpora")
-        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77). This red bar is EXPECTED")
-        print("and RECORDED: consequential content that positively earns an inert signal defeats")
-        print("the fail-closed default, because inertness is earned by a content pattern an")
-        print("attacker can also satisfy. TWO measurements, both lower bounds: the self-authored")
+        print("The only failures are false-inert findings from the three adversarial corpora")
+        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77, D88). This red bar is")
+        print("EXPECTED and RECORDED: consequential content that positively earns an inert signal")
+        print("defeats the fail-closed default, because inertness is earned by a content pattern")
+        print("an attacker can also satisfy. THREE measurements, all lower bounds: the self-authored")
         print("corpus reads 1/17 after the D69 and D72 guards (each fixed the cases it was shown,")
-        print("each re-opened by a fresh probe), but the larger independent scenario-authored")
-        print("corpus reads 13/30 (D77), so the self-authored number badly understated the bound.")
-        print("The break is large, not an edge case: the classifier is blind to consequence")
+        print("each re-opened by a fresh probe); the larger independent scenario-authored corpus")
+        print("reads 16/33 (D77, D83), so the self-authored number badly understated the bound; and")
+        print("the blind-authored corpus (fresh sub-agent, no rule access, D88) reads 5/36 (about")
+        print("14 percent), LOWER than the rules-aware 48 percent, which is itself the finding: a")
+        print("rules-aware author targets the classifier's blind spots more precisely than a blind")
+        print("one, so the rates bound different things and none is fully third-party. The break is")
+        print("real and structural, not an edge case: the classifier is blind to consequence")
         print("expressed without imperative or movement vocabulary, across config changes,")
         print("deletion, contract renewal, access grants, payroll redirects and security-state")
         print("changes. No content pattern separates a passively-phrased or metaphorical")
         print("consequence from a genuine informational statement without world knowledge, which")
         print("invariant 3.1 keeps off the classification path. It is left red deliberately: a")
         print("suite that names a real break is worth more than a green one that never tested it.")
+        print()
+        print("This is LAYER ONE only, and it is the pessimistic figure. Since D84 the D79-D82")
+        print("mitigations are imported by engine.py and gjoll.py, and D85 closed the last")
+        print("residual class by slot-vocabulary coverage: run")
+        print("`python -m ontology.tests.pipeline_score_harness` for the defence-in-depth")
+        print("picture, where every consequential case on this corpus is contained downstream")
+        print("(same-author bindings, so a lower bound on difficulty, not a claim of zero risk).")
     else:
         print("A downgrade, a fail-safe breach, an unmatched request going inert, an unsound")
         print("derivation or a missed action-critical value is a boundary failure.")

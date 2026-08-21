@@ -48,6 +48,8 @@ def marshal(
     provenance: dict,
     taint_class: str = "taint:EXTERNAL_COMMS",
     flows: tuple = (),
+    proposed_facts: tuple = (),
+    source: str = "",
 ) -> MarshalledAssertion:
     """Marshal a PoC extraction envelope into a typed MarshalledAssertion (D28).
 
@@ -57,6 +59,13 @@ def marshal(
     violation: if any field claims to be anything other than untrusted-derived, that
     is a contract breach (the model only ever read untrusted data), and we raise
     rather than silently trust it.
+
+    `proposed_facts` carries the structural slot bindings a structural extraction
+    produced (D84's input to the wired state-delta layer, D79), and `source` is the
+    provenance identifier used for corroboration (D82). Both are optional so the PoC's
+    free-text extraction still marshals unchanged; when a structural extraction supplies
+    them, they are copied through verbatim, deterministically, the same discipline as
+    the fields. See `marshal_structural` for the Fenrir-side convenience wrapper.
     """
     for field_name, origin in provenance.items():
         if origin != POC_PROVENANCE_UNTRUSTED_DERIVED:
@@ -79,4 +88,6 @@ def marshal(
         taint_class=taint_class,
         fields=fields,
         flows=tuple(flows),
+        proposed_facts=tuple(proposed_facts),
+        source=source,
     )
