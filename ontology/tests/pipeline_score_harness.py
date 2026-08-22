@@ -315,7 +315,7 @@ def main() -> int:
     false_inert = [o for o in outcomes if o.classified in INERT]
     headline = "the blind-authored D88 figure" if thirdparty else "the D77 headline"
     print(f"LAYER 1 ONLY ({headline}): false-inert {len(false_inert)}/{n} "
-          f"({100*len(false_inert)//n} percent) typed inert by the classifier.")
+          f"({round(100*len(false_inert)/n)} percent) typed inert by the classifier.")
     print()
 
     print("Where each consequential case is FIRST caught:")
@@ -330,7 +330,7 @@ def main() -> int:
     escaped = [o for o in outcomes if not o.layers]
 
     print(f"PIPELINE SCORE: {len(contained)}/{n} consequential cases are contained by a layer")
-    print(f"that stops or gates the value ({100*len(contained)//n} percent).")
+    print(f"that stops or gates the value ({round(100*len(contained)/n)} percent).")
     print(f"  review-queue only (a human is given a chance, not containment): {len(review_only)}")
     for o in review_only:
         print(f"      {o.case_id} -> {o.classified} (review={o.review})")

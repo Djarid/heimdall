@@ -104,6 +104,11 @@ class Report:
         # pattern (REQ-19, REQ-25).
         self.authorisation_record_failures = 0
         self.agentcontext_attestation_failures = 0
+        # Regression pin for the percentage-rounding bug in
+        # `pipeline_score_harness` (integer floor division instead of rounding);
+        # unlike `run_pipeline_score_reporting` above, THIS check is a real
+        # pass/fail assertion and is folded into `fatal`.
+        self.pipeline_score_percentage_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -930,6 +935,65 @@ def run_pipeline_score_reporting(rep: Report) -> None:
     rep.line("")
 
 
+def run_pipeline_score_percentage_regression(rep: Report) -> None:
+    """Regression pin for a rounding bug in `pipeline_score_harness`: the printed
+    LAYER 1 and PIPELINE SCORE percentages used `100*numerator//denominator`
+    (integer floor division), which truncates rather than rounds. On the
+    `--thirdparty` corpus (5/36 false-inert, 33/36 contained) that silently
+    printed "13 percent" and "91 percent" where the correctly rounded values are
+    "14 percent" (5/36 = 13.89%) and "92 percent" (33/36 = 91.67%). Unlike
+    `run_pipeline_score_reporting` above, which deliberately does not gate on
+    that harness's own report-not-verdict `main()` return code, THIS check is a
+    real pass/fail assertion pinning the printed TEXT against both a floor-division
+    regression and the correct rounded figure, so it is folded into `fatal`. The
+    default corpus (16/33 = 48.48%) is included as a control: floor and round
+    agree there, so this check would not by itself catch every possible
+    floor-vs-round regression, which is exactly why the thirdparty corpus (whose
+    correct value differs from the floored one) is the case that matters here."""
+    import contextlib
+    import io
+    import sys
+    from . import pipeline_score_harness
+
+    rep.line("=== Regression: pipeline_score_harness percentages are ROUNDED, not floored ===")
+
+    old_argv = sys.argv
+    try:
+        sys.argv = ["pipeline_score_harness"]
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            pipeline_score_harness.main()
+        default_out = buf.getvalue()
+
+        sys.argv = ["pipeline_score_harness", "--thirdparty"]
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            pipeline_score_harness.main()
+        thirdparty_out = buf.getvalue()
+    finally:
+        sys.argv = old_argv
+
+    checks = (
+        ("48 percent" in default_out,
+         "default corpus (16/33) still reports 48 percent (floor and round agree here)"),
+        ("14 percent" in thirdparty_out,
+         "thirdparty corpus LAYER 1 (5/36 = 13.89%) rounds up to 14 percent, not the "
+         "floored 13 percent"),
+        ("13 percent" not in thirdparty_out,
+         "the floored 13 percent figure does not appear anywhere in the thirdparty output"),
+        ("92 percent" in thirdparty_out,
+         "thirdparty corpus PIPELINE SCORE (33/36 = 91.67%) rounds up to 92 percent, not "
+         "the floored 91 percent"),
+        ("91 percent" not in thirdparty_out,
+         "the floored 91 percent figure does not appear anywhere in the thirdparty output"),
+    )
+    for ok, label in checks:
+        if ok:
+            rep.line(f"  [PASS] {label}")
+        else:
+            rep.pipeline_score_percentage_failures += 1
+            rep.line(f"  [CRITICAL] {label}")
+    rep.line("")
+
+
 # The node kinds this obligation covers. D99 named only DOMAIN_TYPE in its literal
 # wording; widened here to include FAILSAFE too, because `unclassified.py`'s two
 # nodes (UNCLASSIFIED, HIGH_RISK_UNRESOLVED) carry the identical relatedness claim
@@ -1213,6 +1277,7 @@ def main() -> int:
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
     run_pipeline_score_reporting(rep)
+    run_pipeline_score_percentage_regression(rep)
 
     rep.dump()
 
@@ -1222,7 +1287,8 @@ def main() -> int:
              + rep.gjoll_invocation_failures + rep.control_surface_failures
              + rep.anchor_failures + rep.effect_probe_failures
              + rep.sink_attestation_failures + rep.authorisation_record_failures
-             + rep.agentcontext_attestation_failures)
+             + rep.agentcontext_attestation_failures
+             + rep.pipeline_score_percentage_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
