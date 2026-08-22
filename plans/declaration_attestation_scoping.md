@@ -141,7 +141,9 @@ tampered declaration is refused) and `SinkRegistry.declare_attested` refuses an 
 load. `ontology/tests/sink_attestation_harness.py` proves tamper, unknown-authoriser and
 unattested are refused, an honest one loads, and asserts the malicious-authoriser limit
 explicitly (obligation 5). `hashlib` was added to the 3.1 allowlist as a reviewed decision (a
-hashing primitive, not a model or network module); the guard stays clean at 33 files. What stays
+hashing primitive, not a model or network module); the guard stays clean, now at 34 files since
+D103 added `ontology/nornir/authorisation_record.py` on the same authorisation path (33 at the
+time this section was written). What stays
 unbuilt, as this section anticipated: the ASYMMETRIC-KEY signing pipeline (D94 is a keyed digest,
 which proves integrity against tampering but not public-key non-repudiation, 5.7), and C's
 intrinsic limit that it binds identity and integrity, NOT honesty, so a malicious authoriser's
