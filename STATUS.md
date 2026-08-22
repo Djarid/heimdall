@@ -83,8 +83,9 @@ also reproduced, and is NOT closed: it is verified, named and documented as a bo
 would reintroduce friction on an honestly-inert sink, and unconditionally requiring a registry
 would break every existing no-registry caller including this repo's own D10 mandatory
 safe/unsafe proof. `AgentContext` attestation (extending D93/D94's authoriser-plus-digest
-pattern to the agent binding itself) is named as a follow-on, not built: materially larger than
-the ceiling fix. See D97 in `DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
+pattern to the agent binding itself) was named as a follow-on here, not built: materially larger
+than the ceiling fix. It is now BUILT, with three inherited limits stated rather than closed
+(D103, below). See D97 in `DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
 
 **D100 then narrowed the gjoll half of D97's residual, without closing it in full.**
 `ClassifiedAssertion` now carries an additive `consequential_sinks_at_classify` stamp, set by
@@ -96,9 +97,41 @@ classify-time provenance at all is now also treated fail closed. It does NOT clo
 full: a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate
 call, still disarms the branch, exactly the in-process label-rewrite assumption the gate already
 makes for `action_critical` and `trust_level`. The registry-supplied path (D89-B) is untouched.
-`AgentContext` attestation (D97's item (c)) stays a named, triggered follow-on, not built here
-and not given its own `DECISIONS.md` row. See D100 in `DECISIONS.md` and
-`ontology/tests/control_surface_harness.py`.
+`AgentContext` attestation (D97's item (c)) was a named, triggered follow-on here, not built and
+not given its own `DECISIONS.md` row. It is now BUILT and given its own row, D103, but only on
+the identity/integrity axis: three inherited limits are named rather than closed. See D100 in
+`DECISIONS.md` and `ontology/tests/control_surface_harness.py`.
+
+**D103 then closed D97's item (c) on the identity/integrity axis, with three limits stated, not
+smoothed.** A new shared attested-record substrate, `ontology/nornir/authorisation_record.py`,
+extends D94's authoriser-plus-keyed-digest pattern to a new record type, and `AgentContext`
+becomes that substrate's first record type, gaining additive `authoriser`/`attestation` fields
+(both defaulting `None`, so all 15 existing construction sites keep working unedited).
+`resolve()` gains an optional trailing `trusted` parameter; when a `TrustedAuthoriserSet` is
+supplied, the binding's attestation is verified BEFORE the D97 clamp, and an altered (a raised
+`trust_ceiling`, a HOLLOWED `consequential_sinks` set, a swapped `agent_id` or `authoriser`),
+unattested, or unknown-authoriser context is REFUSED (raises), never degraded to a narrower
+context, because emptying `consequential_sinks` is the DISARMING direction here, not a safe one.
+`Nornir.run` passes the same optional parameter through to `resolve()`, so D100's classify-time
+stamp is now taken from a VERIFIED context whenever a trusted set is supplied. Three inherited
+limits are carried forward, not closed, stated here rather than smoothed: **(1)** enforcement is
+opt-in and no non-test caller supplies a trusted set today, so the unattested path survives,
+fail-open-by-omission, mechanised by a live invocation detector rather than left in prose; **(2)**
+attestation binds identity and integrity, never honesty, so a trusted authoriser who honestly
+attests a HOLLOW `consequential_sinks` set produces a valid attestation of a disarmed surface,
+and unlike the sink-declaration seam (D89-B, D93-D), there is NO honesty backstop on the control
+surface at all, not even supplying a `sink_registry` to the gate (its D89-B derivation of
+`sink_is_consequential` is ANDed with `action_critical`, computed from the agent's own attested
+`consequential_sinks`, so a registry cannot supply reachability the agent's context never
+granted); **(3)** D100's EC-8 in-process label rewrite (a caller rewriting
+`consequential_sinks_at_classify` on a `ClassifiedAssertion` before the gate call) is untouched.
+One reported number moves: the invariant 3.1 guard now scans **34** files, not 33
+(`ALLOWED_IMPORT_ROOTS` unchanged at 13 roots), because `authorisation_record.py` is a new
+module on the authorisation path; the two new harnesses live under `ontology/tests/`, outside
+the guard's scan scope. `gjoll.py` is untouched. Both new harnesses are registered as main-suite
+fatal-gated obligations, following D102's `run_sink_attestation` pattern. See D103 in
+`DECISIONS.md`, `ontology/tests/authorisation_record_harness.py` and
+`ontology/tests/agentcontext_attestation_harness.py`.
 
 **Run this first, to see the state for yourself:**
 
@@ -130,6 +163,15 @@ standalone entry point too:
 
 ```
 poc/.venv/bin/python -m ontology.tests.control_surface_harness    # resolve() clamps; narrowed residual RECORDED
+```
+
+D103 (the `AgentContext` attestation substrate and its own suite) is likewise registered inside
+`ontology.tests.harness` (obligations `authorisation_record`, `agentcontext_attestation`), but
+has standalone entry points too:
+
+```
+poc/.venv/bin/python -m ontology.tests.authorisation_record_harness      # substrate: identity+integrity, GREEN
+poc/.venv/bin/python -m ontology.tests.agentcontext_attestation_harness  # AgentContext refused when altered/unattested; three limits RECORDED
 ```
 
 **D102 registers D93 and D94 as main-suite fatal-gated obligations, and deliberately leaves
@@ -293,6 +335,16 @@ rather than from the gate-time argument, so neither a hollowed argument nor a va
 stamp at all disarms the block any more. What survives is narrower still: a caller able to
 rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call, is out of the
 threat model, exactly as it already is for `action_critical` and `trust_level`.
+D103 then closed D97's item (c), the agent binding's own attestation, on its identity/integrity
+axis only: `AgentContext` becomes a record type on a new shared substrate
+(`ontology/nornir/authorisation_record.py`, extending D94's authoriser-plus-digest pattern), and
+`resolve()` REFUSES an altered, unattested or unknown-authoriser context when a
+`TrustedAuthoriserSet` is supplied. Three limits are named, not closed: enforcement is opt-in
+(no non-test caller supplies a trusted set today); attestation binds identity and integrity,
+never honesty, and the control surface has no honesty backstop at all, not even a supplied
+`sink_registry`; and D100's EC-8 in-process label rewrite stays untouched. The invariant 3.1
+guard's scanned-file count moves from 33 to 34 (one new module, `ALLOWED_IMPORT_ROOTS`
+unchanged at 13 roots).
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -373,7 +425,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 98 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 103 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -500,7 +552,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D36 cross-harness portability | DEFERRED | Post-Phase 1 |
 | D45 dense-cycle deletion locality | SETTLED (caveat) | Monitoring: watch for large dense cycles in a future domain |
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
-| D97 follow-on: `AgentContext` attestation (D93/D94's authoriser-plus-digest pattern extended to the agent binding itself) | OPEN (named, not scoped) | Needed if the control surface must resist a compromised or unattested caller constructing/passing `AgentContext`; materially larger than the ceiling fix, its own scoping decision first. Would NOT close D100's narrow remaining gap either: attestation binds identity and integrity, never honesty (D94's limit), not an in-process caller rewriting the stamp after the value is produced |
+| D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
@@ -633,20 +685,27 @@ corpus the author never saw.
    starting it now would let a documentation/detector change (D96) drift into a Phase-3
    component build. Design question left open for when it starts: whether the gate reuses
    `promotion_policy.py`'s corroboration logic or is a separate mechanism.
-6. **Queued: one named D97 follow-on on the control surface, `AgentContext` attestation.** Not
-   started. D97 named two follow-ons here; D100 built the first (the no-registry
-   `agent_consequential_sinks` residual is now narrowed, not requiring `sink_registry`
-   unconditionally or an attested `AgentContext` threaded through every gate call, see D100),
-   so only the second remains queued: extend D93/D94's authoriser-plus-keyed-digest pattern
-   from sink declarations to the agent binding itself, so a compromised or unattested caller
-   cannot construct or alter an `AgentContext` (Gleipnir's G-1 failure, "the guard's own
-   configuration reachable/editable by the population it guards," reproduced inside Heimdall,
-   per `.opencode/plans/bifrost-secure-autonomous-harness-brainstorm.md` finding F4). Queued
-   rather than started because it is materially larger than the concrete ceiling-check fix D97
-   closed, and needs its own scoping decision, the same discipline item 5 (Approach E) already
-   applies to Gjöll's re-validation gate. It would not close D100's own narrow remaining gap
-   either (a caller rewriting the stamp in process): attestation binds identity and integrity,
-   never honesty (D94's limit).
+6. **Built: the D97 follow-on on the control surface, `AgentContext` attestation, on its
+   identity/integrity axis (D103).** D97 named two follow-ons; D100 built the first (the
+   no-registry `agent_consequential_sinks` residual, narrowed rather than requiring
+   `sink_registry` unconditionally or an attested `AgentContext`), and D103 now builds the
+   second: `ontology/nornir/authorisation_record.py` extends D93/D94's authoriser-plus-keyed-
+   digest pattern from sink declarations to the agent binding itself, and `resolve()`/`Nornir.run`
+   REFUSE an altered, unattested or unknown-authoriser `AgentContext` when a
+   `TrustedAuthoriserSet` is supplied, closing the identity/integrity half of Gleipnir's G-1
+   failure ("the guard's own configuration reachable/editable by the population it guards")
+   reproduced inside Heimdall (F4). What remains, named as requirements rather than closed:
+   **(1)** enforcement is opt-in, and no non-test caller supplies a trusted set today, so the
+   unattested path survives by omission, mechanised by a live invocation detector rather than
+   left in prose; **(2)** attestation binds identity and integrity, never honesty, so a trusted
+   authoriser who honestly attests a HOLLOW `consequential_sinks` set produces a valid
+   attestation of a disarmed surface, and the control surface has NO honesty backstop at all,
+   not even a supplied `sink_registry`, unlike the sink-declaration seam (D89-B, D93-D); **(3)**
+   D100's EC-8 in-process label rewrite (a caller rewriting the classify-time stamp before the
+   gate call) is untouched, and for the same reason D103 does not close D100's own narrow
+   remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
+   new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
+   OPEN, unresolved by this build.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

@@ -99,6 +99,11 @@ class Report:
         self.anchor_failures = 0
         self.effect_probe_failures = 0
         self.sink_attestation_failures = 0
+        # D103: the shared attested-record substrate and AgentContext's own
+        # integrity check, folded in following D102's run_sink_attestation
+        # pattern (REQ-19, REQ-25).
+        self.authorisation_record_failures = 0
+        self.agentcontext_attestation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -837,6 +842,67 @@ def run_sink_attestation(rep: Report) -> None:
     rep.line("")
 
 
+def run_authorisation_record(rep: Report) -> None:
+    """D103: the shared attested-record substrate (REQ-1 to REQ-7), extending
+    D94's authoriser-plus-keyed-digest pattern to any authorisation-path record
+    generically. Wired in following the D97/D100/D102 `run_sink_attestation`
+    precedent: this standalone suite's own `main()` already returns a real
+    pass/fail code (0 clean, 1 on failure), so a failure here is folded into the
+    main suite's fatal count rather than left unregistered. Run it directly for
+    detail (`python -m ontology.tests.authorisation_record_harness`)."""
+    import contextlib
+    import io
+    from . import authorisation_record_harness
+
+    rep.line("=== D103 Authorisation record: the shared attested-record substrate, "
+              "record identity and integrity refused if unattested or tampered ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = authorisation_record_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] an altered, unknown-authoriser or unattested record is "
+                  "refused in every shape; cross-type and cross-substrate replay are "
+                  "both refused; a properly attested record verifies with no "
+                  "friction (run the module directly for detail)")
+    else:
+        rep.authorisation_record_failures += 1
+        rep.line("  [CRITICAL] authorisation-record suite FAILED (run it directly "
+                  "for detail)")
+    rep.line("")
+
+
+def run_agentcontext_attestation(rep: Report) -> None:
+    """D103: AgentContext's own integrity is enforced at resolve() (REQ-23,
+    REQ-24), catching both escalations finding F4 named (a raised trust ceiling,
+    a hollowed consequential-sink set) where a trusted set is supplied. Wired in
+    following the D97/D100/D102 `run_sink_attestation` precedent: this standalone
+    suite's own `main()` already returns a real pass/fail code (0 clean, 1 on
+    failure), so a failure here is folded into the main suite's fatal count
+    rather than left unregistered. Run it directly for detail (`python -m
+    ontology.tests.agentcontext_attestation_harness`)."""
+    import contextlib
+    import io
+    from . import agentcontext_attestation_harness
+
+    rep.line("=== D103 AgentContext attestation: the agent binding's identity and "
+              "integrity, refused if unattested, unknown-authoriser or altered "
+              "where a trusted set is supplied ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = agentcontext_attestation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] an unattested, unknown-authoriser or altered-after-"
+                  "attestation AgentContext is refused at resolve() where a trusted "
+                  "set is supplied, catching both F4 escalations; an honest binding "
+                  "passes through with no friction; the three inherited limits "
+                  "(opt-in enforcement, identity-not-honesty, the untouched "
+                  "in-process label rewrite) are reported, not hidden (run the "
+                  "module directly for detail)")
+    else:
+        rep.agentcontext_attestation_failures += 1
+        rep.line("  [CRITICAL] agentcontext-attestation suite FAILED (run it "
+                  "directly for detail)")
+    rep.line("")
+
+
 def run_pipeline_score_reporting(rep: Report) -> None:
     """D83/D102: `pipeline_score_harness` is deliberately a measurement/report
     harness, not a pass/fail gate; its own docstring and code say so directly ("The
@@ -1144,6 +1210,8 @@ def main() -> int:
     run_bfo_relatedness(rep, onto)
     run_effect_probe(rep)
     run_sink_attestation(rep)
+    run_authorisation_record(rep)
+    run_agentcontext_attestation(rep)
     run_pipeline_score_reporting(rep)
 
     rep.dump()
@@ -1153,7 +1221,8 @@ def main() -> int:
              + rep.guard_failures + rep.mitigation_failures
              + rep.gjoll_invocation_failures + rep.control_surface_failures
              + rep.anchor_failures + rep.effect_probe_failures
-             + rep.sink_attestation_failures)
+             + rep.sink_attestation_failures + rep.authorisation_record_failures
+             + rep.agentcontext_attestation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

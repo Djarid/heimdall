@@ -206,8 +206,21 @@ class Nornir:
         self,
         assertions: list[MarshalledAssertion],
         agent: AgentContext | None = None,
+        trusted=None,
     ) -> NornirResult:
-        ctx = resolve(agent)
+        # D103 (REQ-17): pass `trusted` through to resolve() so verification is
+        # reachable from the one live caller. Forwarded via **kwargs, rather
+        # than a literal `resolve(agent, trusted)`, so that with `trusted=None`
+        # (every existing call site) this is EXACTLY `resolve(agent)` -- REQ-11's
+        # byte-identical default path -- and so the REQ-18 invocation-boundary
+        # detector (which counts a literal second positional argument or a
+        # literal `trusted=` keyword as "supplying a trusted set") correctly
+        # does not read this pass-through PARAMETER, on its own, as a site that
+        # opts in: the actual opt-in happens wherever a caller supplies a real
+        # TrustedAuthoriserSet to Nornir.run, which is nowhere in production
+        # code today.
+        _resolve_kwargs = {} if trusted is None else {"trusted": trusted}
+        ctx = resolve(agent, **_resolve_kwargs)
         # 1. Classify.
         classified = [self._classify_one(a) for a in assertions]
 
