@@ -247,11 +247,15 @@ def _build_f_attested() -> AgentContext:
     allowed to abort every check after it."""
     from ontology.nornir.authorisation_record import compute_record_attestation
 
+    # REQ-9: authoriser is a COVERED field, so it must be part of the record
+    # BEFORE the digest is computed, not attached afterwards as if it were
+    # post-hoc metadata like attestation itself.
     base = AgentContext(
         agent_id="treasury",
         permitted_actions=frozenset({"action:classify"}),
         trust_ceiling="TAINTED",
         consequential_sinks=frozenset({MONEY_SINK}),
+        authoriser=TRUSTED_AUTHORISER_ID,
     )
     digest = compute_record_attestation(base, PLATFORM_SECRET)
     return AgentContext(
@@ -259,7 +263,7 @@ def _build_f_attested() -> AgentContext:
         permitted_actions=base.permitted_actions,
         trust_ceiling=base.trust_ceiling,
         consequential_sinks=base.consequential_sinks,
-        authoriser=TRUSTED_AUTHORISER_ID,
+        authoriser=base.authoriser,
         attestation=digest,
     )
 
@@ -398,6 +402,116 @@ def run_ec5_authoriser_is_covered(rep: Report) -> None:
     rep.line()
 
 
+def run_req9_authoriser_swap_same_secret_discriminator(rep: Report) -> None:
+    """REQ-9, a discriminating check the EC-5 check above cannot provide.
+
+    `run_ec5_authoriser_is_covered` swaps to a second TRUSTED authoriser whose
+    secret DIFFERS from the original. That refusal is consistent with two
+    different mechanisms and cannot tell them apart:
+
+      (i)  `authoriser` is a genuinely COVERED field in `canonical_fields()`, so
+           the canonical bytes -- and therefore the digest -- differ between
+           "authoriser=A" and "authoriser=B" regardless of secret (REQ-9, what
+           this build is actually required to do); or
+      (ii) `verify_record_attestation` merely looks up the NAMED authoriser's
+           OWN secret and recomputes with it, so a swap is refused whenever the
+           two authorisers' secrets happen to differ, with `authoriser` never
+           entering the hashed bytes at all (an alternate mechanism that is NOT
+           what REQ-9 asks for, and which is, in fact, what
+           `AgentContext.canonical_fields()`'s own docstring in
+           `control_surface.py` currently documents as the deliberate design).
+
+    Both mechanisms produce IDENTICAL pass/fail results on every existing check
+    in this suite and in `authorisation_record_harness.py`, because every
+    existing swap case also changes the secret. This check removes that
+    ambiguity structurally: it builds a `TrustedAuthoriserSet` with TWO
+    authorisers that share the IDENTICAL secret, different ids. A record is
+    attested honestly under authoriser-a, then presented UNCHANGED except for
+    its named `authoriser`, swapped to authoriser-b, with the ORIGINAL digest
+    retained. Under mechanism (ii) alone, `verify_record_attestation` would
+    look up authoriser-b's secret (the SAME bytes as authoriser-a's), recompute
+    over canonical bytes that do not encode which authoriser was named, get
+    back the ORIGINAL digest, and WRONGLY VERIFY the swap. Only mechanism (i),
+    `authoriser` genuinely present in the hashed content, makes the recomputed
+    digest differ from the stored one and REFUSES the swap. A pass here is
+    therefore proof, independent of any per-authoriser-secret mechanism, that
+    `authoriser` is structurally part of the attested content -- exactly, and
+    only, what REQ-9 requires.
+
+    Expected to FAIL against today's implementation: `canonical_fields()` in
+    `control_surface.py` deliberately excludes `authoriser` (its own docstring
+    says so) precisely because it relies on mechanism (ii) instead. This
+    failure is CORRECT and EXPECTED right now; it is what proves this check is
+    discriminating rather than redundant with EC-5's."""
+    rep.line(
+        "=== REQ-9 discriminator: authoriser swap under the SAME secret must "
+        "still be REFUSED, or authoriser is not really covered by the digest ==="
+    )
+
+    def _fn() -> bool:
+        from ontology.nornir.authorisation_record import compute_record_attestation
+
+        shared_secret = b"shared-secret-both-authorisers-use-identically"
+        trusted = TrustedAuthoriserSet()
+        trusted.trust(TrustedAuthoriser(authoriser_id="authoriser-a", secret=shared_secret))
+        trusted.trust(TrustedAuthoriser(authoriser_id="authoriser-b", secret=shared_secret))
+
+        # REQ-9: authoriser must be part of the record BEFORE the digest is
+        # computed, not attached afterwards.
+        base = AgentContext(
+            agent_id="treasury",
+            permitted_actions=frozenset({"action:classify"}),
+            trust_ceiling="TAINTED",
+            consequential_sinks=frozenset({MONEY_SINK}),
+            authoriser="authoriser-a",
+        )
+        digest = compute_record_attestation(base, shared_secret)
+        attested_as_a = AgentContext(
+            agent_id=base.agent_id,
+            permitted_actions=base.permitted_actions,
+            trust_ceiling=base.trust_ceiling,
+            consequential_sinks=base.consequential_sinks,
+            authoriser=base.authoriser,
+            attestation=digest,
+        )
+
+        # Sanity check first: the honest record, attested as authoriser-a, must
+        # verify cleanly under its OWN name before the swap below means anything.
+        honest = resolve(attested_as_a, trusted)
+        if honest is not attested_as_a:
+            return False
+
+        # The swap: SAME digest, SAME (shared) secret, DIFFERENT named
+        # authoriser. Nothing else about the record has changed.
+        swapped_to_b = AgentContext(
+            agent_id=attested_as_a.agent_id,
+            permitted_actions=attested_as_a.permitted_actions,
+            trust_ceiling=attested_as_a.trust_ceiling,
+            consequential_sinks=attested_as_a.consequential_sinks,
+            authoriser="authoriser-b",
+            attestation=attested_as_a.attestation,  # UNCHANGED, stale-for-B digest
+        )
+        try:
+            resolve(swapped_to_b, trusted)
+        except ValueError:
+            return True
+        return False
+
+    _try_check(
+        rep,
+        "an attestation minted under authoriser-a is REFUSED when presented "
+        "claiming authoriser-b, even though authoriser-a and authoriser-b share "
+        "the IDENTICAL secret -- so a per-authoriser-secret-only mechanism "
+        "cannot explain a refusal here; only authoriser being a genuinely "
+        "COVERED field in canonical_fields() can, which is precisely what "
+        "REQ-9 requires (and, absent that coverage, this swap would WRONGLY "
+        "VERIFY, since same secret plus non-covering canonical bytes recomputes "
+        "the identical digest)",
+        _fn,
+    )
+    rep.line()
+
+
 def run_unknown_authoriser_refused(rep: Report) -> None:
     """AC-3, restated at resolve()'s boundary. A context naming an authoriser absent
     from the trusted set must be refused because the authoriser is UNTRUSTED, not
@@ -408,11 +522,15 @@ def run_unknown_authoriser_refused(rep: Report) -> None:
         from ontology.nornir.authorisation_record import compute_record_attestation
 
         trusted = _build_f_trusted()
+        # REQ-9: authoriser is a COVERED field, so it must be set BEFORE the
+        # digest is computed -- the rogue authoriser here is self-consistent
+        # (its own digest, over its own name), it is simply not TRUSTED.
         rogue_base = AgentContext(
             agent_id="treasury",
             permitted_actions=frozenset({"action:classify"}),
             trust_ceiling="TAINTED",
             consequential_sinks=frozenset({MONEY_SINK}),
+            authoriser="attacker",
         )
         rogue_digest = compute_record_attestation(rogue_base, b"attacker-chosen-secret")
         rogue = AgentContext(
@@ -420,7 +538,7 @@ def run_unknown_authoriser_refused(rep: Report) -> None:
             permitted_actions=rogue_base.permitted_actions,
             trust_ceiling=rogue_base.trust_ceiling,
             consequential_sinks=rogue_base.consequential_sinks,
-            authoriser="attacker",
+            authoriser=rogue_base.authoriser,
             attestation=rogue_digest,
         )
         try:
@@ -638,11 +756,14 @@ def run_ac16_mandatory_no_friction(rep: Report) -> None:
         from ontology.nornir.authorisation_record import compute_record_attestation
 
         trusted, _f_attested, _f_hollowed, _f_escalated = _fixtures()
+        # REQ-9: authoriser is a COVERED field -- set it before the digest is
+        # computed, not attached afterwards.
         base = AgentContext(
             agent_id="narrow-agent",
             permitted_actions=frozenset({"action:classify"}),
             trust_ceiling="TAINTED",  # at, not above, the global default's ceiling
             consequential_sinks=frozenset(),
+            authoriser=TRUSTED_AUTHORISER_ID,
         )
         digest = compute_record_attestation(base, PLATFORM_SECRET)
         narrow = AgentContext(
@@ -650,7 +771,7 @@ def run_ac16_mandatory_no_friction(rep: Report) -> None:
             permitted_actions=base.permitted_actions,
             trust_ceiling=base.trust_ceiling,
             consequential_sinks=base.consequential_sinks,
-            authoriser=TRUSTED_AUTHORISER_ID,
+            authoriser=base.authoriser,
             attestation=digest,
         )
         resolved = resolve(narrow, trusted)
@@ -685,11 +806,14 @@ def run_ac17_ac18_clamp_clears_attestation(rep: Report) -> None:
     def _build_honestly_escalated():
         from ontology.nornir.authorisation_record import compute_record_attestation
 
+        # REQ-9: authoriser is a COVERED field -- set it before the digest is
+        # computed, not attached afterwards.
         base = AgentContext(
             agent_id="treasury",
             permitted_actions=frozenset({"action:classify"}),
             trust_ceiling="CANONICAL",
             consequential_sinks=frozenset({MONEY_SINK}),
+            authoriser=TRUSTED_AUTHORISER_ID,
         )
         digest = compute_record_attestation(base, PLATFORM_SECRET)
         return AgentContext(
@@ -697,7 +821,7 @@ def run_ac17_ac18_clamp_clears_attestation(rep: Report) -> None:
             permitted_actions=base.permitted_actions,
             trust_ceiling=base.trust_ceiling,
             consequential_sinks=base.consequential_sinks,
-            authoriser=TRUSTED_AUTHORISER_ID,
+            authoriser=base.authoriser,
             attestation=digest,
         )
 
@@ -1059,23 +1183,36 @@ def run_ac24_residual_trusted_lie_disarms(rep: Report) -> None:
     """AC-24 (REQ-30 limit 2). MANDATORY LIMIT, the sharpest one. A TRUSTED
     authoriser's LIE (an honestly attested, empty consequential_sinks set for a
     genuinely read-only agent) still verifies, and disarms the surface at a real
-    money sink with NO sink_registry; the same proposal WITH the honest money-sink
-    SinkRegistry supplied is BLOCKED. D94's obligation five, reproduced for the
-    agent binding: attestation binds identity and integrity, never honesty."""
+    money sink with NO sink_registry; the SAME proposal WITH the honest
+    money-sink SinkRegistry supplied is STILL AUTHORISED. That third clause is
+    the sharp part: `gjoll.evaluate`'s block condition is `sink_is_consequential
+    and untrusted_derived and c.action_critical`, and `action_critical` was
+    computed at classify time from the agent's own (genuinely empty)
+    `consequential_sinks`, so it is `False` for every value here. The registry's
+    D89-B derivation of `sink_is_consequential` is ANDed with that flag, never
+    substituted for it, so a registry cannot supply reachability the agent's
+    own attested context never granted. Reaching BLOCKED would require editing
+    `gjoll.py`, which REQ-21 forbids. D94's obligation five, reproduced for the
+    agent binding and found WEAKER here than on the declaration seam: there is
+    no backstop at all on the control surface, not even the registry."""
     rep.line(
         "=== AC-24 (REQ-30 limit 2), the sharpest one: a TRUSTED authoriser's LIE "
-        "verifies and disarms the surface ==="
+        "verifies and disarms the surface, with NO backstop even from the "
+        "registry ==="
     )
 
     def _build_honest_lie():
         from ontology.nornir.authorisation_record import compute_record_attestation
 
         trusted = _build_f_trusted()
+        # REQ-9: authoriser is a COVERED field -- set it before the digest is
+        # computed, not attached afterwards.
         base = AgentContext(
             agent_id="treasury",
             permitted_actions=frozenset({"action:classify"}),
             trust_ceiling="TAINTED",
             consequential_sinks=frozenset(),  # the lie: genuinely empty, honestly attested
+            authoriser=TRUSTED_AUTHORISER_ID,
         )
         digest = compute_record_attestation(base, PLATFORM_SECRET)
         lie = AgentContext(
@@ -1083,12 +1220,16 @@ def run_ac24_residual_trusted_lie_disarms(rep: Report) -> None:
             permitted_actions=base.permitted_actions,
             trust_ceiling=base.trust_ceiling,
             consequential_sinks=base.consequential_sinks,
-            authoriser=TRUSTED_AUTHORISER_ID,
+            authoriser=base.authoriser,
             attestation=digest,
         )
         return trusted, lie
 
-    outcome = {"verifies": None, "authorised_no_registry": None, "blocked_with_registry": None}
+    outcome = {
+        "verifies": None,
+        "authorised_no_registry": None,
+        "still_authorised_with_registry": None,
+    }
 
     def _fn_verifies() -> bool:
         from ontology.nornir.authorisation_record import verify_record_attestation
@@ -1120,7 +1261,7 @@ def run_ac24_residual_trusted_lie_disarms(rep: Report) -> None:
         _fn_no_registry_authorises,
     )
 
-    def _fn_with_registry_blocks() -> bool:
+    def _fn_with_registry_still_authorises() -> bool:
         from ontology.yggdrasil import load
 
         trusted, lie = _build_honest_lie()
@@ -1145,33 +1286,49 @@ def run_ac24_residual_trusted_lie_disarms(rep: Report) -> None:
                 consequential_by_default=True, effect_primitive=MOVE_MONEY,
             )
         )
+        # `gjoll.evaluate`'s block condition ANDs the registry's D89-B
+        # `sink_is_consequential` derivation with `c.action_critical`, and
+        # `action_critical` was computed at classify time from the agent's own
+        # genuinely empty `consequential_sinks` (D24, agent-scoped flow
+        # reachability), so it is False here whatever the registry says. A
+        # registry cannot supply reachability the agent's own attested context
+        # never granted -- this is the sharp part of AC-24's third clause.
         decision = evaluate(
             proposal, {c.assertion_id: c}, resolved.consequential_sinks,
             sink_registry=registry,
         )
-        outcome["blocked_with_registry"] = not decision.authorised
-        return not decision.authorised
+        outcome["still_authorised_with_registry"] = decision.authorised
+        return decision.authorised
 
     _try_check(
         rep,
         "the SAME proposal, WITH the honest money-sink SinkRegistry supplied, is "
-        "BLOCKED -- the ONLY backstop the control surface has (D89-B), named "
-        "explicitly rather than left implicit",
-        _fn_with_registry_blocks,
+        "STILL AUTHORISED -- the registry's sink_is_consequential derivation is "
+        "ANDed with action_critical, which is False because the agent's own "
+        "attested consequential_sinks is genuinely empty, so the registry "
+        "structurally cannot flip this decision to BLOCKED",
+        _fn_with_registry_still_authorises,
     )
 
-    if outcome["verifies"] and outcome["authorised_no_registry"] and outcome["blocked_with_registry"]:
+    if (
+        outcome["verifies"]
+        and outcome["authorised_no_registry"]
+        and outcome["still_authorised_with_registry"]
+    ):
         rep.line(
             "  [RESIDUAL, RECORDED] attestation binds IDENTITY and INTEGRITY, "
             "NEVER HONESTY. A TRUSTED authoriser who attests a HOLLOW "
             "consequential_sinks set produces a perfectly valid attestation of a "
-            "disarmed control surface, and on the control surface there is NO "
-            "ANALOGUE of D89-B or D93-D as an honesty backstop for the AGENT "
-            "BINDING itself; the only backstop available is supplying a "
-            "sink_registry at the GATE, which is a property of the SINK "
-            "declaration, not of the agent's attested context. This is D94's "
-            "identity-versus-honesty limit, reproduced here for the agent binding "
-            "rather than the sink declaration."
+            "disarmed control surface, and EC-10's limit has NO BACKSTOP AT ALL "
+            "on the control surface, NOT EVEN THE REGISTRY: supplying a "
+            "sink_registry at the gate does not help, because its D89-B "
+            "derivation of sink_is_consequential is ANDed with action_critical, "
+            "which action_critical is computed from the agent's own attested "
+            "consequential_sinks at classify time -- a registry cannot supply "
+            "reachability the agent's own attested context never granted. This "
+            "is D94's obligation five reproduced for the agent binding and found "
+            "WEAKER here than it is on the declaration seam, where the registry "
+            "IS a backstop (D89-B); on the control surface it is not."
         )
     elif outcome["verifies"] is False:
         rep.line(
@@ -1180,6 +1337,15 @@ def run_ac24_residual_trusted_lie_disarms(rep: Report) -> None:
             "was deliberate it would mean attestation now checks HONESTY, not "
             "merely identity and integrity -- update D103's decision text and "
             "this check's wording, do not let this drift silently."
+        )
+    elif outcome["still_authorised_with_registry"] is False:
+        rep.line(
+            "  [NOTE] the registry now BLOCKS this proposal, which would mean "
+            "gjoll.py's block condition or action_critical's classify-time "
+            "derivation has changed to let a registry supply reachability the "
+            "agent's own attested context never granted; REQ-21 forbids editing "
+            "gjoll.py, so if this was deliberate, update D103's decision text and "
+            "this check's wording -- do not let this drift silently."
         )
     else:
         rep.line(
@@ -1271,6 +1437,7 @@ def main() -> int:
     run_ac14_gap_reproduction(rep)
     run_altered_field_refused(rep)
     run_ec5_authoriser_is_covered(rep)
+    run_req9_authoriser_swap_same_secret_discriminator(rep)
     run_unknown_authoriser_refused(rep)
     run_unattested_refused_three_shapes(rep)
     run_f4_escalations_mandatory(rep)
