@@ -133,6 +133,13 @@ fatal-gated obligations, following D102's `run_sink_attestation` pattern. See D1
 `DECISIONS.md`, `ontology/tests/authorisation_record_harness.py` and
 `ontology/tests/agentcontext_attestation_harness.py`.
 
+**D104 fixed a display-only rounding bug found during the D103 build.**
+`pipeline_score_harness.py`'s `--thirdparty` percentages were floor-divided rather than
+rounded, printing 13 percent and 91 percent where the correct figures are 14 percent and 92
+percent; no documented figure was wrong, only the harness's own live output. Fixed and pinned
+against recurrence by a new regression check in `ontology/tests/harness.py`. See D104 in
+`DECISIONS.md`.
+
 **Run this first, to see the state for yourself:**
 
 ```
