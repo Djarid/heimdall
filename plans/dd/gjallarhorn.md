@@ -124,6 +124,8 @@ No persistent decision authority: the authoritative record of every event is in 
 
 Gjallarhorn holds no credentials and no git or platform access. It is a routing and queueing layer over typed events, and its only authority is over its own routing configuration and derived queues.
 
+`plans/synthesis-resolutions.md` (D107) names a candidate mechanism for the delivery-to-the-operator dependency above: AETOS's notify pattern, re-expressed natively in Rust, as the concrete outward transport that this protected channel feeds into.
+
 ## 8. Build delta from today
 
 Per HLD section 3, Gjallarhorn is specified-only, and the delta is nearly the whole component.
