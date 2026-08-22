@@ -62,6 +62,9 @@ The [**GLOSSARY**](GLOSSARY.md) maps every name to its mythological origin and i
 ### ✍️ I'm writing or reviewing docs for this project
 The [**style guide**](reference/style_guide.md) governs all prose here: British English, no Oxford comma, no em dashes, and the AI-writing tells to avoid. Every document in this repository is written to it.
 
+### 🧩 I want to know how Heimdall synthesises with AETOS and Gleipnir
+Read [**plans/synthesis-capability-matrix.md**](plans/synthesis-capability-matrix.md): a working session's capability-mapping matrix showing what each of AETOS, Gleipnir and Heimdall's proven core contributes, the four control planes that resulted (output, process, hierarchy and cognition), and the rulings and open items it carries forward, including why the production runtime will be compiled Rust rather than Python. It is an input to a future synthesis architecture, not a build plan.
+
 ---
 
 ## The core ideas in one screen
