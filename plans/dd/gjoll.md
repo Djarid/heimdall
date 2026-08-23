@@ -91,6 +91,8 @@ gate(value_node: NodeId, action: Action, gate_policy: GatePolicy) -> GateResult
 
 `GateResult` is `PASS(gate_name)` or `BLOCK(reason)`. `gate_policy` names which gate or gates apply to this action, chosen per capability (section 7). A value passing no gate does not fail silently: the action is blocked, the dependency is flagged, and the value is routed to human authorisation on the protected channel, not the bulk review queue (`gjallarhorn.md`).
 
+`plans/synthesis-resolutions.md` (D107) records a ruling on how the promotion-requirement gate above relates to `promotion_policy.py`: it is implemented as a check against that module's existing trust-level output rather than a duplicate of its logic, while the other three gates above still need their own new mechanisms under this `GatePolicy`/`GateResult` interface, unchanged here.
+
 ## 6. Fail-closed behaviour
 
 - A parameter consumed as an action with no known provenance blocks (unknown-origin, cannot confirm safe). Real in `gjoll.py::evaluate`.

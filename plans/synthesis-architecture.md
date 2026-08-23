@@ -83,16 +83,16 @@ heimdall/
 
 From D105 section nine, still unresolved:
 
-- Whether Gleipnir's execution sandbox and Fenrir's content sandbox become one mechanism or stay two with a stated boundary between them.
-- Whether AETOS's memory and notify capabilities reappear as native Rust modules or are dropped.
-- The exact contract for the absorption seam: what a new catalogue entry, output check or process transition must supply to be accepted, and who reviews it.
-- The master-control tier's scope, named but not designed further.
+- Whether Gleipnir's execution sandbox and Fenrir's content sandbox become one mechanism or stay two with a stated boundary between them. (resolved, see D107 in `plans/synthesis-resolutions.md`)
+- Whether AETOS's memory and notify capabilities reappear as native Rust modules or are dropped. (resolved, see D107 in `plans/synthesis-resolutions.md`)
+- The exact contract for the absorption seam: what a new catalogue entry, output check or process transition must supply to be accepted, and who reviews it. (resolved, see D107 in `plans/synthesis-resolutions.md`)
+- The master-control tier's scope, named but not designed further. (resolved, see D107 in `plans/synthesis-resolutions.md`)
 
 Newly surfaced while grounding this architecture in the existing Detailed Design set and the Tolaria vault's documentation of AETOS and Gleipnir:
 
-- Gjöll's own open question, whether `GatePolicy` reuses the promotion policy's corroboration logic or is a separate mechanism, is inherited unresolved by the process-plane engine and must be settled by whoever builds Himinbjörg, not by this document.
-- The hierarchy-plane trust-tier lattice in section four is named and mapped but not yet built; it needs its own Detailed Design document once Phase 3 work on the hierarchy plane begins.
-- The context-shielding technique in section five is a candidate, not a ruling; it needs a decision before it is designed further.
+- Gjöll's own open question, whether `GatePolicy` reuses the promotion policy's corroboration logic or is a separate mechanism, is inherited unresolved by the process-plane engine and must be settled by whoever builds Himinbjörg, not by this document. (resolved, see D107 in `plans/synthesis-resolutions.md`)
+- The hierarchy-plane trust-tier lattice in section four is named and mapped but not yet built; it needs its own Detailed Design document once Phase 3 work on the hierarchy plane begins. (resolved, see D107 in `plans/synthesis-resolutions.md`)
+- The context-shielding technique in section five is a candidate, not a ruling; it needs a decision before it is designed further. (resolved, see D107 in `plans/synthesis-resolutions.md`)
 - Gleipnir's own open engineering seams, E-1 through E-5 in its specification, name gaps in the broker's argument policy, the platform-webhook receiver's home, the event bus's correction-provenance signal quality, a build-order disagreement between two of its verification sub-requirements, and unbuilt GOTCHA and ATLAS methodology bindings. None of these seams are inherited as Heimdall obligations by this document; they are named here only so a future session re-grounding this architecture in Gleipnir's evolving specification does not have to rediscover that they exist.
 
 ## 8. Documents this architecture does not replace
