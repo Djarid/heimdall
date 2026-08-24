@@ -63,3 +63,7 @@ secrets.*
 .envrc
 .coverage
 opencode.jsonc
+
+# Rust build output (D109)
+/target
+crates/*/target
