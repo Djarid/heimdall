@@ -20,6 +20,7 @@
 //!   - `types::{ActionProposal, ClassifiedParameter, ConsumeMode, TrustLevel,
 //!     ReasonKind, Reason, GateDecision}` carry public fields (plain data shapes,
 //!     mirroring the Python dataclasses they re-express).
+//!
 //! Where the spec already fixes a shape (REQ-8's four `ClassifiedParameter` fields,
 //! REQ-9's two-variant `ConsumeMode`, REQ-11's four `ReasonKind` variants, REQ-16's
 //! absent `notes` field), this file matches it exactly.
@@ -32,8 +33,7 @@ use serde::Deserialize;
 
 use crate::rule::{apply, ConsequentialityVerdict};
 use crate::types::{
-    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind,
-    TrustLevel,
+    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, ReasonKind, TrustLevel,
 };
 
 // ---------------------------------------------------------------------------------
@@ -203,7 +203,9 @@ fn build_proposal(fx: &ProposalFixture) -> ActionProposal {
     }
 }
 
-fn build_classified(fx: &HashMap<String, ClassifiedFixture>) -> HashMap<String, ClassifiedParameter> {
+fn build_classified(
+    fx: &HashMap<String, ClassifiedFixture>,
+) -> HashMap<String, ClassifiedParameter> {
     fx.iter()
         .map(|(id, c)| {
             (
@@ -276,7 +278,9 @@ struct RecordingDouble {
 
 impl RecordingDouble {
     fn new() -> Self {
-        Self { action_effects: Vec::new() }
+        Self {
+            action_effects: Vec::new(),
+        }
     }
 
     /// Mirrors `gjoll.enforce`'s own block-before-effect discipline: a blocked
@@ -301,7 +305,11 @@ impl RecordingDouble {
 #[test]
 fn layer_one_replay_reproduces_all_22_vectors() {
     let data = load_vectors();
-    assert_eq!(data.vectors.len(), 22, "gate_vectors.json does not carry exactly 22 vectors");
+    assert_eq!(
+        data.vectors.len(),
+        22,
+        "gate_vectors.json does not carry exactly 22 vectors"
+    );
 
     for v in &data.vectors {
         let (decision, _proposal) = replay(v);
@@ -311,7 +319,11 @@ fn layer_one_replay_reproduces_all_22_vectors() {
             v.id,
             v.origin,
             decision.authorised,
-            decision.reasons.iter().map(|r| (reason_kind_to_str(&r.kind), r.parameter_id.clone())).collect::<Vec<_>>(),
+            decision
+                .reasons
+                .iter()
+                .map(|r| (reason_kind_to_str(&r.kind), r.parameter_id.clone()))
+                .collect::<Vec<_>>(),
         );
     }
 }
@@ -380,10 +392,16 @@ fn d10_safe_plus_unsafe_control_block_before_effect() {
     let unsafe_wiring = find_vector(&data, "G-2");
 
     let (safe_decision, _safe_proposal) = replay(safe);
-    assert!(safe_decision.authorised, "G-1 (the safe wiring) must authorise");
+    assert!(
+        safe_decision.authorised,
+        "G-1 (the safe wiring) must authorise"
+    );
 
     let (unsafe_decision, unsafe_proposal) = replay(unsafe_wiring);
-    assert!(!unsafe_decision.authorised, "G-2 (the unsafe control) must be blocked");
+    assert!(
+        !unsafe_decision.authorised,
+        "G-2 (the unsafe control) must be blocked"
+    );
 
     let mut double = RecordingDouble::new();
     double.fire_if_authorised(&unsafe_proposal, &unsafe_decision);
@@ -401,7 +419,10 @@ fn recording_double_records_when_authorised_and_action_consuming() {
     let data = load_vectors();
     let g3 = find_vector(&data, "G-3");
     let (decision, proposal) = replay(g3);
-    assert!(decision.authorised, "G-3 must authorise (the gate is not pure friction)");
+    assert!(
+        decision.authorised,
+        "G-3 must authorise (the gate is not pure friction)"
+    );
 
     let mut double = RecordingDouble::new();
     double.fire_if_authorised(&proposal, &decision);

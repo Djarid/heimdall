@@ -30,13 +30,26 @@ LOCALLY inside its own function body, so it re-resolves the current `gjoll.enfor
 every call and needs no reload.
 
 Call-site identity, not call order, decides each vector's id. The 22 call sites are
-named by (repo-relative file, line number), read once from the checked-out source at
-the time this spec's vector inventory was counted (spec section 4.1). A call captured
-at a mapped site becomes exactly the named vector; a call captured at a site on
-`EXCLUDED_CALL_SITES` (the one gate call the spec's section 4.3 names as excluded from
-the parity claim) is discarded; a call captured anywhere else is a count-drift event
-and aborts the export loudly (REQ-18), because a harness gaining or losing a gate call
-must never rot the vector file silently.
+named by (repo-relative file, enclosing function's qualified name, ordinal position of
+the call within that function), NOT by absolute source line number: a harness file
+gains lines for reasons that have nothing to do with the gate calls it makes (a new
+counter field inserted earlier in the file, a docstring edit, a rewrapped comment),
+and keying identity to line number makes the exporter fail on every such unrelated
+edit. `frame.f_code.co_qualname` (Python 3.11+) already carries the dotted
+`outer.<locals>.inner` chain, so two call sites that share a bare function name (this
+codebase's harnesses reuse `_fn` as a nested-closure name across many outer test
+functions) still resolve to distinct, stable identifiers; the ordinal disambiguates
+multiple gate calls made from the SAME qualified function (`run_gjoll` makes six,
+in a fixed, unconditional, non-looping sequence, so "the Nth call from run_gjoll" is
+exactly as stable an identity as "the call at line N" was meant to be, without the
+line-number fragility). A call captured at a mapped (file, qualname, ordinal) becomes
+exactly the named vector; a call captured at a site on `EXCLUDED_CALL_SITES` (the one
+gate call the spec's section 4.3 names as excluded from the parity claim) is
+discarded; a call captured anywhere else -- including a qualname/ordinal this map does
+not know about, which is what a genuinely NEW or REMOVED gate call looks like, as
+opposed to a merely-shifted one -- is a count-drift event and aborts the export loudly
+(REQ-18), because a harness gaining or losing a gate call must never rot the vector
+file silently.
 
 What is NOT reimplemented here (REQ-19, DRY risk 1, the brief's top pre-mortem risk):
 `effective_consequential`, `_consequential_from_stamps` and `verify_declaration` are
@@ -76,33 +89,62 @@ EXPECTED_LAYER_TWO_COUNT = 6
 # than builds, so it replays at layer one only (the verdict it produced is an input).
 LAYER_TWO_VECTOR_IDS: frozenset[str] = frozenset({"G-4", "G-5", "G-6", "C-9c", "C-11", "C-12"})
 
+# A call site's stable identity: the repo-relative file it is made from, the
+# `co_qualname` of the function it is made from (the dotted `outer.<locals>.inner`
+# chain; NOT the bare `co_name`, which several harness closures reuse as `_fn` across
+# many outer test functions), and the 1-based ordinal of the call among all
+# evaluate/enforce calls captured from that same (file, qualname) pair, in the order
+# the harness actually makes them. This is deliberately NOT a source line number:
+# line numbers drift on every unrelated edit to a harness file (a new field inserted
+# earlier in the file shifts every call below it), whereas a function's qualified
+# name and the count of gate calls it makes are structural facts about the harness
+# that do not move just because the file grew or shrank elsewhere.
+CallSite = tuple[str, str, int]
+
 # Every `evaluate`/`enforce` call site the three harnesses make, keyed by
-# (repo-relative path, line number), read from the checked-out source (spec section
-# 4.1). A call captured at any OTHER site is a count-drift event (REQ-18) and aborts
-# the export; this map is deliberately exhaustive, not permissive.
-CALL_SITE_MAP: dict[tuple[str, int], str] = {
-    ("ontology/tests/harness.py", 583): "G-1",
-    ("ontology/tests/harness.py", 598): "G-2",
-    ("ontology/tests/harness.py", 619): "G-3",
-    ("ontology/tests/harness.py", 646): "G-4",
-    ("ontology/tests/harness.py", 669): "G-5",
-    ("ontology/tests/harness.py", 690): "G-6",
-    ("ontology/tests/control_surface_harness.py", 228): "C-1",
-    ("ontology/tests/control_surface_harness.py", 251): "C-2",
-    ("ontology/tests/control_surface_harness.py", 274): "C-3",
-    ("ontology/tests/control_surface_harness.py", 308): "C-4a",
-    ("ontology/tests/control_surface_harness.py", 309): "C-4b",
-    ("ontology/tests/control_surface_harness.py", 336): "C-5",
-    ("ontology/tests/control_surface_harness.py", 370): "C-6",
-    ("ontology/tests/control_surface_harness.py", 408): "C-7a",
-    ("ontology/tests/control_surface_harness.py", 418): "C-7b",
-    ("ontology/tests/control_surface_harness.py", 451): "C-8",
-    ("ontology/tests/control_surface_harness.py", 470): "C-9a",
-    ("ontology/tests/control_surface_harness.py", 474): "C-9b",
-    ("ontology/tests/control_surface_harness.py", 487): "C-9c",
-    ("ontology/tests/control_surface_harness.py", 595): "C-11",
-    ("ontology/tests/control_surface_harness.py", 644): "C-12",
-    ("ontology/tests/effect_probe_harness.py", 167): "E-1",
+# (repo-relative path, enclosing function qualname, ordinal), read from the
+# checked-out source (spec section 4.1). A call captured at any OTHER site is a
+# count-drift event (REQ-18) and aborts the export; this map is deliberately
+# exhaustive, not permissive.
+CALL_SITE_MAP: dict[CallSite, str] = {
+    ("ontology/tests/harness.py", "run_gjoll", 1): "G-1",
+    ("ontology/tests/harness.py", "run_gjoll", 2): "G-2",
+    ("ontology/tests/harness.py", "run_gjoll", 3): "G-3",
+    ("ontology/tests/harness.py", "run_gjoll", 4): "G-4",
+    ("ontology/tests/harness.py", "run_gjoll", 5): "G-5",
+    ("ontology/tests/harness.py", "run_gjoll", 6): "G-6",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac1_closed_case.<locals>._fn", 1): "C-1",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac2_inert_sink_control.<locals>._fn", 1): "C-2",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac3_empty_stamp_no_friction.<locals>._fn", 1): "C-3",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac4_absence_vs_emptiness.<locals>._fn", 1): "C-4a",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac4_absence_vs_emptiness.<locals>._fn", 2): "C-4b",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac5_ac22_fail_closed_absent_stamp.<locals>._fn", 1): "C-5",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac6_unstamped_not_outvoted.<locals>._fn", 1): "C-6",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac7_union_widens_conjunct_binds.<locals>._fn_blocks", 1): "C-7a",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac7_union_widens_conjunct_binds.<locals>._fn_authorises", 1): "C-7b",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac8_no_classified_params_unchanged.<locals>._fn", 1): "C-8",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_mismatch", 1): "C-9a",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_match", 1): "C-9b",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_registry", 1): "C-9c",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac11_registry_path_untouched.<locals>._fn", 1): "C-11",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac12_stamp_not_ored_into_registry.<locals>._fn", 1): "C-12",
+    ("ontology/tests/effect_probe_harness.py",
+     "test_end_to_end_wrong_primitive_blocked_by_gate", 1): "E-1",
 }
 assert len(CALL_SITE_MAP) == EXPECTED_LAYER_ONE_COUNT, "CALL_SITE_MAP must name exactly 22 sites"
 assert LAYER_TWO_VECTOR_IDS <= set(CALL_SITE_MAP.values())
@@ -112,8 +154,8 @@ assert len(LAYER_TWO_VECTOR_IDS) == EXPECTED_LAYER_TWO_COUNT
 # exclusion from the parity claim: `_report_narrowed_residual`'s forged-stamp
 # reproduction, which reproduces D97's residual on the designed-out no-registry
 # branch and is reported, not asserted, by the harness itself.
-EXCLUDED_CALL_SITES: frozenset[tuple[str, int]] = frozenset({
-    ("ontology/tests/control_surface_harness.py", 688),
+EXCLUDED_CALL_SITES: frozenset[CallSite] = frozenset({
+    ("ontology/tests/control_surface_harness.py", "_report_narrowed_residual", 1),
 })
 
 # Short, traceable claims per vector (spec section 4.1/4.2's table), carried into the
@@ -284,31 +326,42 @@ def _capture_gate_calls() -> dict[str, dict]:
     enforce_sig = inspect.signature(original_enforce)
     depth = {"n": 0}
     records: dict[str, dict] = {}
+    # Ordinal counters per (relpath, qualname): incremented on every captured gate
+    # call from that function, regardless of whether it is `evaluate` or `enforce`,
+    # so "the Nth gate call made from this function" stays well defined even for a
+    # function (like `run_gjoll`) that makes several. See `CALL_SITE_MAP`'s comment
+    # for why this, not the call's source line number, is the site's stable identity.
+    call_counts: dict[tuple[str, str], int] = {}
 
     def _handle(kind: str, sig: "inspect.Signature", frame, args, kwargs, result) -> None:
         relpath = _relpath(frame.f_code.co_filename)
         lineno = frame.f_lineno
-        key = (relpath, lineno)
+        qualname = frame.f_code.co_qualname
+        count_key = (relpath, qualname)
+        ordinal = call_counts.get(count_key, 0) + 1
+        call_counts[count_key] = ordinal
+        key: CallSite = (relpath, qualname, ordinal)
+        origin = f"{relpath}:{lineno} (in {qualname}, call #{ordinal})"
         if key in EXCLUDED_CALL_SITES:
             return
         vector_id = CALL_SITE_MAP.get(key)
         if vector_id is None:
             raise ExporterError(
-                f"unmapped Gjoll gate call site at {relpath}:{lineno} (a {kind} call not "
-                f"named in CALL_SITE_MAP): a harness gained a gate call this exporter does "
-                f"not know about. Update CALL_SITE_MAP and the spec's vector inventory, or "
+                f"unmapped Gjoll gate call site {origin} (a {kind} call not named in "
+                f"CALL_SITE_MAP): a harness gained a gate call this exporter does not know "
+                f"about. Update CALL_SITE_MAP and the spec's vector inventory, or "
                 f"investigate why a new call site appeared (REQ-18)."
             )
         if vector_id in records:
             raise ExporterError(
-                f"duplicate capture for vector {vector_id!r} at {relpath}:{lineno}: the same "
-                f"vector id was already captured from a different call"
+                f"duplicate capture for vector {vector_id!r} at {origin}: the same vector "
+                f"id was already captured from a different call"
             )
         bound = sig.bind(*args, **kwargs)
         bound.apply_defaults()
         a = bound.arguments
         records[vector_id] = {
-            "origin": f"{relpath}:{lineno} (in {frame.f_code.co_name})",
+            "origin": f"{relpath}:{lineno} (in {qualname})",
             "kind": kind,
             "proposal": a["proposal"],
             "classified_by_id": a["classified_by_id"],

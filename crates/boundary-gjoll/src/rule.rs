@@ -9,7 +9,9 @@
 
 use std::collections::HashMap;
 
-use crate::types::{ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind, TrustLevel};
+use crate::types::{
+    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind, TrustLevel,
+};
 
 /// An already-resolved consequentiality verdict: whether the proposal's sink is
 /// consequential for this agent. Constructible **only from inside the crate**

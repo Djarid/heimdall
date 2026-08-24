@@ -11,7 +11,7 @@
   "vectors": [
     {
       "id": "C-1",
-      "origin": "ontology/tests/control_surface_harness.py:228 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:228 (in _check_ac1_closed_case.<locals>._fn)",
       "claim": "D100 closed case: hollowed agent_consequential_sinks, no registry",
       "layer_one": {
         "verdict": true,
@@ -45,7 +45,7 @@
     },
     {
       "id": "C-2",
-      "origin": "ontology/tests/control_surface_harness.py:251 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:251 (in _check_ac2_inert_sink_control.<locals>._fn)",
       "claim": "inert-sink anti-conflation control",
       "layer_one": {
         "verdict": false,
@@ -74,7 +74,7 @@
     },
     {
       "id": "C-3",
-      "origin": "ontology/tests/control_surface_harness.py:274 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:274 (in _check_ac3_empty_stamp_no_friction.<locals>._fn)",
       "claim": "empty-stamp no-friction control",
       "layer_one": {
         "verdict": false,
@@ -103,7 +103,7 @@
     },
     {
       "id": "C-5",
-      "origin": "ontology/tests/control_surface_harness.py:336 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:336 (in _check_ac5_ac22_fail_closed_absent_stamp.<locals>._fn)",
       "claim": "hand-built, no stamp, fail closed",
       "layer_one": {
         "verdict": true,
@@ -137,7 +137,7 @@
     },
     {
       "id": "C-6",
-      "origin": "ontology/tests/control_surface_harness.py:370 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:370 (in _check_ac6_unstamped_not_outvoted.<locals>._fn)",
       "claim": "one unstamped parameter not outvoted by a stamped sibling",
       "layer_one": {
         "verdict": true,
@@ -182,7 +182,7 @@
     },
     {
       "id": "C-8",
-      "origin": "ontology/tests/control_surface_harness.py:451 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:451 (in _check_ac8_no_classified_params_unchanged.<locals>._fn)",
       "claim": "no-known-provenance fail-closed reason, zero classified consumed parameters",
       "layer_one": {
         "verdict": false,
@@ -243,7 +243,7 @@
     },
     {
       "id": "G-1",
-      "origin": "ontology/tests/harness.py:583 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:586 (in run_gjoll)",
       "claim": "D10 safe wiring: inert consumption at an unrelated sink",
       "layer_one": {
         "verdict": false,
@@ -272,7 +272,7 @@
     },
     {
       "id": "G-2",
-      "origin": "ontology/tests/harness.py:598 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:601 (in run_gjoll)",
       "claim": "D10 unsafe control: staged cross-domain value consumed as action at the payment sink",
       "layer_one": {
         "verdict": true,
@@ -306,7 +306,7 @@
     },
     {
       "id": "G-3",
-      "origin": "ontology/tests/harness.py:619 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:622 (in run_gjoll)",
       "claim": "not-pure-friction control: untrusted but non-action-critical value consumed as action",
       "layer_one": {
         "verdict": false,
@@ -335,7 +335,7 @@
     },
     {
       "id": "G-4",
-      "origin": "ontology/tests/harness.py:646 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:649 (in run_gjoll)",
       "claim": "D89-B: dishonestly-flagged money sink with an empty agent set",
       "layer_one": {
         "verdict": true,
@@ -392,7 +392,7 @@
     },
     {
       "id": "G-5",
-      "origin": "ontology/tests/harness.py:669 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:672 (in run_gjoll)",
       "claim": "D89-A: action-critical value declared inert at a consequential sink",
       "layer_one": {
         "verdict": true,
@@ -449,7 +449,7 @@
     },
     {
       "id": "G-6",
-      "origin": "ontology/tests/harness.py:690 (in run_gjoll)",
+      "origin": "ontology/tests/harness.py:693 (in run_gjoll)",
       "claim": "D89-A anti-friction control: non-action-critical value declared inert",
       "layer_one": {
         "verdict": true,
@@ -496,7 +496,7 @@
     },
     {
       "id": "C-11",
-      "origin": "ontology/tests/control_surface_harness.py:595 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:595 (in _check_ac11_registry_path_untouched.<locals>._fn)",
       "claim": "registry path is blind to the classify-time stamp",
       "layer_one": {
         "verdict": true,
@@ -553,7 +553,7 @@
     },
     {
       "id": "C-12",
-      "origin": "ontology/tests/control_surface_harness.py:644 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:644 (in _check_ac12_stamp_not_ored_into_registry.<locals>._fn)",
       "claim": "a stamp naming the sink is not ORed into the registry derivation",
       "layer_one": {
         "verdict": false,
@@ -600,7 +600,7 @@
     },
     {
       "id": "C-4a",
-      "origin": "ontology/tests/control_surface_harness.py:308 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:308 (in _check_ac4_absence_vs_emptiness.<locals>._fn)",
       "claim": "attested-empty stamp authorises",
       "layer_one": {
         "verdict": false,
@@ -629,7 +629,7 @@
     },
     {
       "id": "C-4b",
-      "origin": "ontology/tests/control_surface_harness.py:309 (in _fn)",
+      "origin": "ontology/tests/control_surface_harness.py:309 (in _check_ac4_absence_vs_emptiness.<locals>._fn)",
       "claim": "absent stamp fails closed",
       "layer_one": {
         "verdict": true,
@@ -663,7 +663,7 @@
     },
     {
       "id": "C-7a",
-      "origin": "ontology/tests/control_surface_harness.py:408 (in _fn_blocks)",
+      "origin": "ontology/tests/control_surface_harness.py:408 (in _check_ac7_union_widens_conjunct_binds.<locals>._fn_blocks)",
       "claim": "union widens sink_is_consequential",
       "layer_one": {
         "verdict": true,
@@ -704,7 +704,7 @@
     },
     {
       "id": "C-7b",
-      "origin": "ontology/tests/control_surface_harness.py:418 (in _fn_authorises)",
+      "origin": "ontology/tests/control_surface_harness.py:418 (in _check_ac7_union_widens_conjunct_binds.<locals>._fn_authorises)",
       "claim": "the widened union does not over-block",
       "layer_one": {
         "verdict": true,
@@ -740,7 +740,7 @@
     },
     {
       "id": "C-9a",
-      "origin": "ontology/tests/control_surface_harness.py:470 (in _fn_mismatch)",
+      "origin": "ontology/tests/control_surface_harness.py:470 (in _check_ac9_mismatch_note.<locals>._fn_mismatch)",
       "claim": "union/argument mismatch, non-blocking note (notes not re-expressed in Rust)",
       "layer_one": {
         "verdict": false,
@@ -769,7 +769,7 @@
     },
     {
       "id": "C-9b",
-      "origin": "ontology/tests/control_surface_harness.py:474 (in _fn_match)",
+      "origin": "ontology/tests/control_surface_harness.py:474 (in _check_ac9_mismatch_note.<locals>._fn_match)",
       "claim": "union/argument match, no note",
       "layer_one": {
         "verdict": false,
@@ -798,7 +798,7 @@
     },
     {
       "id": "C-9c",
-      "origin": "ontology/tests/control_surface_harness.py:487 (in _fn_registry)",
+      "origin": "ontology/tests/control_surface_harness.py:487 (in _check_ac9_mismatch_note.<locals>._fn_registry)",
       "claim": "registry path: notes always empty",
       "layer_one": {
         "verdict": false,

@@ -50,10 +50,16 @@ fn derive_consequentiality(
     registry: &SinkRegistry,
 ) -> (ConsequentialityVerdict, ConsequentialitySource) {
     match registry.get(sink) {
-        None => (ConsequentialityVerdict::new(true), ConsequentialitySource::UndeclaredFailClosed),
+        None => (
+            ConsequentialityVerdict::new(true),
+            ConsequentialitySource::UndeclaredFailClosed,
+        ),
         Some(declaration) => {
             let consequential = intrinsically_consequential(Some(declaration));
-            (ConsequentialityVerdict::new(consequential), ConsequentialitySource::DeclaredPrimitive)
+            (
+                ConsequentialityVerdict::new(consequential),
+                ConsequentialitySource::DeclaredPrimitive,
+            )
         }
     }
 }
@@ -91,8 +97,11 @@ pub fn evaluate(
     registry: &SinkRegistry,
 ) -> GateDecision {
     let known_ids: std::collections::HashSet<String> = classified.keys().cloned().collect();
-    let consumes_raw: HashMap<String, String> =
-        proposal.consumes.iter().map(|(param_id, mode)| (param_id.clone(), consume_mode_to_str(*mode))).collect();
+    let consumes_raw: HashMap<String, String> = proposal
+        .consumes
+        .iter()
+        .map(|(param_id, mode)| (param_id.clone(), consume_mode_to_str(*mode)))
+        .collect();
 
     let validation = validate_proposal(&proposal.sink, &consumes_raw, registry, &known_ids);
     if !validation.reasons.is_empty() {

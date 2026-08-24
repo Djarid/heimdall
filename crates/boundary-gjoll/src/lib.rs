@@ -10,10 +10,10 @@
 //! Until layer two lands, the integration tests under `crates/boundary-gjoll/
 //! tests/` will fail to compile; that is expected and correct at this stage.
 
-pub mod types;
-pub mod rule;
-pub mod declaration;
 pub mod consequentiality;
+pub mod declaration;
+pub mod rule;
+pub mod types;
 
 // The only test-related construct permitted anywhere under src/. Three lines, no
 // test logic. The test bodies live in ../unit_tests/, which src/ never touches.

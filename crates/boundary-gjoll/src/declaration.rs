@@ -58,7 +58,10 @@ impl EffectPrimitive {
 
     /// Membership test over `INERT_PRIMITIVES`.
     fn is_inert(self) -> bool {
-        matches!(self, EffectPrimitive::DisplayOnly | EffectPrimitive::StoreOnly)
+        matches!(
+            self,
+            EffectPrimitive::DisplayOnly | EffectPrimitive::StoreOnly
+        )
     }
 }
 
@@ -93,11 +96,14 @@ pub struct SinkRegistry {
 
 impl SinkRegistry {
     pub fn new() -> Self {
-        Self { declarations: HashMap::new() }
+        Self {
+            declarations: HashMap::new(),
+        }
     }
 
     pub fn declare(&mut self, declaration: SinkDeclaration) {
-        self.declarations.insert(declaration.name.clone(), declaration);
+        self.declarations
+            .insert(declaration.name.clone(), declaration);
     }
 
     pub fn get(&self, name: &str) -> Option<&SinkDeclaration> {
@@ -186,8 +192,10 @@ pub fn validate_proposal(
     }
 
     // 3. No phantom parameters: every declared parameter must be a known assertion.
-    let mut phantom_params: Vec<&String> =
-        consumes.keys().filter(|param_id| !known_assertion_ids.contains(*param_id)).collect();
+    let mut phantom_params: Vec<&String> = consumes
+        .keys()
+        .filter(|param_id| !known_assertion_ids.contains(*param_id))
+        .collect();
     phantom_params.sort();
     for param_id in phantom_params {
         outcome.reasons.push(Reason {
@@ -203,8 +211,11 @@ pub fn validate_proposal(
 
     // 4. No silent omissions, and 5. no extra parameters.
     if let Some(decl) = declaration {
-        let mut missing: Vec<&String> =
-            decl.parameters.iter().filter(|p| !consumes.contains_key(*p)).collect();
+        let mut missing: Vec<&String> = decl
+            .parameters
+            .iter()
+            .filter(|p| !consumes.contains_key(*p))
+            .collect();
         missing.sort();
         for param_id in missing {
             outcome.reasons.push(Reason {
@@ -218,8 +229,10 @@ pub fn validate_proposal(
             });
         }
 
-        let mut extra: Vec<&String> =
-            consumes.keys().filter(|p| !decl.parameters.contains(*p)).collect();
+        let mut extra: Vec<&String> = consumes
+            .keys()
+            .filter(|p| !decl.parameters.contains(*p))
+            .collect();
         extra.sort();
         for param_id in extra {
             outcome.reasons.push(Reason {
