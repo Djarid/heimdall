@@ -12,6 +12,8 @@
 
 pub mod types;
 pub mod rule;
+pub mod declaration;
+pub mod consequentiality;
 
 // The only test-related construct permitted anywhere under src/. Three lines, no
 // test logic. The test bodies live in ../unit_tests/, which src/ never touches.
