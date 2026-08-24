@@ -282,7 +282,14 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
+1. **Build Vör's minimal single-cohort form: build-order step two (D108).** Step one (D109, Gjöll
+   re-expressed in Rust) is now complete; step two builds Vör, a minimal single-cohort agent
+   attestation form extending D103's `AgentContext` attestation pattern (keyed digest, verified
+   once at process start) rather than the general four-tier lattice. This step is load-bearing
+   for the build order's own sequencing: step three (Himinbjörg's minimal four-interface slice)
+   depends on step two landing first. See `plans/synthesis-bootstrap.md` section six for the
+   full build order and the target loop's definition.
+2. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
    is running this exact false-inert attack vector against models independently, with no
    exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
    role and fire the attacks at the LIVE framework, so it tests the architecture's central claim
@@ -295,7 +302,7 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
    the result lands, record it as its own decision and update invariant 3.6's proof status and
    D67-fix's disposition; a pass is bounded containment (not universal), a fail is a genuine
    architecture finding.
-2. **Attest the declarations: all four scoped directions (A, B, C, D) now built in-repo.** D81
+3. **Attest the declarations: all four scoped directions (A, B, C, D) now built in-repo.** D81
    closed declaration ERROR or DRIFT; D89 narrowed the HONESTY seam on two axes (B derives sink
    consequentiality from an attested effect-primitive table so a money sink flagged
    non-consequential is still gated; A blocks an action-critical value dishonestly declared
@@ -311,8 +318,8 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
    which are still mocked); plus the flow-EDGE honesty. Two honest limits are load-bearing and
    asserted, not smoothed: C binds IDENTITY and INTEGRITY, never HONESTY, so a MALICIOUS
    AUTHORISER's lie still verifies (B and D are the honesty backstop, not C); and coverage
-   breadth stays untested. All named in `plans/declaration_attestation_scoping.md`.
-3. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
+    breadth stays untested. All named in `plans/declaration_attestation_scoping.md`.
+4. **True token-level grammar-constrained decoding: DONE (D90).** Replaced D87's bounded
    per-field stand-in with a real token-level grammar mask: the model emits the whole
    `SlotExtractionSchema` object under a logits processor that permits only tokens keeping the
    output a valid grammar prefix, so a malformed object or an undeclared key is unreachable and
@@ -322,8 +329,8 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
    on Qwen2.5-7B end to end (`phase2/grammar_slot_demo.py`). Residual, unchanged: it constrains
    STRUCTURE, not value TRUTH, so value poisoning stays a Gjoll concern.
 
-   The remaining named work, now that tasks 1 to 3 are addressed: the EXTERNAL-HUMAN corpus
-   (task 1's residual), and the declaration follow-ons C (attest who may declare) and D (verify
+   The remaining named work, now that tasks 2 to 4 are addressed: the EXTERNAL-HUMAN corpus
+   (task 2's residual), and the declaration follow-ons C (attest who may declare) and D (verify
    the effect primitive against behaviour) from `plans/declaration_attestation_scoping.md`.
 
 **Traps that have already caught someone in this repo:**
