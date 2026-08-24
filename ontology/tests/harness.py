@@ -109,6 +109,9 @@ class Report:
         # unlike `run_pipeline_score_reporting` above, THIS check is a real
         # pass/fail assertion and is folded into `fatal`.
         self.pipeline_score_percentage_failures = 0
+        # D109 (REQ-30): the Rust gate drift detector's own main() folded in
+        # following the run_effect_probe pattern below.
+        self.rust_gjoll_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -820,6 +823,40 @@ def run_effect_probe(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_gjoll(rep: Report) -> None:
+    """D109 (REQ-30, REQ-32): the Rust re-expression of Gjoll's gate at
+    `crates/boundary-gjoll/` proves translation fidelity against the Python
+    reference on 22 committed golden vectors; it does NOT advance invariant
+    3.6's live-invocation status, which D96 still governs at zero non-test
+    call sites (see `run_gjoll_invocation_boundary` and
+    `ontology.tests.gjoll_invocation_harness`). Wired in following the
+    `run_effect_probe` precedent: this standalone sub-harness's own `main()`
+    already returns a real pass/fail code (0 clean, 1 on failure), so a
+    failure here is folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python -m
+    ontology.tests.rust_gate_harness`)."""
+    import contextlib
+    import io
+    from . import rust_gate_harness
+
+    rep.line("=== D109 Rust gate drift detector: translation fidelity against the "
+              "Python reference, not invariant 3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_gate_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] the Rust re-expression of Gjoll's gate at "
+                  "crates/boundary-gjoll/ matches the Python reference on the 22 "
+                  "committed golden vectors, with no source drift and an empty "
+                  "runtime-dependency table (or a loud skip if no Rust toolchain is "
+                  "present). This proves translation fidelity, not invariant 3.6's "
+                  "live-invocation status, which D96 still governs (run the module "
+                  "directly for detail)")
+    else:
+        rep.rust_gjoll_failures += 1
+        rep.line("  [CRITICAL] Rust gate drift detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_sink_attestation(rep: Report) -> None:
     """D94: attests WHO declared a sink, refusing an unattested or tampered
     declaration at load, closing the config-tamper / supply-chain axis of the root
@@ -1273,6 +1310,7 @@ def main() -> int:
     run_control_surface(rep)
     run_bfo_relatedness(rep, onto)
     run_effect_probe(rep)
+    run_rust_gjoll(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1288,7 +1326,8 @@ def main() -> int:
              + rep.anchor_failures + rep.effect_probe_failures
              + rep.sink_attestation_failures + rep.authorisation_record_failures
              + rep.agentcontext_attestation_failures
-             + rep.pipeline_score_percentage_failures)
+             + rep.pipeline_score_percentage_failures
+             + rep.rust_gjoll_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

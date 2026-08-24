@@ -1,0 +1,847 @@
+{
+  "schema_version": 1,
+  "generated_from": {
+    "gjoll_py_sha256": "8a905e43020edd271987bef2000ec497e3012d4e4efc373ce92dabd5fe0c3df9",
+    "sink_declaration_py_sha256": "da422da277a3268a7153511a4008526b54acc72f6bd9df47d97d95004f242b23"
+  },
+  "expected_counts": {
+    "layer_one": 22,
+    "layer_two": 6
+  },
+  "vectors": [
+    {
+      "id": "C-1",
+      "origin": "ontology/tests/control_surface_harness.py:228 (in _check_ac1_closed_case.<locals>._fn)",
+      "claim": "D100 closed case: hollowed agent_consequential_sinks, no registry",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac1-pay",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "money.value": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "money.value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-2",
+      "origin": "ontology/tests/control_surface_harness.py:251 (in _check_ac2_inert_sink_control.<locals>._fn)",
+      "claim": "inert-sink anti-conflation control",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac2-audit",
+          "sink": "sink:audit_log",
+          "consumes": {
+            "money.value": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-3",
+      "origin": "ontology/tests/control_surface_harness.py:274 (in _check_ac3_empty_stamp_no_friction.<locals>._fn)",
+      "claim": "empty-stamp no-friction control",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": false,
+        "proposal": {
+          "action_id": "ac3-harmless",
+          "sink": "sink:harmless",
+          "consumes": {
+            "note": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "note": {
+            "assertion_id": "note",
+            "type_name": "comms:informational_statement",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-5",
+      "origin": "ontology/tests/control_surface_harness.py:336 (in _check_ac5_ac22_fail_closed_absent_stamp.<locals>._fn)",
+      "claim": "hand-built, no stamp, fail closed",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac5-pay",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "mal.value": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "mal.value": {
+            "assertion_id": "mal.value",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "mal.value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-6",
+      "origin": "ontology/tests/control_surface_harness.py:370 (in _check_ac6_unstamped_not_outvoted.<locals>._fn)",
+      "claim": "one unstamped parameter not outvoted by a stamped sibling",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac6-unrelated",
+          "sink": "sink:unrelated",
+          "consumes": {
+            "money.value": "ACTION",
+            "ac6.handbuilt": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          },
+          "ac6.handbuilt": {
+            "assertion_id": "ac6.handbuilt",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "money.value"
+            },
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "ac6.handbuilt"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-8",
+      "origin": "ontology/tests/control_surface_harness.py:451 (in _check_ac8_no_classified_params_unchanged.<locals>._fn)",
+      "claim": "no-known-provenance fail-closed reason, zero classified consumed parameters",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": false,
+        "proposal": {
+          "action_id": "ac8-ghost",
+          "sink": "sink:nowhere-in-any-set",
+          "consumes": {
+            "ghost.param": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {},
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "no_known_provenance",
+              "parameter": "ghost.param"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "E-1",
+      "origin": "ontology/tests/effect_probe_harness.py:167 (in test_end_to_end_wrong_primitive_blocked_by_gate)",
+      "claim": "D93: a sink observed to move money is blocked though declared display_only",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "pay",
+          "sink": "sink:payments.disguised",
+          "consumes": {
+            "amount": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "amount": {
+            "assertion_id": "amount",
+            "type_name": "comms:payment_amount",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "amount"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "G-1",
+      "origin": "ontology/tests/harness.py:586 (in run_gjoll)",
+      "claim": "D10 safe wiring: inert consumption at an unrelated sink",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "audit",
+          "sink": "sink:audit_log",
+          "consumes": {
+            "email.newdetails": "INERT"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "email.newdetails": {
+            "assertion_id": "email.newdetails",
+            "type_name": "finance:account_reference",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "G-2",
+      "origin": "ontology/tests/harness.py:601 (in run_gjoll)",
+      "claim": "D10 unsafe control: staged cross-domain value consumed as action at the payment sink",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "pay",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "email.newdetails": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "email.newdetails": {
+            "assertion_id": "email.newdetails",
+            "type_name": "finance:account_reference",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "email.newdetails"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "G-3",
+      "origin": "ontology/tests/harness.py:622 (in run_gjoll)",
+      "claim": "not-pure-friction control: untrusted but non-action-critical value consumed as action",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": false,
+        "proposal": {
+          "action_id": "do",
+          "sink": "sink:harmless",
+          "consumes": {
+            "note": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "note": {
+            "assertion_id": "note",
+            "type_name": "comms:informational_statement",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "G-4",
+      "origin": "ontology/tests/harness.py:649 (in run_gjoll)",
+      "claim": "D89-B: dishonestly-flagged money sink with an empty agent set",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "pay-b",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "email.newdetails": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "email.newdetails": {
+            "assertion_id": "email.newdetails",
+            "type_name": "finance:account_reference",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "email.newdetails"
+            }
+          ]
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:payments.execute",
+              "parameters": [
+                "email.newdetails"
+              ],
+              "consequential_by_default": false,
+              "effect_primitive": "move_money"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "email.newdetails"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "G-5",
+      "origin": "ontology/tests/harness.py:672 (in run_gjoll)",
+      "claim": "D89-A: action-critical value declared inert at a consequential sink",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "pay-a",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "email.newdetails": "INERT"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "email.newdetails": {
+            "assertion_id": "email.newdetails",
+            "type_name": "finance:account_reference",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "inert_contradicts_reachability",
+              "parameter": "email.newdetails"
+            }
+          ]
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:payments.execute",
+              "parameters": [
+                "email.newdetails"
+              ],
+              "consequential_by_default": true,
+              "effect_primitive": "move_money"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "inert_contradicts_reachability",
+              "parameter": "email.newdetails"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "G-6",
+      "origin": "ontology/tests/harness.py:693 (in run_gjoll)",
+      "claim": "D89-A anti-friction control: non-action-critical value declared inert",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": false,
+        "proposal": {
+          "action_id": "log-note",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "note": "INERT"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "note": {
+            "assertion_id": "note",
+            "type_name": "comms:informational_statement",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:payments.execute",
+              "parameters": [
+                "note"
+              ],
+              "consequential_by_default": true,
+              "effect_primitive": "move_money"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-11",
+      "origin": "ontology/tests/control_surface_harness.py:595 (in _check_ac11_registry_path_untouched.<locals>._fn)",
+      "claim": "registry path is blind to the classify-time stamp",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac11-pay",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "mal.value": "ACTION"
+          },
+          "declared_safe": false
+        },
+        "classified": {
+          "mal.value": {
+            "assertion_id": "mal.value",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "mal.value"
+            }
+          ]
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:payments.execute",
+              "parameters": [
+                "mal.value"
+              ],
+              "consequential_by_default": true,
+              "effect_primitive": "move_money"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "mal.value"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-12",
+      "origin": "ontology/tests/control_surface_harness.py:644 (in _check_ac12_stamp_not_ored_into_registry.<locals>._fn)",
+      "claim": "a stamp naming the sink is not ORed into the registry derivation",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac12-display",
+          "sink": "sink:display_panel",
+          "consumes": {
+            "ac12.value": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "ac12.value": {
+            "assertion_id": "ac12.value",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:display_panel",
+              "parameters": [
+                "ac12.value"
+              ],
+              "consequential_by_default": false,
+              "effect_primitive": "display_only"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-4a",
+      "origin": "ontology/tests/control_surface_harness.py:308 (in _check_ac4_absence_vs_emptiness.<locals>._fn)",
+      "claim": "attested-empty stamp authorises",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac4-empty",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "ac4.empty": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "ac4.empty": {
+            "assertion_id": "ac4.empty",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-4b",
+      "origin": "ontology/tests/control_surface_harness.py:309 (in _check_ac4_absence_vs_emptiness.<locals>._fn)",
+      "claim": "absent stamp fails closed",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac4-none",
+          "sink": "sink:payments.execute",
+          "consumes": {
+            "ac4.none": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "ac4.none": {
+            "assertion_id": "ac4.none",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "ac4.none"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-7a",
+      "origin": "ontology/tests/control_surface_harness.py:408 (in _check_ac7_union_widens_conjunct_binds.<locals>._fn_blocks)",
+      "claim": "union widens sink_is_consequential",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac7-block",
+          "sink": "sink:b",
+          "consumes": {
+            "ac7.a": "ACTION",
+            "ac7.b": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "ac7.a": {
+            "assertion_id": "ac7.a",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          },
+          "ac7.b": {
+            "assertion_id": "ac7.b",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          }
+        },
+        "expected": {
+          "authorised": false,
+          "reasons": [
+            {
+              "kind": "action_on_action_critical_tainted",
+              "parameter": "ac7.a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "C-7b",
+      "origin": "ontology/tests/control_surface_harness.py:418 (in _check_ac7_union_widens_conjunct_binds.<locals>._fn_authorises)",
+      "claim": "the widened union does not over-block",
+      "layer_one": {
+        "verdict": true,
+        "verdict_sensitive": false,
+        "proposal": {
+          "action_id": "ac7-ok",
+          "sink": "sink:b",
+          "consumes": {
+            "ac7.a2": "ACTION",
+            "ac7.b2": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "ac7.a2": {
+            "assertion_id": "ac7.a2",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          },
+          "ac7.b2": {
+            "assertion_id": "ac7.b2",
+            "type_name": "comms:money_move_request",
+            "trust_level": "trust:TAINTED",
+            "action_critical": false
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-9a",
+      "origin": "ontology/tests/control_surface_harness.py:470 (in _check_ac9_mismatch_note.<locals>._fn_mismatch)",
+      "claim": "union/argument mismatch, non-blocking note (notes not re-expressed in Rust)",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac9-audit",
+          "sink": "sink:audit_log",
+          "consumes": {
+            "money.value": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-9b",
+      "origin": "ontology/tests/control_surface_harness.py:474 (in _check_ac9_mismatch_note.<locals>._fn_match)",
+      "claim": "union/argument match, no note",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac9-audit",
+          "sink": "sink:audit_log",
+          "consumes": {
+            "money.value": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    },
+    {
+      "id": "C-9c",
+      "origin": "ontology/tests/control_surface_harness.py:487 (in _check_ac9_mismatch_note.<locals>._fn_registry)",
+      "claim": "registry path: notes always empty",
+      "layer_one": {
+        "verdict": false,
+        "verdict_sensitive": true,
+        "proposal": {
+          "action_id": "ac9-audit",
+          "sink": "sink:audit_log",
+          "consumes": {
+            "money.value": "ACTION"
+          },
+          "declared_safe": true
+        },
+        "classified": {
+          "money.value": {
+            "assertion_id": "money.value",
+            "type_name": "unclassified:high_risk_unresolved",
+            "trust_level": "trust:TAINTED",
+            "action_critical": true
+          }
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      },
+      "layer_two": {
+        "registry": {
+          "declarations": [
+            {
+              "name": "sink:audit_log",
+              "parameters": [
+                "money.value"
+              ],
+              "consequential_by_default": false,
+              "effect_primitive": "display_only"
+            }
+          ]
+        },
+        "expected": {
+          "authorised": true,
+          "reasons": []
+        }
+      }
+    }
+  ]
+}
