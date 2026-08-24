@@ -59,6 +59,41 @@ DOES reimplement is the three-condition rule's own per-parameter loop (`shadow_a
 which is the intended self-check (REQ-20): the same simple rule the Rust `rule::apply`
 will implement, checked here in Python first against the real decisions it must
 reproduce, using only the four fields (REQ-8) the rule core is allowed to see.
+
+Call-site identity has a gap qualname+ordinal alone cannot close, and how
+`CALL_SITE_LINE_SHA256` closes it. Two calls sharing an enclosing-function qualname
+and differing only by call order (C-4a/C-4b below, `_check_ac4_absence_vs_emptiness`'s
+ordinals 1 and 2) would, if a future edit reordered those two source lines, silently
+SWAP the two vectors' recorded identities: `CALL_SITE_MAP` would still resolve both
+ordinals to a known vector id, `assert len(CALL_SITE_MAP) == EXPECTED_LAYER_ONE_COUNT`
+would still hold (the count of sites is unchanged, only their order), and the
+`generated_from` digests only cover `gjoll.py` and `sink_declaration.py`, never the
+harness files a reorder would actually touch -- so REQ-18's count-drift guard and the
+digest check both have nothing to say about a pure reorder. Two fixes were weighed:
+(a) a content-based check comparing each vector's `VECTOR_CLAIMS` prose against the
+captured call's actual shape (sink name, consumption mode, or another cheap
+structural fact), and (b) a hash of each call site's own source line, compared
+against a value recorded when the ordinal was assigned. (a) was rejected: several
+claims describe scenarios with an IDENTICAL structural shape on the four REQ-8
+fields this exporter can cheaply inspect (C-1/C-2/C-3 are all a bare `enforce(...)`
+against a stamp and an actuator; C-4a and C-4b themselves differ only in one input
+being `frozenset()` vs `None`, which is exactly the fact under test, not a distinguishing
+fingerprint available before the call is classified), so a claim-consistency check
+would either need per-vector bespoke assertions (as fragile and manually-maintained
+as the bug it is meant to catch) or would simply not fire on the C-4a/C-4b swap this
+finding is specifically about. (b) is what `CALL_SITE_LINE_SHA256` below implements:
+a SHA-256 of the exact source line at the call site, captured once when the ordinal
+was assigned and compared against the live source on every export run. A swap is
+caught unconditionally, because the physical line at a given (file, qualname, ordinal)
+literally changes text when two calls trade places, regardless of whether their
+argument shapes happen to differ. The accepted cost, stated rather than hidden: a
+legitimate edit to a call's own line (a renamed local variable, a rewrapped argument
+list) also trips this check and requires a deliberate, manual hash update here --
+exactly the same discipline `CALL_SITE_MAP` itself already imposes on a structural
+change, not a new maintenance burden. `build_vectors`'s `control_check` proves this
+mechanism can actually fail before it is trusted, using a real, disposable scratch
+file it writes, checks and discards, reproducing this repository's own C-4a/C-4b
+swap scenario rather than a synthetic stand-in.
 """
 
 from __future__ import annotations
@@ -68,6 +103,7 @@ import hashlib
 import importlib
 import io
 import json
+import linecache
 import os
 import re
 import sys
@@ -149,6 +185,89 @@ CALL_SITE_MAP: dict[CallSite, str] = {
 assert len(CALL_SITE_MAP) == EXPECTED_LAYER_ONE_COUNT, "CALL_SITE_MAP must name exactly 22 sites"
 assert LAYER_TWO_VECTOR_IDS <= set(CALL_SITE_MAP.values())
 assert len(LAYER_TWO_VECTOR_IDS) == EXPECTED_LAYER_TWO_COUNT
+
+# Content-based identity, closing the gap qualname+ordinal alone leaves open (see the
+# module docstring's "Call-site identity" section for the full reasoning and the
+# rejected alternative). Each value is the SHA-256 hexdigest of the STRIPPED source
+# line at the (file, qualname, ordinal) key's call site, recorded at the moment the
+# ordinal was assigned to its vector id below. `_handle` recomputes this hash from the
+# live source on every export and aborts loudly on a mismatch (never a silent
+# swap): this is what actually distinguishes "ordinal 1 is still C-4a's own line" from
+# "ordinal 1 is now C-4b's line because the two calls traded places", which
+# `CALL_SITE_MAP`'s ordinal alone cannot tell apart. Regenerate an entry after a
+# DELIBERATE edit to that call's own line (never after an unrelated edit elsewhere in
+# the file, which this hash is insensitive to by construction) with:
+#     python3 -c "import linecache; print(__import__('hashlib').sha256(
+#         linecache.getline(PATH, LINENO).strip().encode()).hexdigest())"
+CALL_SITE_LINE_SHA256: dict[CallSite, str] = {
+    ("ontology/tests/harness.py", "run_gjoll", 1):
+        "7c70805aee2ab752f1e4c5e9d4d0ed651db573eb1d77d2c61cb5078d67c6d309",
+    ("ontology/tests/harness.py", "run_gjoll", 2):
+        "a53a3d4fdac6383ee6a2980b2a1b054e7bc131c1c4b9991aa7e258645e93bb9f",
+    ("ontology/tests/harness.py", "run_gjoll", 3):
+        "9540df69da2a2ba969bccc455713c64ba32bb1429418fe0b0b105694e3f0218d",
+    ("ontology/tests/harness.py", "run_gjoll", 4):
+        "e37357334e00027fc7aaeabf2cbb3750d12de944fb31f3b7bb925942512c433b",
+    ("ontology/tests/harness.py", "run_gjoll", 5):
+        "8706df70082fb10ba38931bfcaaa069aa0e309c9cee82014736f0ec02f9cc5b4",
+    ("ontology/tests/harness.py", "run_gjoll", 6):
+        "82da1c3fc216ed0030d57b31d262bd454f878f060ed144b947b8debbacc283c2",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac1_closed_case.<locals>._fn", 1):
+        "b5e38a43f55b7955924697bbd66809231a79d92dadd28a03238bbe9984b64426",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac2_inert_sink_control.<locals>._fn", 1):
+        "b5e38a43f55b7955924697bbd66809231a79d92dadd28a03238bbe9984b64426",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac3_empty_stamp_no_friction.<locals>._fn", 1):
+        "b5e38a43f55b7955924697bbd66809231a79d92dadd28a03238bbe9984b64426",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac4_absence_vs_emptiness.<locals>._fn", 1):
+        "cccd1f8335f8d3a1c1cae5914a100121be588e6215a33ec6b040a57d2b5d144a",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac4_absence_vs_emptiness.<locals>._fn", 2):
+        "3d710a5a2242a39fd0f80039b280820f816b4dae3d77397fe1bce78189394737",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac5_ac22_fail_closed_absent_stamp.<locals>._fn", 1):
+        "5f12803d0ea38040c9222ed9124a21a68b24cfde80c5c622edb5193f6828c951",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac6_unstamped_not_outvoted.<locals>._fn", 1):
+        "0d4cd348f96b8850011c9bb85869a343a21a7d846f1b7c99ac7f4e04899d47f0",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac7_union_widens_conjunct_binds.<locals>._fn_blocks", 1):
+        "d6b4cd93b777a4800e197046dde92dc6b200a9e5fef868a85b657ac3c2d80763",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac7_union_widens_conjunct_binds.<locals>._fn_authorises", 1):
+        "d6b4cd93b777a4800e197046dde92dc6b200a9e5fef868a85b657ac3c2d80763",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac8_no_classified_params_unchanged.<locals>._fn", 1):
+        "55330af730668fb3cf83bd07de85aefd0ef67af8ba6e3528f397d9bf04d31381",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_mismatch", 1):
+        "183f47ad8e04bf92abf2fa94491f591814a153e29c7a075f8777d7565c29c4c2",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_match", 1):
+        "d038b094147f22ae2bc38ce89350671fc9a4706e06ed95e0e32932cf5152ad74",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac9_mismatch_note.<locals>._fn_registry", 1):
+        "6a500d4b730f0ebcbef08cd2e528d9401a06a746a7363567862184b2479a66b0",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac11_registry_path_untouched.<locals>._fn", 1):
+        "9ae066e031bbc7121af250fcbc3f011d6efc02a02d4b39b2a71dc168f0ddef7e",
+    ("ontology/tests/control_surface_harness.py",
+     "_check_ac12_stamp_not_ored_into_registry.<locals>._fn", 1):
+        "6a500d4b730f0ebcbef08cd2e528d9401a06a746a7363567862184b2479a66b0",
+    ("ontology/tests/effect_probe_harness.py",
+     "test_end_to_end_wrong_primitive_blocked_by_gate", 1):
+        "9701431747bdc77a1ace87271b895bf945ad228989e9b3035b879781f97c21aa",
+}
+assert set(CALL_SITE_LINE_SHA256) == set(CALL_SITE_MAP), (
+    "CALL_SITE_LINE_SHA256 must name a source-line hash for exactly the same sites "
+    "CALL_SITE_MAP names, no more and no fewer"
+)
+assert all(len(h) == 64 for h in CALL_SITE_LINE_SHA256.values()), (
+    "every CALL_SITE_LINE_SHA256 value must be a full 64-character sha256 hexdigest"
+)
 
 # The one real gate call the spec's section 4.3 names as an explicit, positive
 # exclusion from the parity claim: `_report_narrowed_residual`'s forged-stamp
@@ -298,6 +417,50 @@ def control_check() -> list[str]:
     else:
         failures.append("reason classifier FAILED to reject an unclassifiable reason string")
 
+    # The call-site identity control: reproduce this repository's own C-4a/C-4b
+    # scenario (control_surface_harness.py's AC-4, ordinals 1 and 2 of
+    # `_check_ac4_absence_vs_emptiness.<locals>._fn`) in an isolated, disposable
+    # scratch file -- never a real harness file -- confirm the hash check accepts the
+    # ORIGINAL ordering, then swap the two lines and confirm the check now flags a
+    # mismatch. This is the exact "a future edit reorders these two calls" failure
+    # mode `CALL_SITE_LINE_SHA256` exists to catch.
+    key_c4a: CallSite = (
+        "ontology/tests/control_surface_harness.py",
+        "_check_ac4_absence_vs_emptiness.<locals>._fn", 1,
+    )
+    key_c4b: CallSite = (
+        "ontology/tests/control_surface_harness.py",
+        "_check_ac4_absence_vs_emptiness.<locals>._fn", 2,
+    )
+    line_c4a = "        d_empty = evaluate(empty_prop, {empty_c.assertion_id: empty_c}, frozenset())"
+    line_c4b = "        d_none = evaluate(none_prop, {none_c.assertion_id: none_c}, frozenset())"
+    with tempfile.TemporaryDirectory() as d:
+        scratch = Path(d) / "scratch_call_site.py"
+
+        scratch.write_text(f"{line_c4a}\n{line_c4b}\n")
+        if check_call_site_identity_hash(key_c4a, str(scratch), 1) is not None:
+            failures.append(
+                "call-site identity control: the hash check wrongly reported a "
+                "mismatch for the ORIGINAL, unswapped C-4a/C-4b ordering (ordinal 1)"
+            )
+        if check_call_site_identity_hash(key_c4b, str(scratch), 2) is not None:
+            failures.append(
+                "call-site identity control: the hash check wrongly reported a "
+                "mismatch for the ORIGINAL, unswapped C-4a/C-4b ordering (ordinal 2)"
+            )
+
+        # Now swap the two lines -- exactly the future edit this mechanism exists to
+        # catch -- and confirm ordinal 1 (still checked against C-4a's recorded hash)
+        # now flags the mismatch. The scratch file is discarded with the temporary
+        # directory; no real harness file is touched.
+        scratch.write_text(f"{line_c4b}\n{line_c4a}\n")
+        if check_call_site_identity_hash(key_c4a, str(scratch), 1) is None:
+            failures.append(
+                "call-site identity control did NOT catch a deliberate swap of two "
+                "lines sharing a qualname (C-4a/C-4b): ordinal 1 still matched C-4a's "
+                "recorded hash after the two lines were reordered"
+            )
+
     return failures
 
 
@@ -307,6 +470,33 @@ def _relpath(filename: str) -> str:
 
 def _sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _hash_source_line(text: str) -> str:
+    return hashlib.sha256(text.strip().encode()).hexdigest()
+
+
+def check_call_site_identity_hash(key: "CallSite", filename: str, lineno: int) -> str | None:
+    """Content-based call-site identity (see the module docstring's "Call-site
+    identity" section for the full reasoning). Returns `None` if the live source line
+    at `(filename, lineno)` still hashes to the value `CALL_SITE_LINE_SHA256` recorded
+    for `key`; otherwise returns a human-readable mismatch description. Extracted as
+    its own pure function (rather than inlined in `_handle`) so `control_check`'s
+    negative control below can drive it directly against a disposable scratch file,
+    without needing a real captured call frame."""
+    expected = CALL_SITE_LINE_SHA256.get(key)
+    if expected is None:
+        return f"no CALL_SITE_LINE_SHA256 entry recorded for {key!r}"
+    linecache.checkcache(filename)
+    actual_line = linecache.getline(filename, lineno).strip()
+    actual = _hash_source_line(actual_line)
+    if actual != expected:
+        return (
+            f"line {lineno} of {filename} now hashes to {actual} but {expected} was "
+            f"recorded for {key!r} when this ordinal was assigned its vector id "
+            f"(captured line reads {actual_line!r})"
+        )
+    return None
 
 
 def _capture_gate_calls() -> dict[str, dict]:
@@ -351,6 +541,20 @@ def _capture_gate_calls() -> dict[str, dict]:
                 f"CALL_SITE_MAP): a harness gained a gate call this exporter does not know "
                 f"about. Update CALL_SITE_MAP and the spec's vector inventory, or "
                 f"investigate why a new call site appeared (REQ-18)."
+            )
+        line_mismatch = check_call_site_identity_hash(key, frame.f_code.co_filename, lineno)
+        if line_mismatch is not None:
+            raise ExporterError(
+                f"call-site identity check FAILED for vector {vector_id!r} at {origin}: "
+                f"{line_mismatch}. This is exactly what a REORDERING of two calls "
+                f"sharing this qualname (e.g. two calls trading places within the same "
+                f"enclosing function) looks like: CALL_SITE_MAP's ordinal-only identity "
+                f"and REQ-18's added/removed-call count guard both stay silent on a pure "
+                f"reorder, because the set of (file, qualname, ordinal) keys is unchanged "
+                f"-- only which physical line each ordinal now points to has changed. If "
+                f"this call's OWN line legitimately changed (not a reorder), recompute "
+                f"and update its CALL_SITE_LINE_SHA256 entry; see that dict's docstring "
+                f"comment for the one-liner."
             )
         if vector_id in records:
             raise ExporterError(

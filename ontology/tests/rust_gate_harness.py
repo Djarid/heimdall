@@ -169,11 +169,28 @@ def toolchain_present() -> bool:
 def run_rust_suite(crate_dir: Path = CRATE_DIR) -> tuple[bool, str]:
     """REQ-28 step 3. Invoke the crate's test run. Only meaningful once
     `toolchain_present()` is True and the crate manifest exists; a non-zero result is
-    always fatal here (REQ-29), never laundered into a skip."""
+    always fatal here (REQ-29), never laundered into a skip.
+
+    EC-2 requires a hang to return non-zero as fatal, never raise: a run that
+    exceeds the timeout must be reported the same way as any other failing
+    obligation, not propagate an exception up through `main()` (this module's
+    own, and `run_rust_gjoll`'s in `ontology.tests.harness`, neither of which
+    wraps this call in a try/except) and crash the whole suite run over one
+    failing check. `subprocess.TimeoutExpired` is NOT a subclass of `OSError`,
+    so it is caught explicitly and separately, not folded into the `OSError`
+    branch above it."""
     try:
         result = subprocess.run(
             ["cargo", "test", "--manifest-path", str(crate_dir / "Cargo.toml")],
             cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=600,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return False, (
+            f"cargo test did not complete within {exc.timeout:.0f}s and was killed "
+            f"(EC-2: a hang is fatal and non-zero, never a skip and never an "
+            f"unhandled exception). Acquiring or running the pinned toolchain "
+            f"(rust-toolchain.toml) hung; this is a fatal result for this "
+            f"obligation, not a crash of the whole suite run."
         )
     except OSError as exc:
         return False, f"could not invoke cargo test: {exc}"

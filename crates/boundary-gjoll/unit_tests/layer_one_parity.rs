@@ -432,3 +432,60 @@ fn recording_double_records_when_authorised_and_action_consuming() {
         "an authorised action-mode consumption must record exactly one effect"
     );
 }
+
+// ---------------------------------------------------------------------------------
+// AC-12: the eight-way cross product of consumption mode x parameter resolution x
+// verdict. None of the 22 committed vectors exercise INERT mode against an
+// UNRESOLVED (unclassified) parameter -- G-1, G-5 and G-6, the three INERT-mode
+// vectors, all carry a RESOLVED classified entry for their consumed parameter (a
+// quality-review finding this test closes). `rule::apply`'s own `Inert` branch
+// (rule.rs) only ever pushes a reason when the parameter IS resolved (`c` is
+// `Some`); a parameter absent from `classified` has no provenance to contradict
+// and is left alone unconditionally, which is what "authorises regardless of
+// verdict" means here. Native, not vector-backed: constructed directly against
+// `rule::apply` and `ConsequentialityVerdict::new`, both `pub(crate)` (REQ-10) --
+// which is exactly why this test lives in this in-crate module and not in
+// `tests/native_failclosed.rs` (an external integration-test crate that only sees
+// `boundary_gjoll`'s public surface, where an unresolved consumed parameter is
+// always intercepted first by D81's phantom-parameter check in
+// `consequentiality::evaluate`, before `rule::apply` is ever reached).
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac12_inert_mode_unresolved_parameter_authorises_regardless_of_verdict() {
+    let proposal = ActionProposal {
+        action_id: "ac12-inert-unresolved".to_string(),
+        sink: "sink:whatever".to_string(),
+        consumes: [("ghost.param".to_string(), ConsumeMode::Inert)]
+            .into_iter()
+            .collect(),
+        declared_safe: true,
+    };
+    // Unresolved: no entry at all for "ghost.param" in the classified map.
+    let classified: HashMap<String, ClassifiedParameter> = HashMap::new();
+
+    let consequential_decision = apply(ConsequentialityVerdict::new(true), &proposal, &classified);
+    assert!(
+        consequential_decision.authorised,
+        "AC-12: an INERT-mode consumption of an unresolved parameter must authorise \
+         even when the sink's verdict is consequential (verdict=true); got reasons={:?}",
+        consequential_decision
+            .reasons
+            .iter()
+            .map(|r| (reason_kind_to_str(&r.kind), r.parameter_id.clone()))
+            .collect::<Vec<_>>(),
+    );
+
+    let non_consequential_decision =
+        apply(ConsequentialityVerdict::new(false), &proposal, &classified);
+    assert!(
+        non_consequential_decision.authorised,
+        "AC-12: an INERT-mode consumption of an unresolved parameter must authorise \
+         when the sink's verdict is non-consequential too (verdict=false); got reasons={:?}",
+        non_consequential_decision
+            .reasons
+            .iter()
+            .map(|r| (reason_kind_to_str(&r.kind), r.parameter_id.clone()))
+            .collect::<Vec<_>>(),
+    );
+}
