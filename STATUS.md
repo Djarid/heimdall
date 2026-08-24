@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D100)
+## 0. Resume here (handoff, last updated after D109)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -61,10 +61,12 @@ and D remain the honesty backstop.
 D84 wired the mitigation MODULES into `engine.py` and `gjoll.py`, an import-level fact, verified
 live by `pipeline_score_harness.integration_status()`. That is a different claim from whether
 Gjöll's own gate functions (`ActionProposal`, `evaluate`, `enforce`) are CALLED from any
-non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds five test
-call sites (`control_surface_harness.py`, `e2e_harness.py`, `effect_probe_harness.py`,
-`harness.py`, `memgraph_integration_harness.py`) and zero non-test call sites, so invariant 3.6 is
-DEMONSTRATED under harness invocation only, not under live invocation against a real action.
+non-test code path. They are not: `ontology/tests/gjoll_invocation_harness.py` finds six test
+call sites (`agentcontext_attestation_harness.py`, `control_surface_harness.py`,
+`e2e_harness.py`, `effect_probe_harness.py`, `harness.py`, `memgraph_integration_harness.py`,
+the first added by D103 via PR #9, before this build) and zero non-test call sites, so
+invariant 3.6 is DEMONSTRATED under harness invocation only, not under live invocation against
+a real action.
 That absence is the phase-mapped intended state (D74 excludes Gjöll's action-time gate from the
 R-1 exception; Himinbjörg, the intended caller, is Phase 3 and essentially unbuilt), not a
 defect, and the detector's job is to keep that statement accurate without human memory.
@@ -183,6 +185,37 @@ git remote only if authorised, and is proven only once a deliberately disallowed
 blocked by the same pipeline. A seven-step build order follows, starting with re-expressing Gjöll
 in Rust. No code changed. See D108 in `DECISIONS.md` and the new plans file for detail.
 
+**D109 then completes build-order step one: Gjöll's gate is re-expressed in Rust.**
+`crates/boundary-gjoll/`, the repository's first Rust crate, carries a pure total rule core (the
+three-condition rule plus the D89-A inert-contradiction check) behind a registry-mandatory
+consequentiality shell (D81 validation, D89-B derivation). Correctness is checked against 22
+golden vectors (six carrying a layer-two section) captured from the three existing Python
+harnesses, with SHA-256 digests of `gjoll.py` and `sink_declaration.py` guarding against drift,
+folded into `ontology.tests.harness` as an additive `run_rust_gjoll` obligation on
+`run_effect_probe`'s exact shape. Three items are designed out entirely, not merely untested:
+the Python no-registry branch, D97's named residual and D100's stamp-rewrite limit, all
+structurally absent because the shell requires a registry on every call. Four items are named
+and deferred: D93's behavioural effect-probe cross-check, D103's `AgentContext` attestation
+(out of scope, upstream), D94's sink-declaration attestation and the four re-validation gates
+with their `GatePolicy`/`GateResult` scaffold. The workspace pins toolchain channel 1.98.0 with
+MSRV 1.85, the crate's `[dependencies]` table is empty, and the conventions this establishes are
+recorded once at `plans/rust-workspace-baseline.md` for build-order steps two to seven to
+inherit. This build does not advance invariant 3.6's proof status, does not change the 22 RED
+findings or the pipeline containment figure, and does not close the sink-declaration root seam.
+The code licence stays OPEN and is now a named blocker (section 5). **A stale figure is also
+corrected here:** `gjoll_invocation_harness` finds **six** test call sites, not five;
+`ontology/tests/agentcontext_attestation_harness.py` (D103, landed via PR #9, before this build)
+had already added a sixth by calling `gjoll.evaluate` directly, and the "five" figure this page
+and the build spec carried was stale from before this build started, not caused by it. The zero
+non-test call sites figure is unaffected. **A line-budget deviation is accepted here too:** the
+crate's non-test source came to 671 lines against the spec's own 500-line budget (section 9.1),
+171 lines over, about 34 percent (`declaration.rs` 287, `rule.rs` 138, `consequentiality.rs` 118, `types.rs` 106,
+`lib.rs` 22); the operator accepted the overage rather than trimming or falling back to
+Approach A, since the two-layer split is real architecture, not padding, and `declaration.rs`'s
+size reflects genuinely re-expressing D81's five validation conditions plus the effect-primitive
+taxonomy, work Approach A would have had to do anyway without the clean module boundary. See
+D109 in `DECISIONS.md`.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -204,7 +237,7 @@ inspection, but it is also registered as obligation 3.6b inside `ontology.tests.
 so the main run already reports it:
 
 ```
-poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # five test call sites, zero non-test
+poc/.venv/bin/python -m ontology.tests.gjoll_invocation_harness    # six test call sites, zero non-test
 ```
 
 D97 (the control-surface ceiling fix) and D100 (the gjoll no-registry residual, narrowed) are
@@ -222,6 +255,15 @@ has standalone entry points too:
 ```
 poc/.venv/bin/python -m ontology.tests.authorisation_record_harness      # substrate: identity+integrity, GREEN
 poc/.venv/bin/python -m ontology.tests.agentcontext_attestation_harness  # AgentContext refused when altered/unattested; three limits RECORDED
+```
+
+D109 (Gjöll's gate re-expressed in Rust) is likewise registered inside `ontology.tests.harness`
+(`run_rust_gjoll`), but has a standalone entry point too, and the Rust suite itself is run
+directly with Cargo from the repository root:
+
+```
+poc/.venv/bin/python -m ontology.tests.rust_gate_harness  # digest drift, dependency posture, cargo test: PASS
+cargo test -p boundary-gjoll                              # layer-one (22), layer-two (six), D81/D89-B/D10 native tests: PASS
 ```
 
 **D102 registers D93 and D94 as main-suite fatal-gated obligations, and deliberately leaves
@@ -395,6 +437,16 @@ never honesty, and the control surface has no honesty backstop at all, not even 
 `sink_registry`; and D100's EC-8 in-process label rewrite stays untouched. The invariant 3.1
 guard's scanned-file count moves from 33 to 34 (one new module, `ALLOWED_IMPORT_ROOTS`
 unchanged at 13 roots).
+
+D109 then completed build-order step one of `plans/synthesis-bootstrap.md` (D108): the same gate
+these decisions describe is now also re-expressed in Rust, at `crates/boundary-gjoll/`, checked
+against 22 golden vectors captured from the Python harnesses these decisions already cover.
+This is a translation-fidelity claim, not a new proof: it does not advance invariant 3.6's proof
+status, does not change the 22 RED findings and does not close the sink-declaration root seam.
+The Python reference (`ontology/nornir/gjoll.py`) is untouched and stays the reference
+implementation. The crate's non-test source came to 671 lines against the spec's own 500-line
+budget, 171 lines over; the operator accepted the overage as the cost of a genuine two-layer
+split rather than trimming the crate or reverting to a single-layer approach.
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -586,6 +638,23 @@ named remaining refinement, contained by Gjoll at action time, not here.
   mitigation as wired (self-maintaining) and it produces 33 of 33 (100 percent) after D85. It
   is a measurement harness, not a pass/fail obligation, and carries four honesty conditions in
   its docstring.
+- **The repository's first Rust crate** (`crates/boundary-gjoll/`, D109): re-expresses Gjöll's
+  action-time gate as a two-layer boundary, a pure total rule core behind a registry-mandatory
+  consequentiality shell, in a Cargo workspace pinning toolchain channel 1.98.0 with MSRV 1.85
+  and an empty `[dependencies]` table. Checked against 22 committed golden vectors (six carrying
+  a layer-two section) exported from the three existing Python harnesses
+  (`ontology/tools/export_gate_vectors.py`), with SHA-256 digests of `gjoll.py` and
+  `sink_declaration.py` guarding against drift (`ontology/tests/rust_gate_harness.py`, folded
+  into the main suite as `run_rust_gjoll`, `run_effect_probe`'s exact shape). Test code and
+  implementation code live in separate files in separate directories, so `run_gjoll` itself
+  stays byte-identical. Designs out the Python no-registry branch, D97's named residual and
+  D100's stamp-rewrite limit (structurally absent, not merely untested); defers D93's
+  behavioural cross-check, D103's `AgentContext` attestation, D94's sink-declaration attestation
+  and the four re-validation gates' `GatePolicy`/`GateResult` scaffold. Proves translation
+  fidelity against the Python reference, which stays untouched; does not advance invariant 3.6's
+  proof status or change the 22 RED findings. The code licence is OPEN (section 5). See
+  `plans/rust-workspace-baseline.md` for the conventions this establishes for build-order steps
+  two to seven.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -608,6 +677,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
+| **D109: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and `crates/boundary-gjoll/Cargo.toml` deliberately carries no `license` field | OPEN (blocker) | Must be settled before any code in this repository is published. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -760,6 +830,18 @@ corpus the author never saw.
    remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
    new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
    OPEN, unresolved by this build.
+7. **Done: build-order step one of `plans/synthesis-bootstrap.md` (D108), re-expressing Gjöll's
+   gate in Rust (D109).** `crates/boundary-gjoll/` carries a pure total rule core behind a
+   registry-mandatory consequentiality shell, checked against 22 golden vectors (six with a
+   layer-two section) exported from the three existing Python harnesses, with a source-digest
+   drift detector folded into the main suite. It designs out the Python no-registry branch,
+   D97's named residual and D100's stamp-rewrite limit; it defers D93's cross-check, D103's
+   `AgentContext` attestation, D94's sink-declaration attestation and the four re-validation
+   gates. **Next queued: build-order step two, Vör** (one hardcoded attested cohort), per
+   `plans/synthesis-bootstrap.md`'s seven-step order; steps 3 to 7 (Himinbjörg's minimal slice,
+   the git actuator, the process engine, the end-to-end loop, real cognition) follow it. The
+   code licence (section 5) blocks publication of this crate and should be settled before
+   step two adds a second one.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

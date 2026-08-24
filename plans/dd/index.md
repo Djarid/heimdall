@@ -21,7 +21,7 @@ Phases 4 to 6 (ingestion expansion, introspection, promotion mechanisms) stay at
 
 `HEIMDALL.md` remains the authoritative architecture source, and `plans/hld.md` is the authoritative build-oriented view. Where this Detailed Design could drift from either, the HLD wins on structure and `HEIMDALL.md` wins on architecture, unless a Detailed Design document's own decisions table explicitly supersedes a named point.
 
-Cross-reference: `plans/synthesis-architecture.md` (D106) is a cross-cutting integration document, not a per-component one, so it earns no row in the table below. It places new process-plane and hierarchy-plane structure around the components indexed here, citing Himinbjörg, Gjöll, Hliðskjálf and Mímisbrunnr's interfaces rather than altering them; none of this document's own interfaces or status claims change as a result.
+Cross-reference: `plans/synthesis-architecture.md` (D106) is a cross-cutting integration document, not a per-component one, so it earns no row in the table below. It places new process-plane and hierarchy-plane structure around the components indexed here, citing Himinbjörg, Gjöll, Hliðskjálf and Mímisbrunnr's interfaces rather than altering them; none of this document's own interfaces or status claims change as a result. `plans/rust-workspace-baseline.md` (D109) is the same kind of document: it records the workspace layout, toolchain pin and module conventions the repository's first Rust crate established, cutting across whichever component a future crate re-expresses rather than belonging to one, so it likewise earns no row below.
 
 ## 2. Document set
 
