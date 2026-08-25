@@ -1,17 +1,14 @@
 #![forbid(unsafe_code)]
 //! `hierarchy-vor` crate root.
 //!
-//! STATUS AT THIS COMMIT (issue #29, `.opencode/plans/vor-minimal-cohort-spec.md`
-//! section 3.3, section 3.4's REQ-27, section 4.1's `authoriser.rs` and
-//! `verify.rs` tables): `#![forbid(unsafe_code)]` (REQ-2), the `sha256` module
-//! (REQ-3), the `record` module (REQ-7 to REQ-12), the `types` module (REQ-20,
-//! REQ-25), the `authoriser` module (the trusted authoriser set and the secret's
-//! out-of-tree provenance, REQ-13 to REQ-19) and the `verify` module (the four-case
-//! fail-closed decision procedure, REQ-27) are now implemented. The remaining
-//! module, `cohort` (the one hardcoded `heimdall-dev` cohort, its committed
-//! attestation constant and the crate's single entry point), is a later issue
-//! (#31) and does not exist yet, exactly as `crates/boundary-gjoll/src/lib.rs`
-//! grew module by module across its own issues under the D109 precedent.
+//! STATUS AT THIS COMMIT (issue #31, `.opencode/plans/vor-minimal-cohort-spec.md`
+//! section 3.4, section 4.1's `cohort.rs` table): all six modules now exist.
+//! `#![forbid(unsafe_code)]` (REQ-2), `sha256` (REQ-3), `record` (REQ-7 to
+//! REQ-12), `types` (REQ-20, REQ-25), `authoriser` (the trusted authoriser set
+//! and the secret's out-of-tree provenance, REQ-13 to REQ-19), `verify` (the
+//! four-case fail-closed decision procedure, REQ-27) and now `cohort` (the one
+//! hardcoded `heimdall-dev` cohort, its committed attestation constant and the
+//! crate's single entry point, REQ-20 to REQ-27) are all implemented.
 //!
 //! `record` and `types` are deliberately NOT `pub mod`, and neither module's items
 //! are re-exported beyond `types::CohortSurface`: REQ-13 forbids any public function
@@ -27,28 +24,26 @@
 //! and `verify::verify_record` are `pub(crate)`/test-only and are never
 //! re-exported, exactly as REQ-13 and REQ-27 require.
 //!
-//! Until issue #31 adds the `cohort` module declaration and its own public
-//! re-exports (the entry point, `VerifiedCohort` and `CohortRefusal`),
-//! `tests/public_surface.rs` (an external integration-test crate) WILL STILL FAIL
-//! TO COMPILE: every path of the form `crate::cohort::...` /
-//! `hierarchy_vor::cohort::...` and `hierarchy_vor::load_verified_cohort` it
-//! references is presently unresolved. That is expected and correct at this
-//! stage, for the same reason `unit_tests/substrate_parity.rs`'s own header
-//! states.
+//! `cohort` IS `pub mod` (unlike `record`, `types`, `authoriser` and `verify`):
+//! `tests/public_surface.rs`, compiled as an external crate, reaches its
+//! constants directly as `hierarchy_vor::cohort::{COHORT_ID, PERMITTED_ACTIONS,
+//! TRUST_CEILING, CONSEQUENTIAL_SINKS, AUTHORISER_ID}` (needed by any external
+//! caller, step three included, to know which authoriser id to load a secret
+//! for). None of `cohort`'s constants take or expose a secret, so this is
+//! consistent with REQ-13's own scope. `VerifiedCohort`, `CohortRefusal` and
+//! `load_verified_cohort` are additionally re-exported at the crate root below,
+//! so both `hierarchy_vor::VerifiedCohort` and `hierarchy_vor::cohort::VerifiedCohort`
+//! resolve to the same type.
 //!
-//! Stated plainly rather than smoothed over: `unit_tests/loader_failclosed.rs`
-//! itself reaches only `crate::authoriser`, `crate::record`, `crate::types` and
-//! `crate::verify`, all of which now exist, and every one of its own tests
-//! passes in isolation. But `cargo test -p hierarchy-vor` still fails to build
-//! the `lib test` binary as a WHOLE at this commit, because `rustc` compiles
-//! all `#[cfg(test)]` modules wired into one crate as a single unit, and the
-//! sibling module `substrate_parity` (wired in below, in the one block REQ-38
-//! permits) does not compile until issue #31 lands `crate::cohort` too. This is
-//! a sequencing dependency on issue #31, not a defect in this issue's own code:
-//! confirmed by temporarily disabling `substrate_parity`'s wiring and observing
-//! all fourteen `loader_failclosed` tests pass, then restoring it.
+//! REQ-26, confirmed directly rather than merely asserted: this crate's
+//! manifest carries an empty `[dependencies]` table (`crates/hierarchy-vor/Cargo.toml`)
+//! and no source file under `src/` names, imports or re-exports anything from
+//! `boundary-gjoll`. The consequential-sink set `cohort::CONSEQUENTIAL_SINKS` is
+//! never routed into `consequentiality::evaluate`; step three (a later issue)
+//! reads it from `CohortSurface::consequential_sinks` instead.
 
 mod authoriser;
+pub mod cohort;
 mod record;
 mod sha256;
 mod types;
@@ -58,6 +53,7 @@ pub use authoriser::{
     MIN_SECRET_BYTES, SECRET_PATH_ENV_VAR, SecretRefusal, TrustedAuthoriserSet,
     load_trusted_set_from_env, load_trusted_set_from_path,
 };
+pub use cohort::{CohortRefusal, VerifiedCohort, load_verified_cohort};
 pub use sha256::digest_hex;
 pub use types::CohortSurface;
 pub use verify::RecordRefusal;
