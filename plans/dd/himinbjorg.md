@@ -4,7 +4,7 @@
 **Date:** August 2026
 **Version:** 0.1 (draft)
 **Phase:** 3
-**Status of the component today:** specified-only, plus a dormant `AgentContext` stub with 4 fields (`ontology/yggdrasil/control_surface.py`), per `plans/hld.md` section 3. This is the single largest unbuilt piece and the Phase-3 critical path.
+**Status of the component today:** `crates/himinbjorg/` (D111, build-order step three of `plans/synthesis-bootstrap.md`, D108) carries all four interfaces named below at the minimal fidelity that document's section 5 scopes, across seven modules (`types`, `context`, `definition`, `sinks`, `gate_bridge`, `validation`, `broker`). `validate_proposal`'s check five genuinely calls Gjöll's Rust gate; `build_context` and `enforce_definition` resolve a single hardcoded agent and cohort rather than a general population; `broker_action` is refuse-only, with one actuator slot unimplemented. Section 10 records which of this document's own build-delta bullets that fidelity level discharges and which remain outstanding. The dormant Python `AgentContext` stub with 4 fields (`ontology/yggdrasil/control_surface.py`), per `plans/hld.md` section 3, is deliberately untouched: it stays on the Phase 1/2 Python classification path, a separate, narrower re-expression from the Rust gateway path this document specifies. The remaining Phase-3 critical path is the git actuator (build-order step four), the process engine (step five), the full ten-group control-surface schema, the world-model subgraph query, credential brokering's real form and the Harness Boundary Interface binding, none of which this crate builds.
 
 ---
 
@@ -143,16 +143,78 @@ Himinbjörg reads Mímisbrunnr and does not own it. The credential store and the
 
 ## 10. Build delta from today
 
-Himinbjörg is essentially unbuilt. The dormant `AgentContext` in `ontology/yggdrasil/control_surface.py` models about 4 of roughly 20 control fields and holds no behaviour. The Phase-3 build must deliver:
+D111 (build-order step three of `plans/synthesis-bootstrap.md`, D108) delivered the first five
+of the six bullets below at minimal fidelity in `crates/himinbjorg/`, not at Phase-3
+implementation fidelity; the sixth remains wholly outstanding. This section now records which
+is which, rather than treating the whole list as unbuilt.
 
-- the gateway process itself, as the sole owner of the control channel,
-- context construction from Mímisbrunnr (the `build_context` interface and the scoped subgraph query),
-- full control-surface resolution and enforcement (the 10 control groups, global-default-plus-override, ceiling-bounded, deny-by-default),
-- the six-check proposal-validation pipeline with the Gjöll gate wired into check 5,
-- credential brokering,
-- the Harness Boundary Interface binding to OpenCode/Gleipnir (tool-call interception, agent-start enforcement, provider-request interception, trust ownership, episode capture).
+**Delivered at minimal fidelity:**
 
-This is the largest single build in Phases 1 to 3 and the phase's critical path. The reference binding reuses Gleipnir's proven deny-by-default permission map, trust-tier ladder, deterministic proposal-then-act sequencing and single-holder credential broker, so the control-surface work builds on a running precedent rather than inventing one. The novel work is the Heimdall-specific parts: context construction from a typed world model, the six-check pipeline and the Gjöll integration, none of which have an OpenCode analogue.
+- **The gateway process itself, as the sole owner of the control channel.** Delivered as a
+  library crate with a real public surface (`build_context`, `enforce_definition`,
+  `validate_proposal`, `broker_action`), not yet a running process; nothing calls the crate's
+  own interfaces outside its tests today (D111, `ontology/tests/himinbjorg_invocation_harness.py`),
+  because the process engine that would own the control channel at runtime is build-order step
+  five.
+- **Context construction (the `build_context` interface).** Delivered for exactly one hardcoded
+  agent, refusing any other agent id; the world-model subgraph query is explicitly **not**
+  delivered (section 3 below), because there is no Rust Mímisbrunnr yet, so the field is absent
+  from the returned context, not empty.
+- **Control-surface resolution and enforcement, narrowed.** Delivered as a single hardcoded
+  surface, not the full ten-group `HEIMDALL.md` schema: the effective permitted-action set is
+  the set intersection (HB-3) of a hardcoded global default and the verified cohort's
+  `permitted_actions`, and `trust_ceiling` is checked by byte equality only, never ranked or
+  clamped (HB3-9, D97's open question left open). Deny-by-default holds (an action absent from
+  the intersection cannot pass check one), but the ten control groups themselves are not built.
+- **The six-check proposal-validation pipeline, with the Gjöll gate wired into check 5.**
+  Delivered and real, the load-bearing part of this step: all six checks run without
+  short-circuiting, and check 5 calls `boundary_gjoll::consequentiality::evaluate` exactly once,
+  fail closed, the first non-test Rust call site of Gjöll's gate. This does not advance
+  invariant 3.6 (the crate's own interfaces have zero non-test callers, so the caller of the
+  caller does not yet exist), and it does not compute flow-to-sink transitive reachability for
+  `action_critical`: a D24 agent-scoped **membership** test against the verified cohort's
+  `consequential_sinks()` stands in for it, deliberately narrower.
+- **Credential brokering, refuse-only.** The full `broker_action` signature exists and dispatches
+  to a single actuator slot, but that slot is unimplemented, so every call refuses
+  `NoActuatorAvailable` and nothing built so far can execute anything. The single-holder
+  pattern's real form (an actual credential store, actual scoping) is not delivered.
+
+**Wholly outstanding, not delivered at any fidelity by D111:**
+
+- the world-model subgraph query in `build_context` (needs a Rust Mímisbrunnr, not built),
+- the full ten-group `HEIMDALL.md` control-surface schema (one hardcoded surface stands in),
+- the trust-ceiling ordering and clamp, HB-3's full ranked form (D97's open question, still open),
+- `Decision::Queue` and `Decision::Escalate` becoming reachable (need Gjallarhorn's protected
+  channel and Hliðskjálf respectively, neither built),
+- writing the decision and its check record to Hliðskjálf before an allowed action fires (HB-6;
+  not violated by D111 only because `broker_action`'s refuse-only posture means nothing can fire
+  at all),
+- the git actuator itself (build-order step four, which fills `broker_action`'s one slot without
+  changing its interface),
+- the credential broker's general form and the single-holder pattern's real implementation,
+- the Harness Boundary Interface binding to OpenCode/Gleipnir (tool-call interception,
+  agent-start enforcement, provider-request interception, trust ownership, episode capture),
+- the canary wrap Himinbjörg constructs for a Fenrir task,
+- the process engine's fixed five-step sequence (build-order step five), which is what would
+  give this crate's own interfaces a non-test caller and start advancing invariant 3.6.
+
+**A verification-gap residual, also recorded in `DECISIONS.md` D111.** Every behavioural test of
+`validate_proposal`'s six-check sequence in `crates/himinbjorg/unit_tests/six_checks.rs` (AC-15 to
+AC-23, AC-36, AC-37) is gated behind a real, provisioned `HEIMDALL_COHORT_SECRET_FILE` secret and
+silently no-ops, a Rust test that passes having executed zero assertions rather than a visible
+skip, when that secret is absent, which is the default state of any machine without it
+provisioned, including the one this crate was built and verified on; only the direct-gate tests
+in `unit_tests/gate_bridge_failclosed.rs` avoid this gating. This is architecturally forced by
+REQ-20 (there is no fixture-constructible `AgentContext`/`EffectiveSurface`), not a shortcut
+taken here, but a green `cargo test --workspace` run on a machine without that secret must not be
+read as having exercised the six-check sequence's own assertions.
+
+This remains the largest single build in Phases 1 to 3 and the phase's critical path; D111 is a
+minimal-fidelity slice of it, not its completion. The reference binding still reuses Gleipnir's
+proven deny-by-default permission map, trust-tier ladder, deterministic proposal-then-act
+sequencing and single-holder credential broker where the Harness Boundary Interface binding is
+eventually built; none of that binding exists yet. See `DECISIONS.md` D111 for the full build
+record and the line-budget breakdown.
 
 ## 11. Test plan
 

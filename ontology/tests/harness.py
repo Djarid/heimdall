@@ -117,6 +117,11 @@ class Report:
         # pattern above.
         self.rust_cohort_failures = 0
         self.vor_invocation_failures = 0
+        # D111 (`.opencode/plans/himinbjorg-step-three.md` REQ-29): Himinbjörg's
+        # gateway posture detector and its own live invocation-boundary
+        # detector, folded in following the run_rust_cohort pattern above.
+        self.rust_gateway_failures = 0
+        self.himinbjorg_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -933,6 +938,86 @@ def run_vor_invocation_boundary(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_gateway(rep: Report) -> None:
+    """D111 (`.opencode/plans/himinbjorg-step-three.md` REQ-27, REQ-29): Himinbjörg's
+    gateway posture detector at `crates/himinbjorg/` proves dependency posture, test
+    and code isolation, public-surface sufficiency (an AgentContext with no
+    raw-content-shaped field, exactly the four interfaces plus their refusal and
+    decision types re-exported, no non-test Decision::Queue/Escalate construction)
+    and the Rust suite; it does NOT advance invariant 3.6's live-invocation status,
+    which `run_himinbjorg_invocation_boundary` below governs separately. Wired in
+    following the `run_rust_cohort` precedent: this standalone sub-harness's own
+    `main()` already returns a real pass/fail code (0 clean, 1 on failure), so a
+    failure here is folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python -m
+    ontology.tests.rust_gateway_harness`)."""
+    import contextlib
+    import io
+    from . import rust_gateway_harness
+
+    rep.line("=== D111 Himinbjörg gateway posture: dependency posture, test and code "
+              "isolation, public-surface sufficiency and the Rust suite, not "
+              "invariant 3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_gateway_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/himinbjorg/ carries no dependency beyond its two "
+                  "permitted in-workspace path dependencies, keeps every test "
+                  "construct out of src/, re-exports exactly its four public "
+                  "interfaces plus their refusal and decision types with an "
+                  "AgentContext carrying no raw-content-shaped field, never "
+                  "constructs Decision::Queue or Decision::Escalate outside a test "
+                  "path, and passes its own Rust suite (or loudly skips that one "
+                  "step alone, if no toolchain is present). This proves mechanical "
+                  "posture, not invariant 3.6's live-invocation status (run the "
+                  "module directly for detail)")
+    else:
+        rep.rust_gateway_failures += 1
+        rep.line("  [CRITICAL] Rust gateway posture detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_himinbjorg_invocation_boundary(rep: Report) -> None:
+    """D111 (`.opencode/plans/himinbjorg-step-three.md` REQ-28): the live
+    invocation-boundary detector for Himinbjörg's four public interfaces, the
+    single non-test Rust call site of `boundary_gjoll::consequentiality::evaluate`
+    it creates (allowlisted to exactly one, EC-18), and this crate's own zero
+    call sites of `hierarchy_vor::load_verified_cohort`, on
+    `vor_invocation_harness`'s precedent (D96, D110). Reads zero non-test call
+    sites for the four interfaces and for `load_verified_cohort` inside this
+    crate today, and exactly one non-test call site of `evaluate` (the
+    allowlisted one); it does NOT advance invariant 3.6 (one non-test Rust
+    caller of the gate inside a crate that itself has zero non-test callers is
+    not the gate being invoked live against a real action). Wired in following
+    the `run_vor_invocation_boundary` precedent: this standalone sub-harness's
+    own `main()` already returns a real pass/fail code (0 clean, 1 on failure),
+    so a failure here is folded into the main suite's fatal count rather than
+    left unregistered. Run it directly for detail (`python -m
+    ontology.tests.himinbjorg_invocation_harness`)."""
+    import contextlib
+    import io
+    from . import himinbjorg_invocation_harness
+
+    rep.line("=== D111 Himinbjörg invocation boundary: a token scan, weaker than an "
+              "AST scan, not invariant 3.6 -- one non-test Rust caller of the gate "
+              "inside a crate with zero non-test callers of its own ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = himinbjorg_invocation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] zero non-test call sites of the four public interfaces, "
+                  "exactly one non-test call site of consequentiality::evaluate (the "
+                  "allowlisted one, inside gate_bridge.rs), and zero non-test call "
+                  "sites of load_verified_cohort inside crates/himinbjorg/; the "
+                  "negative controls prove the scanner bites and does not "
+                  "misattribute boundary-gjoll's own unrelated validate_proposal. "
+                  "This does not advance invariant 3.6 (run the module directly for "
+                  "detail)")
+    else:
+        rep.himinbjorg_invocation_failures += 1
+        rep.line("  [CRITICAL] Himinbjörg invocation boundary detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_sink_attestation(rep: Report) -> None:
     """D94: attests WHO declared a sink, refusing an unattested or tampered
     declaration at load, closing the config-tamper / supply-chain axis of the root
@@ -1389,6 +1474,8 @@ def main() -> int:
     run_rust_gjoll(rep)
     run_rust_cohort(rep)
     run_vor_invocation_boundary(rep)
+    run_rust_gateway(rep)
+    run_himinbjorg_invocation_boundary(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1407,7 +1494,9 @@ def main() -> int:
              + rep.pipeline_score_percentage_failures
              + rep.rust_gjoll_failures
              + rep.rust_cohort_failures
-             + rep.vor_invocation_failures)
+             + rep.vor_invocation_failures
+             + rep.rust_gateway_failures
+             + rep.himinbjorg_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

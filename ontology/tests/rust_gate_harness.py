@@ -127,8 +127,46 @@ class DependencyPostureResult:
     detail: str = ""
 
 
-def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> DependencyPostureResult:
-    """REQ-6, REQ-28 step 2. See the module docstring for the manifest-absent case."""
+def _is_path_dependency(spec: object) -> bool:
+    """True when a `[dependencies]` entry's TOML value is shaped as an
+    in-workspace path dependency: a table carrying a `path` key and neither a
+    `git` nor a `registry` key. A bare version string (`"1.0"`) or a table
+    carrying `git`/`registry` is never a path dependency, whatever name it is
+    filed under (REQ-30, HB3-3)."""
+    return (
+        isinstance(spec, dict)
+        and "path" in spec
+        and "git" not in spec
+        and "registry" not in spec
+    )
+
+
+def check_dependency_posture(
+    manifest_path: Path = CRATE_MANIFEST,
+    permitted_path_dependencies: frozenset[str] = frozenset(),
+) -> DependencyPostureResult:
+    """REQ-6, REQ-28 step 2. See the module docstring for the manifest-absent case.
+
+    Widened by REQ-30 (`.opencode/plans/himinbjorg-step-three.md`) to take an
+    optional allowlist of permitted in-workspace PATH dependencies, defaulting
+    to an empty `frozenset`. This exists because HB3-3 (that spec's section 4)
+    settles that a crate is allowed exactly two named path dependencies on
+    other in-workspace crates, each carrying an empty `[dependencies]` table
+    of its own and `#![forbid(unsafe_code)]`, without that crate being read as
+    carrying an external, reachability-widening dependency: the mechanical
+    check must express the REAL rule (no external dependency) rather than the
+    PROXY for it (an empty table).
+
+    The default keeps BOTH of today's callers byte-for-byte identical to this
+    function's behaviour before this widening (REQ-30, AC-47): this module's
+    own use for `boundary-gjoll` and `rust_cohort_harness.py`'s use for
+    `hierarchy-vor` both call this function with no allowlist argument, so
+    `permitted_path_dependencies` is empty for both, and the branch below
+    reproduces the original, strict logic verbatim -- any `[dependencies]`
+    entry at all is a violation, with the exact original detail text. Only a
+    caller that explicitly passes a non-empty allowlist (`himinbjorg`'s own
+    two in-workspace path dependencies, via `rust_gateway_harness.py`) reaches
+    the widened branch below it."""
     if not manifest_path.exists():
         return DependencyPostureResult(
             ok=True, manifest_found=False,
@@ -138,17 +176,58 @@ def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> Dependency
     deps = data.get("dependencies", {}) or {}
     dev_deps = data.get("dev-dependencies", {}) or {}
 
-    if deps:
+    if not permitted_path_dependencies:
+        # The original, strict behaviour, reproduced verbatim (REQ-30, AC-47):
+        # any [dependencies] entry at all is a violation, regardless of shape.
+        if deps:
+            return DependencyPostureResult(
+                ok=False, manifest_found=True, violations=sorted(deps),
+                detail=(
+                    f"[dependencies] is not empty: {sorted(deps)}. A runtime dependency on "
+                    f"the gate path is a deliberate trust-boundary decision requiring its "
+                    f"own DECISIONS.md row, never a silent addition (EC-13)."
+                ),
+            )
+        exempt = sorted(dev_deps)
+        detail = "[dependencies] is empty."
+        if exempt:
+            detail += (
+                f" [dev-dependencies] is exempt from this check and is populated: "
+                f"{exempt} (the exemption is stated, not hidden)."
+            )
         return DependencyPostureResult(
-            ok=False, manifest_found=True, violations=sorted(deps),
+            ok=True, manifest_found=True, dev_dependencies_exempted=exempt, detail=detail,
+        )
+
+    # The widened path (REQ-30, HB3-3): permit exactly the named in-workspace
+    # PATH dependencies and fail on anything else -- an unlisted name, a
+    # registry dependency, a git dependency, or a listed name whose spec is
+    # not actually shaped as a path dependency.
+    violations: list[str] = []
+    permitted_present: list[str] = []
+    for name, spec in deps.items():
+        if name in permitted_path_dependencies and _is_path_dependency(spec):
+            permitted_present.append(name)
+        else:
+            violations.append(name)
+
+    if violations:
+        return DependencyPostureResult(
+            ok=False, manifest_found=True, violations=sorted(violations),
             detail=(
-                f"[dependencies] is not empty: {sorted(deps)}. A runtime dependency on "
-                f"the gate path is a deliberate trust-boundary decision requiring its "
-                f"own DECISIONS.md row, never a silent addition (EC-13)."
+                f"[dependencies] carries an entry outside the permitted in-workspace "
+                f"path-dependency allowlist ({sorted(permitted_path_dependencies)}): "
+                f"{sorted(violations)}. An external, unlisted or non-path dependency is "
+                f"a deliberate trust-boundary decision requiring its own DECISIONS.md "
+                f"row, never a silent addition (EC-13)."
             ),
         )
     exempt = sorted(dev_deps)
-    detail = "[dependencies] is empty."
+    detail = (
+        f"[dependencies] carries only the permitted in-workspace path dependencies "
+        f"{sorted(permitted_present)} (the exemption is stated, not hidden): zero "
+        f"external, unlisted or non-path dependencies."
+    )
     if exempt:
         detail += (
             f" [dev-dependencies] is exempt from this check and is populated: "

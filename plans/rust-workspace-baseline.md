@@ -94,6 +94,39 @@ signatures rather than a bare fixed hash: those are exactly the protocol,
 key-handling and constant-time concerns the "do not write your own crypto"
 warning is actually about, and this ruling does not extend to them.
 
+**The in-workspace path-dependency ruling (D111, HB3-3).** `crates/himinbjorg/`
+needed to call both `crates/boundary-gjoll/` and `crates/hierarchy-vor/` for
+real, not re-implement or vendor either, so its own `[dependencies]` table
+carries exactly two entries, both path dependencies on those two in-workspace
+crates, rather than staying literally empty. This does not weaken section 4's
+opening rule; it makes the rule's own justification explicit rather than
+leaving an empty table read as the load-bearing property when it never was
+one. The load-bearing property this section exists to protect is "there is no
+crate through which a model call or a network call could be reached", and an
+in-workspace path dependency on a crate whose own `[dependencies]` table is
+empty and which carries `#![forbid(unsafe_code)]` introduces no such
+reachability: the two crates `himinbjorg` depends on are exactly as auditable
+as `himinbjorg` itself, and duplicating either (to keep the referencing
+crate's table literally empty) would mean maintaining a second gate or a
+second cohort loader, worse on every axis than a named, reviewed dependency.
+The mechanical check (`ontology/tests/rust_gate_harness.py::check_dependency_posture`)
+is widened accordingly, not bypassed: it now takes an optional allowlist of
+permitted in-workspace path dependency names, defaulting to an empty
+`frozenset`, so the two existing strict callers (`boundary-gjoll`, checked
+directly by this module; `hierarchy-vor`, checked by `rust_cohort_harness.py`)
+keep their original, byte-for-byte behaviour, any `[dependencies]` entry at
+all is still a violation for them, and only a caller that explicitly passes a
+non-empty allowlist (`himinbjorg`'s own two names, via
+`ontology/tests/rust_gateway_harness.py`) reaches the widened branch. An
+unlisted name, a registry dependency, a git dependency, or a listed name whose
+manifest entry is not actually shaped as a path dependency all still fail the
+check. Adding a **third** kind of dependency, external or in-workspace, to any
+future crate's gate-adjacent path remains a deliberate trust-boundary decision
+requiring its own `DECISIONS.md` row, exactly as before this widening; only
+the shape of "an in-workspace path dependency on an already-empty-table,
+`unsafe`-forbidding crate" is pre-permitted, and only by explicit allowlist,
+never by default.
+
 **The out-of-tree secret convention (D110), recorded as the standing pattern for
 a future crate needing similar provenance.** Where a crate's correctness
 depends on a secret the source tree itself must not contain (an attestation
@@ -198,7 +231,8 @@ build anything. In particular it does not:
 - Settle the code licence (section 4), which stays OPEN.
 - Extend the vector-parity mechanism to a component with no existing Python reference to
   replay against; a genuinely new Rust component needs its own test strategy. **Resolved by
-  D110, not left open:** `crates/hierarchy-vor/` re-expresses an existing Python substrate
+  D110, not left open, for the "existing substrate, no existing concrete Python type" case:**
+  `crates/hierarchy-vor/` re-expresses an existing Python substrate
   (`ontology/nornir/authorisation_record.py`), so a Python reference does exist, but no
   Python type shaped like the crate's own hardcoded cohort exists or ever will, because
   D105 rules the hierarchy plane is Rust. The resolution is to export vectors from a shim
@@ -207,11 +241,30 @@ build anything. In particular it does not:
   never made. The vector file states this narrower claim in its own text (a `claim` field
   reading "substrate mechanism parity over a shim record... NOT a real Python cohort's
   call history"), so a reader of the committed vectors does not have to infer the scope
-  from a spec that may since have been removed. A future genuinely new Rust component with
-  no Python reference to replay against at all (not even a substrate) still needs a test
-  strategy of its own; this resolves only the "existing substrate, no existing concrete
-  Python type" case, which is narrower than the fully novel case this bullet originally
-  named.
+  from a spec that may since have been removed. **The fully novel case, a genuinely new
+  Rust component with no Python reference to replay against at all, not even a substrate,
+  is now also resolved, by D111 (HB3-10), not left open.** Himinbjörg's Rust gateway has no
+  Python analogue at any fidelity: the dormant `ontology/yggdrasil/control_surface.py` stub
+  models about four fields and holds no behaviour to export vectors from, and D111 leaves it
+  untouched rather than inventing a Python Himinbjörg purely to have something to replay.
+  The resolution here is different in kind from D110's, not merely narrower: correctness is
+  established by Rust-native unit and integration tests written directly against this
+  document's own requirements and acceptance criteria, with no golden-vector replay step at
+  all, while the **mechanical** obligations the vector-parity precedent established for
+  steps one and two are still carried forward for step three, so a genuinely new component
+  does not lose them merely for lacking a Python reference: dependency posture (widened per
+  the HB3-3 ruling above, reusing `check_dependency_posture` by import rather than copying
+  it), test-and-code isolation (REQ-5), public-surface sufficiency (an external-crate
+  integration test proving the public surface alone suffices, `tests/public_surface.rs`),
+  and live invocation-boundary detection (`ontology/tests/himinbjorg_invocation_harness.py`
+  on `vor_invocation_harness.py`'s precedent). Both new checks fold into the same standalone
+  sub-harness shape as `rust_cohort_harness.py` (`ontology/tests/rust_gateway_harness.py`),
+  additively registered in `ontology/tests/harness.py` on `run_rust_cohort`'s exact pattern.
+  A future genuinely new Rust component with no Python reference of any kind inherits this
+  ruling rather than needing to rediscover it: replay what exists to replay (D110's case),
+  and where nothing exists to replay, still carry the four mechanical obligations named
+  above, native Rust tests standing in for vector parity, not for the mechanical posture
+  checks. This closes the bullet as it was originally scoped; no case it named is left open.
 
 ---
 
