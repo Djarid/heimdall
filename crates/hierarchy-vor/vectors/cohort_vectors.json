@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "claim": "substrate mechanism parity over a shim record (_ShimCohortRecord, ontology/tools/export_cohort_vectors.py); NOT a real Python cohort's call history, because no Python CohortDefinition exists or ever will (D105 rules the hierarchy plane is Rust; spec section 2.1 question three)",
+  "generated_from": {
+    "authorisation_record_py_sha256": "e4a3739d0fd937784a3246aaaf2bcec27f4938ae9720165508034ae74d7df34e",
+    "sink_attestation_py_sha256": "0009a0bbaa409e4e57af00e0e7aee39c320396dba527fa470c029f750fbe97aa"
+  },
+  "fixture_secret_hex": "4e4f4e2d50524f44554354494f4e20666978747572652073656372657420666f7220636f686f72745f766563746f72732e6a736f6e202d2d206e6576657220746865207265616c206865696d64616c6c2d646576207365637265742c20636f6d6d69747465642064656c696265726174656c7920666f7220766563746f72207265706c617920706172697479",
+  "fixture_secret_note": "NON-PRODUCTION fixture secret, committed deliberately; the real heimdall-dev secret is never in this repository",
+  "expected_count": 10,
+  "vectors": [
+    {
+      "id": "V-1",
+      "case": "the real heimdall-dev cohort's exact content, attested under the fixture secret (never the real production secret)",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "heimdall-dev"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit,action:git.push"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit,sink:git.push"
+        ],
+        [
+          "authoriser",
+          "heimdall-dev-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d6865696d64616c6c2d6465760a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69742c616374696f6e3a6769742e707573680a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69742c73696e6b3a6769742e707573680a617574686f72697365723d6865696d64616c6c2d6465762d617574686f7269736572",
+      "attestation": "af0f90d0bdd07cd6d10066032572883378e2e8a304bc83706f2145958fc800ea"
+    },
+    {
+      "id": "V-2",
+      "case": "both collections empty, pinning the empty-string encoding for an empty collection field (REQ-9)",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-empty-collections"
+        ],
+        [
+          "permitted_actions",
+          ""
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          ""
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d656d7074792d636f6c6c656374696f6e730a7065726d69747465645f616374696f6e733d0a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d0a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "1e7a5c6ae1f4843ed246ae950212f539d4148a44fb9d32a1fa5a666ffb1fbd64"
+    },
+    {
+      "id": "V-3",
+      "case": "collection members supplied unsorted, pinning that the record sorts (Python sorted()) before joining, matching Rust's Vec::sort() (REQ-9)",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-unsorted-members"
+        ],
+        [
+          "permitted_actions",
+          "action:alpha.op,action:mike.op,action:zulu.op"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:alpha.op,sink:zulu.op"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d756e736f727465642d6d656d626572730a7065726d69747465645f616374696f6e733d616374696f6e3a616c7068612e6f702c616374696f6e3a6d696b652e6f702c616374696f6e3a7a756c752e6f700a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a616c7068612e6f702c73696e6b3a7a756c752e6f700a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "69a8fb6381dfa6ebf678d31d4fdb5f9c56ede80592e04e99938d4695f80e90e7"
+    },
+    {
+      "id": "V-4",
+      "case": "non-ASCII collection members, pinning that Python's sorted() code-point order and Rust's str Ord over UTF-8 bytes agree (REQ-9)",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-non-ascii-members"
+        ],
+        [
+          "permitted_actions",
+          "action:Zebra.op,action:café.op,action:Ångström.op,action:日本語.op"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:café.op,sink:Ångström.op"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d6e6f6e2d61736369692d6d656d626572730a7065726d69747465645f616374696f6e733d616374696f6e3a5a656272612e6f702c616374696f6e3a636166c3a92e6f702c616374696f6e3ac3856e67737472c3b66d2e6f702c616374696f6e3ae697a5e69cace8aa9e2e6f700a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a636166c3a92e6f702c73696e6b3ac3856e67737472c3b66d2e6f700a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "a53afc53b77cd24f1819a38baac2949413cd7eb10603479c23453dd9edfa4a75"
+    },
+    {
+      "id": "V-5",
+      "case": "a member containing a comma, pinning the inherited comma-join encoding ambiguity (REQ-10): this canonical encoding is NOT injective, and this vector demonstrates the shared behaviour rather than fixing it",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-comma-member"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit,extra,action:git.push"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.push"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d636f6d6d612d6d656d6265720a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69742c65787472612c616374696f6e3a6769742e707573680a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e707573680a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "79e6bbc2104ce6565f90e59ecfce6064aa7c50f37edaafdc8e114abe59197754"
+    },
+    {
+      "id": "V-6",
+      "case": "authoriser absent, pinning the authoriser= empty-string encoding for an unattested record",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-unattested"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          ""
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d756e61747465737465640a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d",
+      "attestation": null
+    },
+    {
+      "id": "V-7a",
+      "case": "cross-type pair (side A): identical fields to V-7b, tagged cohort_definition, demonstrating cross-type separation (REQ-12)",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-cross-type-content"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d63726f73732d747970652d636f6e74656e740a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "183b8ff9762fd4f56ae7bb873f5542df453d4c4fd8275ba9530610ee3a378e15"
+    },
+    {
+      "id": "V-7b",
+      "case": "cross-type pair (side B): identical fields to V-7a, tagged agent_context, demonstrating cross-type separation (REQ-12)",
+      "record_type": "agent_context",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-cross-type-content"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d6167656e745f636f6e746578740a636f686f72745f69643d766f722d766563746f722d63726f73732d747970652d636f6e74656e740a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "725d21c0a9582bbe77bd2d0408e446cce1f3bb516a5cdb3210e171010e2651c4"
+    },
+    {
+      "id": "V-9a",
+      "case": "mutated-field pair (base): trust_ceiling=TAINTED, on which REQ-34's negative control rests",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-mutated-field-base"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d6d7574617465642d6669656c642d626173650a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "0b2d6513b182c606a9974f57417f466befd267b5b03b503819bb620623c2c831"
+    },
+    {
+      "id": "V-9b",
+      "case": "mutated-field pair (mutated): trust_ceiling=TRUSTED, differing from V-9a in exactly this one field, on which REQ-34's negative control rests",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-vector-mutated-field-base"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TRUSTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          "vor-vector-test-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d766563746f722d6d7574617465642d6669656c642d626173650a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d545255535445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d766f722d766563746f722d746573742d617574686f7269736572",
+      "attestation": "17f325c57e99759cfb302e0750a5244acd73573536c728a369110b67b33dc04a"
+    }
+  ],
+  "cross_substrate_check": {
+    "claim": "comparable content (the same authoriser id, the real cohort id as the declaration name, and the real permitted actions as the declaration's parameter set) attested through sink_attestation's own canonical encoding and domain separator, under the SAME fixture secret as V-1, yields a DIFFERENT digest than V-1's own attestation (asserted above, not merely stated here), demonstrating cross-substrate separation (REQ-12). This block is deliberately OUTSIDE the vectors array: sink_attestation's canonical byte layout carries no record_type prefix and shares no domain separator with authorisation_record's substrate, so it cannot be replayed through the generic AttestedRecord interface the vectors array entries use on the Rust side.",
+    "comparable_vector_id": "V-1",
+    "sink_declaration_fields": {
+      "name": "heimdall-dev",
+      "parameters": [
+        "action:git.commit",
+        "action:git.push"
+      ],
+      "consequential_by_default": true,
+      "effect_primitive": null,
+      "authoriser": "heimdall-dev-authoriser"
+    },
+    "sink_attestation_canonical_bytes_hex": "6e616d653d6865696d64616c6c2d6465760a706172616d65746572733d616374696f6e3a6769742e636f6d6d69742c616374696f6e3a6769742e707573680a636f6e73657175656e7469616c5f62795f64656661756c743d547275650a6566666563745f7072696d69746976653d0a617574686f72697365723d6865696d64616c6c2d6465762d617574686f7269736572",
+    "sink_attestation_attestation_hex": "2a4c6ea5b8a0024c4dd9540d16077f5c881a4c8a39cbc9bc3c9b86b4e6a430fd"
+  }
+}

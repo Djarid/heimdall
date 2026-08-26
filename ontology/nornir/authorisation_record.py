@@ -23,6 +23,11 @@ reservation, so that spec's file 1 slots straight into this substrate rather
 than defining a second one, and so it cannot later pick a colliding or
 differently-spelled tag.
 
+A fifth record-type tag, `RECORD_TYPE_COHORT_DEFINITION` (`cohort_definition`),
+is RESERVED here on the same terms, for `vor-minimal-cohort-spec.md`'s cohort
+definition: no class, field or machinery for it either is built in this
+module (REQ-40).
+
 Cross-type and cross-substrate separation (REQ-3, REQ-5). Every record's
 canonical bytes are PREFIXED with its own record-type tag, so an attestation
 computed for one record type does not verify when presented as another, in
@@ -89,6 +94,7 @@ __all__ = [
     "RECORD_TYPE_STANDING_GRANT",
     "RECORD_TYPE_GATE_POLICY",
     "RECORD_TYPE_PROMOTION",
+    "RECORD_TYPE_COHORT_DEFINITION",
     "canonical_record_bytes",
     "compute_record_attestation",
     "verify_record_attestation",
@@ -109,6 +115,7 @@ RECORD_TYPE_ATTENDANCE = "attendance_attestation"
 RECORD_TYPE_STANDING_GRANT = "standing_grant"
 RECORD_TYPE_GATE_POLICY = "gate_policy"
 RECORD_TYPE_PROMOTION = "promotion_record"
+RECORD_TYPE_COHORT_DEFINITION = "cohort_definition"
 
 # Distinct from sink_attestation.compute_attestation's own domain separator
 # (its b"\x00" byte between content and key), so an AgentContext attestation

@@ -64,6 +64,60 @@ future crate's gate-adjacent path is a deliberate trust-boundary decision requir
 
 Every crate root carries `#![forbid(unsafe_code)]`.
 
+**The SHA-256-in-crate ruling (D110).** `crates/hierarchy-vor/` needed a keyed
+digest over a fixed-length record and the Rust standard library carries no
+SHA-256, so the empty `[dependencies]` table above forced a choice: add a
+runtime dependency for the hash, or write it. The ruling is to write it, inside
+the crate, in its own module, as a pure function with mandatory published
+known-answer vectors (`crates/hierarchy-vor/src/sha256.rs`). The reasoning, in
+descending weight: first, adding a runtime dependency to the hierarchy plane's
+attestation path for a fixed, roughly 90-line, publicly specified algorithm
+would itself be a trust-boundary decision needing its own `DECISIONS.md` row,
+for a function whose correctness a test can answer directly; second, the risk
+is bounded and mechanically checkable in a way a supply-chain risk is not,
+because SHA-256 is a fixed, published function with authoritative test vectors;
+third, the usual and correct warning against writing your own cryptography
+applies to protocols, key handling and constant-time work, none of which a
+bare hash is, and the one timing-sensitive operation this pattern needs,
+comparing two hex digests, is re-expressed separately and explicitly as a
+constant-time comparison, never folded into the hash module itself.
+
+**The caveat, which must travel with the ruling and not be dropped by a future
+crate that copies the pattern.** This is a hand-written hash implementation on
+an authorisation path. It is verified against published vectors and against
+every golden vector the re-expression it serves carries, and it is not
+side-channel hardened, because a hash over a fixed-length record with a
+fixed-length key has no secret-dependent control flow to leak. This ceases to
+apply, and the dependency question must be reopened with its own decision row,
+the moment a future crate needs HMAC proper, a real KDF or asymmetric
+signatures rather than a bare fixed hash: those are exactly the protocol,
+key-handling and constant-time concerns the "do not write your own crypto"
+warning is actually about, and this ruling does not extend to them.
+
+**The out-of-tree secret convention (D110), recorded as the standing pattern for
+a future crate needing similar provenance.** Where a crate's correctness
+depends on a secret the source tree itself must not contain (an attestation
+key, a signing key), the pattern established at `crates/hierarchy-vor/src/authoriser.rs`
+is: name a **path** by an environment variable, never the secret itself, so
+the secret is not inherited by every child process a later step shells out to
+and does not appear in process listings or crash dumps; provide exactly two
+public entry points, one reading the variable and delegating and one taking a
+path directly, so a test needs no process-global mutation; refuse, fail
+closed, rather than default, on every one of: the variable absent or empty,
+the path missing or not a regular file, the path resolving inside the
+repository working tree (a development-time guard, not a deployment control,
+and stated as such in the check's own doc comment), the file readable by group
+or other on a Unix target, the target providing no Unix permission metadata at
+all (refused, not silently skipped), and the secret too short or entirely
+whitespace after stripping exactly one trailing line ending. A future crate
+adopting this pattern inherits its named residuals rather than needing to
+rediscover them: it does not defend against a compromised build (the deployed
+binary is not the source tree), the in-tree check is compile-time-derived and
+vacuous across machines, it stays a keyed digest rather than a signature unless
+paired with real asymmetric signing, and it performs no zeroisation, because
+zeroisation a compiler cannot elide needs either `unsafe` or a dependency, both
+forbidden by this baseline.
+
 ## 5. The two-layer module pattern
 
 `boundary-gjoll` splits into four modules, following a Single Responsibility discipline
@@ -143,7 +197,21 @@ build anything. In particular it does not:
 - Decide which future step of D108's build order builds next, or what that crate does.
 - Settle the code licence (section 4), which stays OPEN.
 - Extend the vector-parity mechanism to a component with no existing Python reference to
-  replay against; a genuinely new Rust component needs its own test strategy.
+  replay against; a genuinely new Rust component needs its own test strategy. **Resolved by
+  D110, not left open:** `crates/hierarchy-vor/` re-expresses an existing Python substrate
+  (`ontology/nornir/authorisation_record.py`), so a Python reference does exist, but no
+  Python type shaped like the crate's own hardcoded cohort exists or ever will, because
+  D105 rules the hierarchy plane is Rust. The resolution is to export vectors from a shim
+  record, defined once, in the exporter file, and nowhere else, honouring the substrate's
+  own two-method interface without pretending to replay a real call history that was
+  never made. The vector file states this narrower claim in its own text (a `claim` field
+  reading "substrate mechanism parity over a shim record... NOT a real Python cohort's
+  call history"), so a reader of the committed vectors does not have to infer the scope
+  from a spec that may since have been removed. A future genuinely new Rust component with
+  no Python reference to replay against at all (not even a substrate) still needs a test
+  strategy of its own; this resolves only the "existing substrate, no existing concrete
+  Python type" case, which is narrower than the fully novel case this bullet originally
+  named.
 
 ---
 

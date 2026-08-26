@@ -23,6 +23,19 @@ Phases 4 to 6 (ingestion expansion, introspection, promotion mechanisms) stay at
 
 Cross-reference: `plans/synthesis-architecture.md` (D106) is a cross-cutting integration document, not a per-component one, so it earns no row in the table below. It places new process-plane and hierarchy-plane structure around the components indexed here, citing Himinbjörg, Gjöll, Hliðskjálf and Mímisbrunnr's interfaces rather than altering them; none of this document's own interfaces or status claims change as a result. `plans/rust-workspace-baseline.md` (D109) is the same kind of document: it records the workspace layout, toolchain pin and module conventions the repository's first Rust crate established, cutting across whichever component a future crate re-expresses rather than belonging to one, so it likewise earns no row below.
 
+**The document set now extends past the original nine.** The section 2 table
+below originally carried nine rows: this index itself (order 1) plus eight
+per-component documents (orders 2 to 9). `vor.md` (D110) is the tenth row and
+the ninth per-component document, and it is not a component the HLD indexed:
+D106's hierarchy plane (`plans/synthesis-architecture.md`) introduced Vör,
+Himinbjörg's process/hierarchy-plane sibling, as new structure around the eight
+components already indexed rather than as one of them, so no row existed here
+for it until it was built. Any further hierarchy-plane or process-plane
+component D106/D107 name but this document set has not yet indexed
+(Himinbjörg's minimal slice, the git actuator, the process engine) earns its
+own row the same way, when it is built, rather than being retrofitted into the
+original ordering.
+
 ## 2. Document set
 
 The Detailed Design is split by component, one document each, so a document stays a readable size and a reviewer can attack one component at a time. Documents are authored and reviewed in build order.
@@ -38,6 +51,7 @@ The Detailed Design is split by component, one document each, so a document stay
 | 7 | `himinbjorg.md` | Himinbjörg gateway and control surface | 3 | The critical path and largest build; the OpenCode binding |
 | 8 | `gjoll.md` | Gjöll value integrity | 3 | The sink-declaration schema (the unattested root) and the gates |
 | 9 | `gjallarhorn.md` | Gjallarhorn alerting | 3 | Containment decoupled from alerting; the protected channel |
+| 10 | `vor.md` | Vör hierarchy-plane cohort attestation | 3 | Build-order step two of `plans/synthesis-bootstrap.md` (D108): one hardcoded, attested cohort, so step three (Himinbjörg's minimal slice) has something concrete to bind to |
 
 Two components carry the pre-mortem's top risks and get the deepest treatment: Himinbjörg (`himinbjorg.md`, the largest unbuilt piece) and the Gjöll sink-declaration schema (`gjoll.md`, named "the root" in `ADVERSARIAL_REVIEW.md` 5.1).
 

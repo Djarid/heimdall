@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D109)
+## 0. Resume here (handoff, last updated after D110)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -216,6 +216,67 @@ size reflects genuinely re-expressing D81's five validation conditions plus the 
 taxonomy, work Approach A would have had to do anyway without the clean module boundary. See
 D109 in `DECISIONS.md`.
 
+**D110 then completes build-order step two: Vör's minimal single-cohort form is
+re-expressed in Rust.** `crates/hierarchy-vor/`, the repository's second Rust
+crate, re-expresses D103's attested-record substrate generically, then carries
+exactly one hardcoded, attested cohort, `heimdall-dev`, behind a single mandatory
+entry point (`load_verified_cohort`). Six modules: a hand-written SHA-256
+primitive (`sha256`, KAT-verified, since the empty `[dependencies]` table
+forbids a runtime dependency for it); the substrate re-expression (`record`,
+`verify`), byte-identical to the Python and knowing no concrete record type;
+the trusted authoriser set (`authoriser`), sourced from a file **outside** the
+repository working tree named by `HEIMDALL_COHORT_SECRET_FILE`, never the
+secret itself, refusing fail closed on all seven of REQ-14's conditions; and
+the cohort's own shapes and content (`types`, `cohort`). `VerifiedCohort` is
+constructible only from inside the crate, and the crate has no dependency on
+`crates/boundary-gjoll/`: the sink set is never routed into
+`consequentiality::evaluate`, so build-order step three must read it from the
+cohort's own read-only projection instead. Correctness is checked against ten
+committed golden vectors plus a separately-recorded cross-substrate check,
+exported from a shim record because no Python `CohortDefinition` exists or
+ever will (D105 rules the hierarchy plane is Rust); the vector file's own
+`claim` field states this is substrate-mechanism parity over a shim, not a
+real Python cohort's call history. Two new sub-harnesses
+(`ontology/tests/rust_cohort_harness.py`, `ontology/tests/vor_invocation_harness.py`)
+fold additively into `ontology.tests.harness` on `run_rust_gjoll`'s exact
+shape. **This closes D103's limit one for this record type in this crate
+only:** there is no code path by which `heimdall-dev` is obtained without its
+attestation having verified. **It does not close D103's limit two** (a
+trusted authoriser who honestly attests a hollow `consequential_sinks` set
+still verifies; there is no honesty backstop on this surface, exactly as D103
+already found for the control surface), **does not advance invariant 3.6**
+(the entry point has zero non-test callers, reported live), and **does not
+change `AgentContext`'s opt-in default, `resolve()` or `gjoll.py`**, all
+confirmed untouched. **A residual this build found, not merely assumed from
+the build spec:** `cohort::COMMITTED_ATTESTATION`'s own doc comment states it
+was produced under a development-time placeholder secret, not yet a
+genuinely separately-provisioned production one, and must be replaced before
+any real deployment relies on it; on the machine this row was verified from,
+no secret is provisioned at all, so the suite prints the named
+`VOR-REAL-COHORT-NOT-EXERCISED` gap rather than a silent pass, the designed
+behaviour of the build spec's own edge case three. Nine items are named and
+deferred, not built (full table at `plans/dd/vor.md` section 7):
+`permitted_targets` and the protected-branch case, the load-time manifest
+format, the writer taxonomy, the review-gated promotion pipeline, the cohort
+catalogue's general form, the four-tier trust lattice, public-key signing,
+secret zeroisation, and registering the two `action:git.*`/`sink:git.*` names
+in the loaded ontology. **The bar does not move, verified live:** 22 critical
+findings, all false-inert; the invariant 3.1 guard at 34 scanned files;
+`gjoll_invocation_harness` at six test call sites and zero non-test call
+sites; `pipeline_score_harness` at 48 percent layer-one and 33 of 33 (100
+percent) pipeline containment; all unchanged. **A line-budget deviation is
+accepted here too, proportionally larger than D109's:** non-test Rust came to
+1,182 lines against the spec's 650-line budget (532 over, about 82 percent);
+total Rust including tests came to 2,366 lines against 1,400 (966 over, about
+69 percent); new and changed Python came to approximately 1,915 lines against
+1,200 (715 over, about 60 percent). Accepted on the same non-padding grounds
+as D109's overage: an authoriser module with seven fail-closed refusal
+conditions and a hand-written SHA-256 primitive are both work `boundary-gjoll`
+never needed, and the Python side follows directly from ten named vector cases,
+a full seven-condition loader test suite and a second live invocation
+detector. See D110 in `DECISIONS.md` and `plans/dd/vor.md` for the full
+breakdown and the deferred-items table.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -266,6 +327,17 @@ poc/.venv/bin/python -m ontology.tests.rust_gate_harness  # digest drift, depend
 cargo test -p boundary-gjoll                              # layer-one (22), layer-two (six), D81/D89-B/D10 native tests: PASS
 ```
 
+D110 (Vör's minimal single-cohort form re-expressed in Rust) is likewise
+registered inside `ontology.tests.harness` (`run_rust_cohort`,
+`run_vor_invocation_boundary`), but has standalone entry points too, and the
+Rust suite itself is run directly with Cargo from the repository root:
+
+```
+poc/.venv/bin/python -m ontology.tests.rust_cohort_harness    # digest drift, dependency posture, surface checks, cargo test: PASS; real-cohort marker reported as exercised or as a named gap
+poc/.venv/bin/python -m ontology.tests.vor_invocation_harness # two test call sites, zero non-test call sites
+cargo test -p hierarchy-vor -- --nocapture                    # 26 unit tests, three integration tests: PASS; prints VOR-REAL-COHORT-NOT-EXERCISED if no secret is provisioned
+```
+
 **D102 registers D93 and D94 as main-suite fatal-gated obligations, and deliberately leaves
 D83 reporting-only.** `effect_probe_harness.py` (D93) and `sink_attestation_harness.py` (D94)
 already had standalone entry points but were not wired into `ontology.tests.harness`'s own
@@ -282,13 +354,19 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Build Vör's minimal single-cohort form: build-order step two (D108).** Step one (D109, Gjöll
-   re-expressed in Rust) is now complete; step two builds Vör, a minimal single-cohort agent
-   attestation form extending D103's `AgentContext` attestation pattern (keyed digest, verified
-   once at process start) rather than the general four-tier lattice. This step is load-bearing
-   for the build order's own sequencing: step three (Himinbjörg's minimal four-interface slice)
-   depends on step two landing first. See `plans/synthesis-bootstrap.md` section six for the
-   full build order and the target loop's definition.
+1. **Build Himinbjörg's minimal four-interface slice: build-order step three (D108).** Steps one
+   (D109, Gjöll re-expressed in Rust) and two (D110, Vör's minimal single-cohort form) are both
+   now complete, and step three is load-bearing for the same reason step two was: the target
+   loop cannot propose anything until a cohort exists to bind to, and now one does. Step three
+   builds four interfaces at minimal fidelity, but `validate_proposal` must genuinely call the
+   gate; it obtains its cohort through `crates/hierarchy-vor/`'s one entry point,
+   `load_verified_cohort`, treats every refusal fail closed (no degraded cohort substitute
+   exists to fall back to), and reads the cohort's consequential-sink set from
+   `CohortSurface::consequential_sinks()` for its own `action_critical` determination, never
+   by routing it into `boundary-gjoll::consequentiality::evaluate`, whose signature excludes an
+   agent sink set by construction (EC-16, `plans/dd/vor.md` section 4). See
+   `plans/synthesis-bootstrap.md` section six for the full build order and the target loop's
+   definition, and `plans/dd/vor.md` for the interface contract step three consumes.
 2. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
    is running this exact false-inert attack vector against models independently, with no
    exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
@@ -455,6 +533,22 @@ implementation. The crate's non-test source came to 671 lines against the spec's
 budget, 171 lines over; the operator accepted the overage as the cost of a genuine two-layer
 split rather than trimming the crate or reverting to a single-layer approach.
 
+D110 then completed build-order step two: Vör's minimal single-cohort form is re-expressed in
+Rust, at `crates/hierarchy-vor/`, re-expressing D103's attested-record substrate generically and
+carrying exactly one hardcoded, attested cohort (`heimdall-dev`) behind one mandatory entry
+point. This closes D103's limit one for this record type in this crate only (there is no code
+path to obtain the cohort unverified); it does not close D103's limit two (a trusted authoriser's
+honest lie still verifies; no honesty backstop exists on this surface either), does not advance
+invariant 3.6 (the entry point has zero non-test callers, reported live by a new invocation
+detector on D96's pattern) and does not touch `AgentContext`, `resolve()` or `gjoll.py`. The
+secret is sourced from outside the repository working tree, never from a source constant; the
+crate has no dependency on `crates/boundary-gjoll/`. Ten committed golden vectors plus a
+separately-recorded cross-substrate check replay the substrate mechanism against a shim record,
+since no Python `CohortDefinition` exists or ever will (D105). The crate's non-test source came
+to 1,182 lines against the spec's own 650-line budget, 532 lines over (about 82 percent), larger
+proportionally than D109's own overage; accepted on the same non-padding grounds (see D110 in
+`DECISIONS.md` for the full breakdown).
+
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
 into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
@@ -534,12 +628,12 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 109 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 110 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `plans/hld.md` | The High-Level Design: the build-oriented engineering view of the whole system across all six phases, with a per-component achievement baseline, a harness-agnostic integration interface and a risk register (D73) |
-| `plans/dd/` | The Detailed Design, implementation fidelity for Phases 1-3: an index (conventions, the OpenCode/Gleipnir harness binding, cross-cutting contracts) plus eight component documents (Bifröst, Mímisbrunnr, Nornir, Fenrir, Hliðskjálf, Himinbjörg, Gjöll, Gjallarhorn) (D73) |
+| `plans/dd/` | The Detailed Design, implementation fidelity for Phases 1-3: an index (conventions, the OpenCode/Gleipnir harness binding, cross-cutting contracts) plus nine component documents (Bifröst, Mímisbrunnr, Nornir, Fenrir, Hliðskjálf, Himinbjörg, Gjöll, Gjallarhorn, Vör) (D73; Vör added by D110, extending the set past the original eight named in the HLD, per `plans/dd/index.md` section 1) |
 | `plans/hld_scoping_brainstorm.md` | The scoping analysis behind D73: the achievement audit and the three converged decisions (harness, classifier stance, phasing) |
 | `plans/synthesis-capability-matrix.md` | The capability-mapping matrix for Heimdall's synthesis with AETOS and Gleipnir: what each contributes, the four control planes, and the rulings and open items from that working session (D105) |
 | `plans/synthesis-architecture.md` | The follow-on architecture draft: concrete module boundaries for the four control planes, grounded in Himinbjörg, Gjöll, Hliðskjálf and Mímisbrunnr's existing Detailed Design documents, plus a hierarchy-plane trust-tier lattice, a candidate context-shielding technique and a sketched Rust workspace layout (D106) |
@@ -662,6 +756,28 @@ named remaining refinement, contained by Gjoll at action time, not here.
   proof status or change the 22 RED findings. The code licence is OPEN (section 5). See
   `plans/rust-workspace-baseline.md` for the conventions this establishes for build-order steps
   two to seven.
+- **The repository's second Rust crate** (`crates/hierarchy-vor/`, D110): re-expresses D103's
+  attested-record substrate generically, then carries exactly one hardcoded, attested cohort
+  (`heimdall-dev`) behind a single mandatory entry point, `load_verified_cohort`. Six modules: a
+  hand-written, KAT-verified SHA-256 primitive (`sha256`, since the empty `[dependencies]` table
+  forbids a runtime dependency for it); the substrate re-expression (`record`, `verify`),
+  byte-identical to the Python and knowing no concrete record type; the trusted authoriser set
+  (`authoriser`), sourced from a file outside the repository working tree named by
+  `HEIMDALL_COHORT_SECRET_FILE`, never the secret itself, refusing fail closed on all seven of
+  REQ-14's conditions; and the cohort's own shapes and content (`types`, `cohort`).
+  `VerifiedCohort` is constructible only from inside the crate, and the crate has no dependency
+  on `crates/boundary-gjoll/`. Checked against ten committed golden vectors plus a
+  separately-recorded cross-substrate check (`crates/hierarchy-vor/vectors/cohort_vectors.json`),
+  exported from a shim record (`ontology/tools/export_cohort_vectors.py`) because no Python
+  `CohortDefinition` exists or ever will (D105). Two new sub-harnesses
+  (`ontology/tests/rust_cohort_harness.py`, `ontology/tests/vor_invocation_harness.py`) fold
+  additively into the main suite on `run_rust_gjoll`'s exact shape. Closes D103's limit one for
+  this record type in this crate only; does not close D103's limit two, does not advance
+  invariant 3.6 and does not touch `AgentContext`, `resolve()` or `gjoll.py`. The committed
+  `COMMITTED_ATTESTATION` constant is honestly a development-time placeholder, not yet a real
+  provisioned production secret's output (section 5's own residual list). The code licence is
+  OPEN (section 5). See `plans/dd/vor.md` for the full design and `DECISIONS.md` D110 for the
+  line-budget breakdown.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -684,7 +800,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
-| **D109: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and `crates/boundary-gjoll/Cargo.toml` deliberately carries no `license` field | OPEN (blocker) | Must be settled before any code in this repository is published. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
+| **D109/D110: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and neither `crates/boundary-gjoll/Cargo.toml` nor `crates/hierarchy-vor/Cargo.toml` carries a `license` field | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks a second crate, not only the first. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -837,18 +953,26 @@ corpus the author never saw.
    remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
    new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
    OPEN, unresolved by this build.
-7. **Done: build-order step one of `plans/synthesis-bootstrap.md` (D108), re-expressing Gjöll's
-   gate in Rust (D109).** `crates/boundary-gjoll/` carries a pure total rule core behind a
-   registry-mandatory consequentiality shell, checked against 22 golden vectors (six with a
-   layer-two section) exported from the three existing Python harnesses, with a source-digest
-   drift detector folded into the main suite. It designs out the Python no-registry branch,
-   D97's named residual and D100's stamp-rewrite limit; it defers D93's cross-check, D103's
-   `AgentContext` attestation, D94's sink-declaration attestation and the four re-validation
-   gates. **Next queued: build-order step two, Vör** (one hardcoded attested cohort), per
-   `plans/synthesis-bootstrap.md`'s seven-step order; steps 3 to 7 (Himinbjörg's minimal slice,
-   the git actuator, the process engine, the end-to-end loop, real cognition) follow it. The
-   code licence (section 5) blocks publication of this crate and should be settled before
-   step two adds a second one.
+7. **Done: build-order steps one and two of `plans/synthesis-bootstrap.md` (D108), re-expressing
+   Gjöll's gate (D109) and Vör's minimal single-cohort form (D110) in Rust.**
+   `crates/boundary-gjoll/` carries a pure total rule core behind a registry-mandatory
+   consequentiality shell, checked against 22 golden vectors (six with a layer-two section)
+   exported from the three existing Python harnesses, with a source-digest drift detector folded
+   into the main suite. It designs out the Python no-registry branch, D97's named residual and
+   D100's stamp-rewrite limit; it defers D93's cross-check, D103's `AgentContext` attestation,
+   D94's sink-declaration attestation and the four re-validation gates. `crates/hierarchy-vor/`
+   then re-expresses D103's attested-record substrate generically and carries exactly one
+   hardcoded, attested cohort (`heimdall-dev`) behind a single mandatory entry point, checked
+   against ten golden vectors plus a separately-recorded cross-substrate check; it closes D103's
+   limit one for this record type in this crate only, and does not close D103's limit two,
+   advance invariant 3.6 or touch `AgentContext`/`resolve()`/`gjoll.py`. Both crates' line
+   budgets were exceeded and both overages are accepted and recorded (D109 about 34 percent
+   over on non-test Rust; D110 about 82 percent over), not absorbed silently. **This is now the
+   load-bearing item: build-order step three, Himinbjörg's minimal four-interface slice, depends
+   on step two having landed and is promoted to priority item one above.** Steps four to seven
+   (the git actuator, the process engine, the end-to-end loop, real cognition) follow it. The
+   code licence (section 5) blocks publication of both crates and should be settled before a
+   third one is added.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
