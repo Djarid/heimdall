@@ -372,6 +372,15 @@ def _check_hardcoded_field_values_clean(files: dict[str, str]) -> list[str]:
 # declaration lines.
 _UNIT_TEST_PATH_ATTR = re.compile(r'#\[path\s*=\s*"\.\./unit_tests/[^"]+"\]')
 
+# AC-38's own, broader literal grep: `grep -rnE '#\[test\]|mod tests|#\[cfg\(test\)\]'
+# crates/hierarchy-vor/src/` must return ONLY the `#[cfg(test)]` lines of lib.rs's
+# declaration block, nothing else anywhere under src/. This is a strictly broader
+# net than the `#[path = ...]` attachment check above (rule 6's original scope): it
+# also catches a stray `#[test]` function or a stray `mod tests` block landing
+# directly in a `src/` file, neither of which necessarily carries a `#[path = ...]`
+# attribute at all, so rule 6 alone would miss them.
+_AC38_TEST_MARKER = re.compile(r"#\[test\]|mod tests|#\[cfg\(test\)\]")
+
 
 def _check_test_isolation(files: dict[str, str]) -> list[str]:
     violations: list[str] = []
@@ -383,6 +392,74 @@ def _check_test_isolation(files: dict[str, str]) -> list[str]:
                     f"{fname}:{lineno}: found a unit-test `#[path = ...]` attachment "
                     f"declaration outside lib.rs (REQ-38 requires exactly one such "
                     f"declaration per file, all of them in lib.rs)"
+                )
+    violations += _check_test_isolation_ac38_broad(files)
+    return violations
+
+
+def _strip_line_comments(src: str) -> str:
+    """Truncates every line at its first `//`, replacing the removed tail with
+    spaces so line numbers and byte offsets are preserved exactly. A mechanical
+    proxy only (no string-literal awareness), which is safe here because none of
+    this crate's `src/` files hold a `//` sequence inside a string literal
+    (confirmed directly). Exists solely so AC-38's literal grep pattern is matched
+    against CODE, not against the explanatory prose comment directly above lib.rs's
+    own permitted declaration block, which otherwise also contains the literal text
+    `#[cfg(test)]` and would be a false positive against the real, clean crate."""
+    out_lines = []
+    for line in src.split("\n"):
+        idx = line.find("//")
+        if idx == -1:
+            out_lines.append(line)
+        else:
+            out_lines.append(line[:idx] + " " * (len(line) - idx))
+    return "\n".join(out_lines)
+
+
+def _check_test_isolation_ac38_broad(files: dict[str, str]) -> list[str]:
+    """AC-38's literal grep, run exactly as its own wording states: every match of
+    `#\\[test\\]|mod tests|#\\[cfg\\(test\\)\\]` anywhere under `src/` must be one of
+    lib.rs's own declaration lines. A match in ANY other file, or a match in lib.rs
+    that is not part of the permitted `#[cfg(test)] #[path = ...] mod ...;` block, is
+    a violation. This is deliberately broader than `_check_test_isolation`'s
+    `#[path = ...]`-only scan above: it also catches a bare stray `#[test]` fn or a
+    bare `mod tests { ... }` block landing directly in a `src/` file, neither of
+    which necessarily carries a `#[path = ...]` attribute of its own. Comments are
+    stripped first (see `_strip_line_comments`) so a match is always real code."""
+    violations: list[str] = []
+    for fname, raw_src in files.items():
+        src = _strip_line_comments(raw_src)
+        for m in _AC38_TEST_MARKER.finditer(src):
+            lineno = src.count("\n", 0, m.start()) + 1
+            if fname != "lib.rs":
+                violations.append(
+                    f"{fname}:{lineno}: found `{m.group(0)}` outside lib.rs (AC-38 "
+                    f"requires the broader `#[test]|mod tests|#[cfg(test)]` grep "
+                    f"over src/ to return only lib.rs's own declaration lines)"
+                )
+                continue
+            # In lib.rs, a `#[cfg(test)]` match is permitted ONLY when it is
+            # immediately followed (allowing blank/comment lines) by a `#[path =
+            # "../unit_tests/...")]` attribute and then a `mod ...;` declaration --
+            # exactly the one permitted construct REQ-38 names. `#[test]` and
+            # `mod tests` are never permitted in lib.rs at all.
+            if m.group(0) != "#[cfg(test)]":
+                violations.append(
+                    f"{fname}:{lineno}: found `{m.group(0)}` in lib.rs (AC-38 "
+                    f"permits only `#[cfg(test)]` declaration lines here, never a "
+                    f"bare `#[test]` fn or `mod tests` block)"
+                )
+                continue
+            rest = src[m.end():]
+            if not re.match(
+                r'\s*\n\s*#\[path\s*=\s*"\.\./unit_tests/[^"]+"\]\s*\n\s*mod\s+\w+\s*;',
+                rest,
+            ):
+                violations.append(
+                    f"{fname}:{lineno}: found `#[cfg(test)]` in lib.rs not "
+                    f"immediately followed by a `#[path = \"../unit_tests/...\"] "
+                    f"mod ...;` declaration (AC-38 permits only the fixed "
+                    f"`#[cfg(test)] #[path = ...] mod ...;` block shape here)"
                 )
     return violations
 
@@ -602,6 +679,38 @@ def control_check() -> list[str]:
         failures.append(
             "surface control 6 (test isolation) did NOT catch a unit-test #[path] "
             "attachment declared outside lib.rs"
+        )
+
+    # AC-38's broader grep control: a stray `#[test]` fn (no `#[path = ...]`
+    # attribute at all) landing directly in a src/ file must still be caught, since
+    # rule 6's original `#[path = ...]`-only scan above would miss it entirely.
+    fixture_6b = {
+        "authoriser.rs": (
+            "fn helper() {}\n\n#[test]\nfn a_stray_unit_test_in_src() {\n    assert!(true);\n}\n"
+        )
+    }
+    if not _check_test_isolation(fixture_6b):
+        failures.append(
+            "surface control 6b (AC-38 broad test-isolation grep) did NOT catch a "
+            "stray #[test] function with no #[path = ...] attribute landing "
+            "directly in a src/ file"
+        )
+
+    # Control the control: the real, clean lib.rs's own permitted
+    # `#[cfg(test)] #[path = "../unit_tests/..."] mod ...;` declaration block must
+    # NOT be flagged, or the broader AC-38 check would also break the real crate.
+    clean_fixture_6 = {
+        "lib.rs": (
+            '#[cfg(test)]\n#[path = "../unit_tests/loader_failclosed.rs"]\n'
+            "mod loader_failclosed;\n"
+        )
+    }
+    if _check_test_isolation(clean_fixture_6):
+        failures.append(
+            "surface control 6 (AC-38 broad test-isolation grep) WRONGLY flagged "
+            "lib.rs's own permitted #[cfg(test)] #[path = ...] mod ...; "
+            "declaration block -- the real crate would fail this check for no "
+            "reason"
         )
 
     return failures

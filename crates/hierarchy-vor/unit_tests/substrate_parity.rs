@@ -35,9 +35,10 @@
 //!     refusal branches, REQ-27) and `verify::verify_record<R: AttestedRecord>(record:
 //!     &R, authoriser: Option<&str>, attestation: Option<&str>, trusted:
 //!     &TrustedAuthoriserSet) -> Result<(), RecordRefusal>` (`pub(crate)`).
-//!   - `authoriser::TrustedAuthoriserSet` carries a `pub(crate)` constructor for test
-//!     use only (REQ-13): `TrustedAuthoriserSet::for_test(entries: &[(&str, &[u8])]) ->
-//!     Self`, reachable only from `unit_tests/`.
+//!   - `authoriser::TrustedAuthoriserSet` has a `pub(crate)` field, `authorisers:
+//!     HashMap<String, Vec<u8>>` (REQ-13), with no dedicated test constructor:
+//!     fixtures build it directly via struct-literal syntax from within the crate,
+//!     reachable only from `unit_tests/`.
 //!   - `types::CohortDefinition { cohort_id: String, permitted_actions: Vec<String>,
 //!     trust_ceiling: String, consequential_sinks: Vec<String>, authoriser:
 //!     Option<String>, attestation: Option<String> }` implementing `AttestedRecord`
@@ -211,7 +212,11 @@ fn hardcoded_cohort_record() -> CohortDefinition {
 const FIXTURE_SECRET: &[u8] = b"vor-req34-mandatory-negative-control-fixture!!";
 
 fn trusted_set_for_fixture_secret() -> TrustedAuthoriserSet {
-    TrustedAuthoriserSet::for_test(&[(AUTHORISER_ID, FIXTURE_SECRET)])
+    TrustedAuthoriserSet {
+        authorisers: [(AUTHORISER_ID.to_string(), FIXTURE_SECRET.to_vec())]
+            .into_iter()
+            .collect(),
+    }
 }
 
 // ---------------------------------------------------------------------------------

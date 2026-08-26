@@ -15,10 +15,12 @@
 //!
 //! **No secret literal anywhere under `crates/hierarchy-vor/src/` (REQ-13).**
 //! [`TrustedAuthoriserSet`] has no public constructor taking secret bytes, no
-//! public setter and no public accessor returning a secret. Its only
-//! byte-taking constructor, [`TrustedAuthoriserSet::for_test`], is `pub(crate)`
-//! and exists solely so `unit_tests/` can build a fixture set without going
-//! through the filesystem; it is unreachable from any external crate.
+//! public setter and no public accessor returning a secret. Its field is
+//! `pub(crate)` rather than a hand-written test-only constructor, so
+//! `unit_tests/` (compiled into this same crate via `lib.rs`'s `#[path]`
+//! mechanism, REQ-38) can build a fixture set directly via struct-literal
+//! syntax without going through the filesystem; it remains unreachable from
+//! any external crate, which sees only this module's `pub` re-exports.
 //!
 //! **REQ-15's in-tree rejection is a development-time guard, not a deployment
 //! security control.** [`repo_root`] derives a repository root from
@@ -54,33 +56,24 @@ pub const SECRET_PATH_ENV_VAR: &str = "HEIMDALL_COHORT_SECRET_FILE";
 pub const MIN_SECRET_BYTES: usize = 32;
 
 /// The authorisers this crate trusts, each mapped to its own secret bytes
-/// (REQ-13). Opaque: its field is private, it derives no `Debug`, and nothing
-/// outside this crate can construct one from bytes or read a secret back out
-/// of it. The only way to confirm which bytes a loaded set holds is to attest
-/// a record under a candidate secret and check whether it verifies
-/// (`crate::verify::verify_record`), which is exactly how `unit_tests/` does
-/// it.
+/// (REQ-13). Opaque to any external crate: its field is `pub(crate)` (never
+/// `pub`), it derives no `Debug`, and nothing outside this crate can
+/// construct one from bytes or read a secret back out of it. `pub(crate)`
+/// visibility, rather than a hand-written test-only constructor living in
+/// this file, is what lets `unit_tests/` (an in-crate module via `lib.rs`'s
+/// `#[path]` declaration, REQ-38) build a fixture set directly with
+/// struct-literal syntax, with no test-only code path inside `src/` at all.
+/// An integration test under `tests/` is compiled as a separate external
+/// crate and still cannot see this field, so REQ-13's boundary holds exactly
+/// as before. The only way to confirm which bytes a loaded set holds from
+/// outside this module is to attest a record under a candidate secret and
+/// check whether it verifies (`crate::verify::verify_record`), which is
+/// exactly how `unit_tests/` does it.
 pub struct TrustedAuthoriserSet {
-    authorisers: HashMap<String, Vec<u8>>,
+    pub(crate) authorisers: HashMap<String, Vec<u8>>,
 }
 
 impl TrustedAuthoriserSet {
-    /// Test-only constructor building a set directly from in-memory bytes,
-    /// bypassing the filesystem loader entirely. `pub(crate)`: reachable only
-    /// from inside this crate, which includes the in-crate unit-test modules
-    /// `lib.rs` wires in under `#[cfg(test)]` (REQ-13, REQ-38). No external
-    /// crate can call this: it is not `pub`, and an integration test under
-    /// `tests/` is compiled as a separate crate that cannot see `pub(crate)`
-    /// items.
-    #[cfg(test)]
-    pub(crate) fn for_test(entries: &[(&str, &[u8])]) -> Self {
-        let mut authorisers = HashMap::new();
-        for (id, secret) in entries {
-            authorisers.insert((*id).to_string(), secret.to_vec());
-        }
-        TrustedAuthoriserSet { authorisers }
-    }
-
     /// The secret bytes trusted for `authoriser_id`, or `None` if it is not in
     /// this set. `pub(crate)` only (REQ-13): this is exactly the "public
     /// accessor returning a secret" the requirement forbids, so it must never

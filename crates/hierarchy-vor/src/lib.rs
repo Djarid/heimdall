@@ -20,9 +20,9 @@
 //! crate. `authoriser` and `verify` are also plain `mod` (not `pub mod`): their
 //! own items that must be reachable from an external crate (the two loaders, the
 //! two refusal enums, the trusted-set type and the two named constants) are
-//! re-exported individually below; `authoriser::TrustedAuthoriserSet::for_test`
-//! and `verify::verify_record` are `pub(crate)`/test-only and are never
-//! re-exported, exactly as REQ-13 and REQ-27 require.
+//! re-exported individually below; `authoriser::TrustedAuthoriserSet`'s
+//! `authorisers` field and `verify::verify_record` are `pub(crate)`/test-only
+//! and are never re-exported, exactly as REQ-13 and REQ-27 require.
 //!
 //! `cohort` IS `pub mod` (unlike `record`, `types`, `authoriser` and `verify`):
 //! `tests/public_surface.rs`, compiled as an external crate, reaches its

@@ -417,7 +417,11 @@ fn req18_loader_refusal_reasons_never_contain_the_secret() {
 fn req18_record_refusal_reason_never_contains_the_secret() {
     const CANARY: &str = "REQ18-CANARY-FOR-RECORD-REFUSAL-TEST-PADDED!!!!";
     let secret = CANARY.as_bytes();
-    let trusted = TrustedAuthoriserSet::for_test(&[("req18-record-authoriser", secret)]);
+    let trusted = TrustedAuthoriserSet {
+        authorisers: [("req18-record-authoriser".to_string(), secret.to_vec())]
+            .into_iter()
+            .collect(),
+    };
 
     let mut record = CohortDefinition {
         cohort_id: "req18-fixture".to_string(),
