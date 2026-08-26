@@ -50,10 +50,13 @@ pub use types::{
     ProposalDecision, ProposalParameter, Scope, TaskContext,
 };
 
-// The four public interfaces (`build_context`, `enforce_definition`,
-// `validate_proposal`, `broker_action`) will be re-exported here once
-// `context`, `definition`, `validation` and `broker` carry real content, in a
-// later phase of this same issue (execution workflow step 3.3 to 3.5).
+// Two of the four public interfaces are real as of this phase (section 13
+// files 6 and 7 of the step-three spec): `build_context` (`context`) and
+// `enforce_definition` (`definition`). `validate_proposal` (`validation`) and
+// `broker_action` (`broker`) remain stubbed and are not re-exported until a
+// later phase of this same issue fills them in (execution workflow step 3.5).
+pub use context::build_context;
+pub use definition::enforce_definition;
 
 // The only test-related construct permitted anywhere under src/ (REQ-5, REQ-26).
 // One `#[cfg(test)] #[path = ...] mod ...;` declaration per unit-test file, no
