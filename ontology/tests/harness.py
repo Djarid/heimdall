@@ -112,6 +112,11 @@ class Report:
         # D109 (REQ-30): the Rust gate drift detector's own main() folded in
         # following the run_effect_probe pattern below.
         self.rust_gjoll_failures = 0
+        # D110 (REQ-46): Vor's Rust cohort drift detector and its own live
+        # invocation-boundary detector, folded in following the run_rust_gjoll
+        # pattern above.
+        self.rust_cohort_failures = 0
+        self.vor_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -857,6 +862,77 @@ def run_rust_gjoll(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_cohort(rep: Report) -> None:
+    """D110 (REQ-46, REQ-48): the Rust re-expression of Vor's minimal
+    single-cohort form at `crates/hierarchy-vor/` proves translation fidelity
+    against the Python substrate on committed golden vectors and that this
+    cohort cannot be obtained without its attestation having verified; it
+    does NOT advance invariant 3.6, does NOT close D103's limit two (identity
+    is not honesty), and does NOT change `AgentContext`'s opt-in default in
+    Python. Wired in following the `run_rust_gjoll` precedent: this
+    standalone sub-harness's own `main()` already returns a real pass/fail
+    code (0 clean, 1 on failure), so a failure here is folded into the main
+    suite's fatal count rather than left unregistered. Run it directly for
+    detail (`python -m ontology.tests.rust_cohort_harness`)."""
+    import contextlib
+    import io
+    from . import rust_cohort_harness
+
+    rep.line("=== D110 Rust cohort drift detector: translation fidelity against the "
+              "Python substrate, not invariant 3.6, not D103's limit two, not "
+              "AgentContext's opt-in default ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_cohort_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] the Rust re-expression of Vor's minimal single-cohort form "
+                  "at crates/hierarchy-vor/ matches the Python substrate on the "
+                  "committed golden vectors, with no source drift, an empty runtime-"
+                  "dependency table and a clean public surface (or a loud skip if no "
+                  "Rust toolchain is present). This proves the substrate mechanism is "
+                  "re-expressed byte-faithfully and that this cohort cannot be obtained "
+                  "unverified; it does not advance invariant 3.6, does not close D103's "
+                  "limit two and does not change AgentContext's opt-in default in "
+                  "Python (run the module directly for detail)")
+    else:
+        rep.rust_cohort_failures += 1
+        rep.line("  [CRITICAL] Rust cohort drift detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_vor_invocation_boundary(rep: Report) -> None:
+    """D110 (REQ-45, REQ-46): the live invocation-boundary detector for Vor's
+    cohort entry point and secret loaders, on `gjoll_invocation_harness`'s
+    precedent (D96). Reads zero non-test call sites today; it does NOT
+    advance invariant 3.6, does NOT close D103's limit two and does NOT
+    change `AgentContext`'s opt-in default in Python. Wired in following the
+    `run_rust_gjoll` precedent: this standalone sub-harness's own `main()`
+    already returns a real pass/fail code (0 clean, 1 on failure), so a
+    failure here is folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python -m
+    ontology.tests.vor_invocation_harness`)."""
+    import contextlib
+    import io
+    from . import vor_invocation_harness
+
+    rep.line("=== D110 Vor invocation boundary: a token scan, weaker than an AST "
+              "scan, not invariant 3.6, not D103's limit two, not AgentContext's "
+              "opt-in default ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = vor_invocation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] zero non-test call sites of the cohort entry point or the "
+                  "secret loaders today; the negative controls prove the scanner "
+                  "bites and does not over-report. This proves this cohort cannot be "
+                  "obtained without its attestation having verified; it does not "
+                  "advance invariant 3.6, does not close D103's limit two and does "
+                  "not change AgentContext's opt-in default in Python (run the "
+                  "module directly for detail)")
+    else:
+        rep.vor_invocation_failures += 1
+        rep.line("  [CRITICAL] Vor invocation boundary detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_sink_attestation(rep: Report) -> None:
     """D94: attests WHO declared a sink, refusing an unattested or tampered
     declaration at load, closing the config-tamper / supply-chain axis of the root
@@ -1311,6 +1387,8 @@ def main() -> int:
     run_bfo_relatedness(rep, onto)
     run_effect_probe(rep)
     run_rust_gjoll(rep)
+    run_rust_cohort(rep)
+    run_vor_invocation_boundary(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1327,7 +1405,9 @@ def main() -> int:
              + rep.sink_attestation_failures + rep.authorisation_record_failures
              + rep.agentcontext_attestation_failures
              + rep.pipeline_score_percentage_failures
-             + rep.rust_gjoll_failures)
+             + rep.rust_gjoll_failures
+             + rep.rust_cohort_failures
+             + rep.vor_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
