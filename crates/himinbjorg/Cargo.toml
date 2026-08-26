@@ -1,0 +1,9 @@
+[package]
+name = "himinbjorg"
+edition.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
+
+[dependencies]
+boundary-gjoll = { path = "../boundary-gjoll" }
+hierarchy-vor = { path = "../hierarchy-vor" }
