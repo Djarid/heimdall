@@ -158,7 +158,7 @@ fn baseline_passing_proposal() -> crate::Proposal {
         action_name: hierarchy_vor::cohort::PERMITTED_ACTIONS[0].to_string(),
         target: "fixture-target".to_string(),
         sink: hierarchy_vor::cohort::CONSEQUENTIAL_SINKS[0].to_string(),
-        parameters: vec![passing_parameter("p1")],
+        parameters: vec![passing_parameter("v")],
         declared_cost: 0,
     }
 }
