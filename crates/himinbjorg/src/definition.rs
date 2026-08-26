@@ -14,8 +14,10 @@
 //! 2. `trust_ceiling` is compared for **byte equality** against
 //!    `hierarchy_vor::cohort::TRUST_CEILING` and the resolution refused on
 //!    any mismatch. It is never ranked, parsed, ordered or clamped anywhere
-//!    in this module (HB3-9, Vör REQ-21): the one comparison below is a
-//!    plain `!=` over two `&str` values.
+//!    in this crate (HB3-9, Vör REQ-21): the comparison itself lives once,
+//!    in `context::trust_ceiling_matches`, shared with `context::build_context`
+//!    (that module's own doc comment), and this function maps the shared
+//!    `bool` to its own `DefinitionRefusal::CeilingMismatch` variant.
 //!
 //! **The compile-time non-empty-intersection assertion.** [`GLOBAL_DEFAULT_ACTIONS`]
 //! and `hierarchy_vor::cohort::PERMITTED_ACTIONS` are both hardcoded, `const`
@@ -44,7 +46,7 @@
 //! which is legitimately typed `CohortSurface<'a>` because `cohort` is
 //! itself `&'a VerifiedCohort`.
 
-use crate::context::HARDCODED_AGENT_ID;
+use crate::context::{trust_ceiling_matches, HARDCODED_AGENT_ID};
 use crate::types::{AgentId, DefinitionRefusal, EffectiveSurface};
 
 /// Himinbjörg's own hardcoded global default action set (REQ-9). The
@@ -120,8 +122,9 @@ pub fn enforce_definition<'a>(
     let surface = cohort.surface();
 
     // Byte equality only (HB3-9, Vör REQ-21): never ranked, parsed or
-    // ordered anywhere in this crate.
-    if surface.trust_ceiling() != hierarchy_vor::cohort::TRUST_CEILING {
+    // ordered anywhere in this crate. The comparison itself lives once, in
+    // `context::trust_ceiling_matches`, shared with `context::build_context`.
+    if !trust_ceiling_matches(&surface) {
         return Err(DefinitionRefusal::CeilingMismatch);
     }
 

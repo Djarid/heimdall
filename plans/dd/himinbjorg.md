@@ -198,6 +198,17 @@ is which, rather than treating the whole list as unbuilt.
 - the process engine's fixed five-step sequence (build-order step five), which is what would
   give this crate's own interfaces a non-test caller and start advancing invariant 3.6.
 
+**A verification-gap residual, also recorded in `DECISIONS.md` D111.** Every behavioural test of
+`validate_proposal`'s six-check sequence in `crates/himinbjorg/unit_tests/six_checks.rs` (AC-15 to
+AC-23, AC-36, AC-37) is gated behind a real, provisioned `HEIMDALL_COHORT_SECRET_FILE` secret and
+silently no-ops, a Rust test that passes having executed zero assertions rather than a visible
+skip, when that secret is absent, which is the default state of any machine without it
+provisioned, including the one this crate was built and verified on; only the direct-gate tests
+in `unit_tests/gate_bridge_failclosed.rs` avoid this gating. This is architecturally forced by
+REQ-20 (there is no fixture-constructible `AgentContext`/`EffectiveSurface`), not a shortcut
+taken here, but a green `cargo test --workspace` run on a machine without that secret must not be
+read as having exercised the six-check sequence's own assertions.
+
 This remains the largest single build in Phases 1 to 3 and the phase's critical path; D111 is a
 minimal-fidelity slice of it, not its completion. The reference binding still reuses Gleipnir's
 proven deny-by-default permission map, trust-tier ladder, deterministic proposal-then-act

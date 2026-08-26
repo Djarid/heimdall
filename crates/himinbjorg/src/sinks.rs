@@ -45,14 +45,13 @@
 //! equal a sink's declared `parameters` set exactly, so the parameter name
 //! chosen here is part of this crate's contract with any fixture that
 //! expects a baseline proposal against one of these two sinks to authorise.
-//! See this delegation's own final report for a flagged inconsistency: one
-//! committed test fixture (`unit_tests/six_checks.rs`'s
-//! `passing_parameter`/`baseline_passing_proposal`) uses the parameter id
-//! `"p1"` instead of `"v"` for the same sink, which cannot both exactly match
-//! a single static registry entry; this module follows the `"v"` convention
-//! because it is the one two of the three fixture files (the public-surface
-//! integration test and this module's own sibling unit-test file) already
-//! share.
+//! An earlier draft of `unit_tests/six_checks.rs`'s
+//! `passing_parameter`/`baseline_passing_proposal` used the parameter id
+//! `"p1"` instead of `"v"` for the same sink, which could not have matched a
+//! single static registry entry exactly; this was found and fixed during
+//! implementation, and `six_checks.rs` now uses `"v"` throughout, matching
+//! this module, `gate_bridge_failclosed.rs` and the public-surface
+//! integration test.
 //!
 //! **No sink here is derived from, or reconciled against, the cohort's own
 //! set (EC-7).** `gate_bridge::action_critical_for` is the only function in

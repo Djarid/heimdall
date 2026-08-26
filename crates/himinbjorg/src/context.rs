@@ -12,12 +12,13 @@
 //! (AC-7).
 //!
 //! **The ceiling is checked here too, by byte equality only (HB3-9).** Both
-//! `build_context` and `definition::enforce_definition` independently check
-//! the cohort's `trust_ceiling` against the same hardcoded expected constant
+//! `build_context` and `definition::enforce_definition` check the cohort's
+//! `trust_ceiling` against the same hardcoded expected constant
 //! (`hierarchy_vor::cohort::TRUST_CEILING`), because `ContextRefusal` and
-//! `DefinitionRefusal` both carry a `CeilingMismatch` variant (section 7's
-//! data schema). Neither ranks, parses or orders it: the comparison below is
-//! a single `!=` against a `&str`.
+//! `DefinitionRefusal` both carry their own `CeilingMismatch` variant
+//! (section 7's data schema). The comparison itself lives once, in
+//! [`trust_ceiling_matches`] below: neither caller ranks, parses or orders
+//! it, and each maps the shared `bool` to its own refusal variant.
 //!
 //! **This module owns the fixed context's own hardcoded, non-empty content**
 //! (target scope, standing constraints, control channel, blast-radius bound,
@@ -87,6 +88,18 @@ const BLAST_RADIUS_BOUND: usize = 25;
 /// of this issue).
 const RESOURCE_CEILING: u32 = 100;
 
+/// Whether `surface`'s `trust_ceiling` byte-equals the hardcoded expected
+/// constant `hierarchy_vor::cohort::TRUST_CEILING` (HB3-9). The single
+/// comparison shared by [`build_context`] below and
+/// `definition::enforce_definition`, which previously each restated this
+/// same four-line `!=` check independently (this module's own doc comment).
+/// Never ranks, parses or orders the ceiling: a plain `==` over two `&str`
+/// values. Each caller maps the returned `bool` to its own `CeilingMismatch`
+/// refusal variant; this helper carries no refusal type of its own.
+pub(crate) fn trust_ceiling_matches(surface: &hierarchy_vor::CohortSurface<'_>) -> bool {
+    surface.trust_ceiling() == hierarchy_vor::cohort::TRUST_CEILING
+}
+
 // Compile-time non-emptiness assertions (REQ-12, REQ-13, this delegation's own
 // instruction): a future edit that empties either constant fails the BUILD,
 // not a later test run.
@@ -116,8 +129,9 @@ pub fn build_context<'a>(
         return Err(ContextRefusal::UnknownAgent);
     }
 
-    // Byte equality only (HB3-9): never ranked, parsed or ordered.
-    if cohort.surface().trust_ceiling() != hierarchy_vor::cohort::TRUST_CEILING {
+    // Byte equality only (HB3-9): never ranked, parsed or ordered. The
+    // comparison itself lives once in `trust_ceiling_matches` above.
+    if !trust_ceiling_matches(&cohort.surface()) {
         return Err(ContextRefusal::CeilingMismatch);
     }
 
