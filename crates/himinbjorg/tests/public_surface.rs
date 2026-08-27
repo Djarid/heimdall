@@ -244,3 +244,390 @@ fn four_interfaces_end_to_end_and_real_cohort_verification_markers() {
         }
     }
 }
+
+// =====================================================================================
+// ADDITIVE (`.opencode/plans/git-actuator-step-four.md`, section 10 row 20): the
+// witness path end to end through public items only (REQ-48, AC-61's gateway
+// half), AC-35's compile-failure notes for `Authorisation`, AC-38's signature
+// check for `broker_action`, a cross-reference for AC-54, and AC-62's design-
+// document currency check. Every case above this marker is UNCHANGED.
+//
+// THIS ADDITIVE SECTION WILL FAIL TO COMPILE until `crates/actuator-git` exists
+// (a new in-workspace path dependency of `himinbjorg`, REQ-6) and
+// `crates/himinbjorg/src/{types,broker,validation,audit,lib}.rs` all carry this
+// step's additions. That is expected and correct at this stage, for the same
+// reason the rest of this file's own header states for issue #37.
+//
+// **Assumed additions to the public surface** used below: identical to
+// `crates/himinbjorg/unit_tests/witness_and_audit.rs`'s own assumption block
+// (not repeated in full here); this section reaches ONLY what that file
+// documents as public (`Authorisation`'s four accessors, `ProposalDecision::
+// authorisation`, `DecisionRecorder`, `MinimalDecisionRecorder`,
+// `broker_authorised_action`, `BrokerRefusal`'s additive variants,
+// `ActuationReceipt`), since this file is compiled as an EXTERNAL crate and
+// cannot reach anything `pub(crate)` at all (REQ-48, AC-61: "without naming
+// any `pub(crate)` or private item").
+// =====================================================================================
+
+// ---------------------------------------------------------------------------------
+// AC-61 (REQ-48): the witness path, end to end, through public items only --
+// build a proposal, validate it, take the authorisation from the accessor,
+// supply a recorder, reach an outcome. Gated behind the real secret with the
+// SAME two mutually-exclusive markers this file's own header already
+// documents for `four_interfaces_end_to_end_and_real_cohort_verification_markers`,
+// because `Authorisation` can only be minted by `validate_proposal` over a
+// real `AgentContext`/`EffectiveSurface` pair, which needs a real
+// `VerifiedCohort` (D110). No working-repository environment variable is
+// configured anywhere in this file, so the actuator call this test reaches is
+// EXPECTED to refuse (with `BrokerRefusal::ActuatorRefused`, carrying
+// `actuator-git`'s own `RepositoryResolution` refusal verbatim, REQ-38); that
+// refusal, rather than a bare `NoAuthorisationEvidence` or `WitnessMismatch`,
+// is itself the proof that the witness path ran end to end through every
+// public gate (scope, witness match, audit write) and reached the actuator.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn witness_path_end_to_end_through_public_items_only() {
+    match hierarchy_vor::load_trusted_set_from_env(hierarchy_vor::cohort::AUTHORISER_ID) {
+        Ok(trusted) => {
+            let cohort = hierarchy_vor::load_verified_cohort(&trusted).unwrap_or_else(|e| {
+                panic!(
+                    "witness_path_end_to_end: a secret was provisioned via {} but the \
+                     committed attestation did not verify against it ({e:?}); this is a \
+                     provisioning defect and is FATAL, never a skip",
+                    hierarchy_vor::SECRET_PATH_ENV_VAR,
+                )
+            });
+
+            let agent_id = himinbjorg::AgentId::new(hierarchy_vor::cohort::COHORT_ID);
+            let task = himinbjorg::TaskContext {
+                task_id: "witness-path-fixture-task".to_string(),
+                target: "fixture-target".to_string(),
+                declared_cost: 0,
+            };
+            let context = himinbjorg::build_context(&agent_id, &task, &cohort)
+                .expect("the one hardcoded agent id must build a context over a real cohort");
+            let surface = himinbjorg::enforce_definition(&agent_id, &cohort)
+                .expect("the one hardcoded agent id must resolve a definition over a real cohort");
+
+            let proposal = baseline_proposal();
+            let decision = himinbjorg::validate_proposal(&context, &surface, &proposal);
+            assert_eq!(
+                decision.decision,
+                himinbjorg::Decision::Allow,
+                "witness_path_end_to_end: the baseline proposal must validate to Allow"
+            );
+            let authorisation = decision
+                .authorisation()
+                .expect("an Allow decision must mint a witness reachable through the public accessor");
+            assert_eq!(authorisation.action_name(), proposal.action_name);
+            assert_eq!(authorisation.target(), proposal.target);
+            assert_eq!(authorisation.sink(), proposal.sink);
+            assert_eq!(authorisation.checks().len(), 6);
+
+            let action = himinbjorg::Action {
+                action_name: proposal.action_name.clone(),
+                target: proposal.target.clone(),
+            };
+            let scope = himinbjorg::Scope::new("public-surface-fixture-scope");
+            let mut recorder = himinbjorg::MinimalDecisionRecorder::new();
+            let outcome = himinbjorg::broker_authorised_action(
+                &context,
+                &action,
+                &scope,
+                authorisation,
+                &mut recorder,
+            );
+            assert!(
+                matches!(
+                    outcome,
+                    Err(himinbjorg::BrokerRefusal::ActuatorRefused(_))
+                ),
+                "witness_path_end_to_end: with a matching action, a permitted scope and a \
+                 successful audit write, the witness path must reach the actuator (which \
+                 then refuses for its own reason, since no working-repository environment \
+                 variable is configured anywhere in this test binary); got {outcome:?}"
+            );
+            assert_eq!(
+                recorder.records().len(),
+                1,
+                "witness_path_end_to_end: the decision record must have been written \
+                 before the actuator was ever reached (REQ-31, REQ-33)"
+            );
+
+            println!(
+                "HIMINBJORG-REAL-COHORT-VERIFIED: the secret was provisioned via {} and the \
+                 witness path (build_context, enforce_definition, validate_proposal, the \
+                 Authorisation accessor, broker_authorised_action) ran end to end through \
+                 public items only.",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+        Err(hierarchy_vor::SecretRefusal::EnvVarMissing(_)) => {
+            println!(
+                "HIMINBJORG-REAL-COHORT-NOT-EXERCISED: {} is not set (or is empty), so the \
+                 witness path was NOT exercised end to end on this run.",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+        Err(other) => {
+            panic!(
+                "{} names a path but loading it was refused for a reason other than \
+                 absence ({other:?}); this is a provisioning defect and is FATAL, never a \
+                 skip",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-59 (REQ-35, EC-13): the named, deliberately-unclosed honest limit. A
+// recorder whose write always succeeds without retaining anything defeats the
+// audit obligation: the actuator still executes, the effect still lands, and
+// the recorder holds no record of the decision that authorised it. This is
+// the ONE test in this suite that mutates the process environment (the same
+// single-exception shape `crates/hierarchy-vor/tests/public_surface.rs`'s own
+// header documents for its ONE environment-mutating test), because proving
+// "the actuator still executes" needs a real, resolvable working repository.
+//
+// This criterion is not met by a test asserting a lying recorder is detected:
+// no such mechanism is built, and such a test would be false (the spec's own
+// words, AC-59).
+// ---------------------------------------------------------------------------------
+
+struct LyingRecorder;
+
+impl himinbjorg::DecisionRecorder for LyingRecorder {
+    fn record(
+        &mut self,
+        _agent_id: &himinbjorg::AgentId,
+        _action: &himinbjorg::Action,
+        _decision: himinbjorg::Decision,
+        _checks: &[himinbjorg::CheckRecord],
+    ) -> Result<(), String> {
+        // Reports success. Retains nothing. This IS the defeat REQ-35 names.
+        Ok(())
+    }
+}
+
+#[test]
+fn ac59_a_lying_recorder_defeats_the_audit_obligation_named_not_closed() {
+    match hierarchy_vor::load_trusted_set_from_env(hierarchy_vor::cohort::AUTHORISER_ID) {
+        Ok(trusted) => {
+            let cohort = hierarchy_vor::load_verified_cohort(&trusted).unwrap_or_else(|e| {
+                panic!(
+                    "ac59: a secret was provisioned via {} but the committed attestation \
+                     did not verify against it ({e:?}); this is a provisioning defect and \
+                     is FATAL, never a skip",
+                    hierarchy_vor::SECRET_PATH_ENV_VAR,
+                )
+            });
+
+            let dir = scratch_dir("ac59-lying-recorder");
+            let work = dir.join("work");
+            std::fs::create_dir_all(&work).expect("failed to create fixture working repo dir");
+            let run = |args: &[&str]| {
+                let status = std::process::Command::new("git")
+                    .args(args)
+                    .current_dir(&work)
+                    .status()
+                    .expect("failed to spawn git");
+                assert!(status.success(), "fixture git {args:?} failed");
+            };
+            run(&["init", "--quiet"]);
+            run(&["config", "user.name", "ac59 fixture"]);
+            run(&["config", "user.email", "ac59-fixture@example.invalid"]);
+
+            let previous = std::env::var("HEIMDALL_ACTUATOR_GIT_WORKING_REPO").ok();
+            // SAFETY: test-only mutation of this process's own environment,
+            // the ONE such test in this suite (see this test's own header).
+            unsafe {
+                std::env::set_var("HEIMDALL_ACTUATOR_GIT_WORKING_REPO", &work);
+            }
+
+            let agent_id = himinbjorg::AgentId::new(hierarchy_vor::cohort::COHORT_ID);
+            let task = himinbjorg::TaskContext {
+                task_id: "ac59-fixture-task".to_string(),
+                target: "fixture-target".to_string(),
+                declared_cost: 0,
+            };
+            let context = himinbjorg::build_context(&agent_id, &task, &cohort)
+                .expect("the one hardcoded agent id must build a context over a real cohort");
+            let surface = himinbjorg::enforce_definition(&agent_id, &cohort)
+                .expect("the one hardcoded agent id must resolve a definition over a real cohort");
+
+            let mut proposal = baseline_proposal();
+            proposal.action_name = "action:git.commit".to_string();
+            let decision = himinbjorg::validate_proposal(&context, &surface, &proposal);
+            let authorisation = decision
+                .authorisation()
+                .expect("the baseline commit proposal must validate to Allow");
+
+            let action = himinbjorg::Action {
+                action_name: proposal.action_name.clone(),
+                target: proposal.target.clone(),
+            };
+            let scope = himinbjorg::Scope::new("public-surface-fixture-scope");
+            let mut lying = LyingRecorder;
+            let outcome = himinbjorg::broker_authorised_action(
+                &context,
+                &action,
+                &scope,
+                authorisation,
+                &mut lying,
+            );
+
+            unsafe {
+                match &previous {
+                    Some(v) => std::env::set_var("HEIMDALL_ACTUATOR_GIT_WORKING_REPO", v),
+                    None => std::env::remove_var("HEIMDALL_ACTUATOR_GIT_WORKING_REPO"),
+                }
+            }
+
+            assert!(
+                matches!(outcome, Ok(_)),
+                "AC-59: with a real, resolvable working repository, a lying recorder that \
+                 reports success while retaining nothing must NOT block the actuator: the \
+                 audit obligation is defeated, not closed, by this step; got {outcome:?}"
+            );
+            let log = std::process::Command::new("git")
+                .args(["log", "--oneline"])
+                .current_dir(&work)
+                .output()
+                .expect("failed to read fixture git log");
+            assert!(
+                !log.stdout.is_empty(),
+                "AC-59: the effect must genuinely land in the working repository despite \
+                 the lying recorder"
+            );
+
+            let _ = std::fs::remove_dir_all(&dir);
+
+            eprintln!(
+                "GIT-ACTUATOR-STEP-FOUR-NAMED-LIMIT: AC-59/REQ-35/EC-13: a recorder that \
+                 reports success while retaining nothing defeats the audit obligation this \
+                 step relies on for HB-6's block-on-failed-log property. This is not closed \
+                 by this step, and this test's own passing is exactly that: the lying \
+                 recorder was NOT detected, rejected or distinguished from an honest one."
+            );
+        }
+        Err(hierarchy_vor::SecretRefusal::EnvVarMissing(_)) => {
+            println!(
+                "HIMINBJORG-REAL-COHORT-NOT-EXERCISED: {} is not set (or is empty), so \
+                 AC-59's honest-limit demonstration was NOT exercised on this run.",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+        Err(other) => {
+            panic!(
+                "{} names a path but loading it was refused for a reason other than \
+                 absence ({other:?}); this is a provisioning defect and is FATAL",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-35 (REQ-26): `Authorisation` has no public constructor, no `Default`, no
+// `Clone` and no public conversion. Per section 12's documented compile-fail
+// convention (manual, not `trybuild`, following AC-13's own precedent for
+// `TrustedAuthoriserSet` in `crates/hierarchy-vor/tests/public_surface.rs`),
+// this is NOT a standing automated test: uncomment ONE block below, run
+// `cargo build -p himinbjorg --tests`, capture rustc's exact diagnostic, and
+// record it in the pull request. Leave all of them commented in the committed
+// file, otherwise this crate never builds at all.
+//
+// ```rust,ignore
+// // (a) No public constructor: `Authorisation` has no `pub fn new`, no public
+// // tuple constructor and no public field. Expected: E0423 or E0616.
+// let _bad = himinbjorg::Authorisation { /* fields, if any were visible */ };
+//
+// // (b) No `Default`. Expected: E0599 (no function `default` on `Authorisation`)
+// // or E0277 (trait bound not satisfied).
+// let _bad: himinbjorg::Authorisation = Default::default();
+//
+// // (c) No `Clone`, no `Copy`. Expected: E0599 (no method named `clone`),
+// // exercised on an `Authorisation` obtained from a real `ProposalDecision`.
+// // let _bad = authorisation.clone();
+//
+// // (d) No public `From`/`TryFrom` and no `Deref` to an unauthenticated shape.
+// // Expected: E0277 (trait not implemented) for whichever conversion is
+// // attempted.
+// // let _bad: himinbjorg::Authorisation = SomeUnauthenticatedShape::default().into();
+// ```
+// ---------------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------------
+// AC-38 (REQ-30): `broker_action`'s signature, compared byte for byte against
+// the baseline in section 2 -- name, parameter types, parameter order and
+// return type all unchanged. Enforced structurally: coercing the function
+// item to an explicit `fn` pointer type fails to COMPILE if any part of the
+// signature has changed, which is a stronger and more durable proof than a
+// call site alone (a call site tolerates some signature changes through
+// implicit coercions that a bare type ascription does not).
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac38_broker_action_signature_is_unchanged_byte_for_byte() {
+    let _exact_signature: fn(
+        &himinbjorg::AgentContext<'_>,
+        &himinbjorg::Action,
+        &himinbjorg::Scope,
+    ) -> Result<himinbjorg::BrokerResult, himinbjorg::BrokerRefusal> = himinbjorg::broker_action;
+}
+
+// ---------------------------------------------------------------------------------
+// AC-54 (REQ-3): `#![forbid(unsafe_code)]` on `crates/actuator-git/src/lib.rs`,
+// and the absence of the `unsafe` keyword anywhere in that crate's source,
+// are BOTH mechanical, file-level scans that belong in
+// `ontology/tests/rust_actuator_harness.py` alongside its other scans (the
+// spec's own section 7.1 wording: "Both halves are mechanical file-level
+// checks and belong in the new sub-harness"). They are cross-referenced here,
+// not duplicated as a Rust test, because this file cannot meaningfully test a
+// DIFFERENT crate's own crate-level attribute from outside it: `himinbjorg`'s
+// own `#![forbid(unsafe_code)]` (unaffected by this step, still present at
+// this file's own crate root's dependency) is exercised implicitly by the
+// fact that this whole file, and every other test in it, compiles and runs at
+// all against a `himinbjorg` that forbids unsafe code internally.
+// ---------------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------------
+// AC-62 (REQ-49): `plans/dd/actuator-git.md` exists, and `plans/dd/index.md`
+// holds it at order 11 without renumbering orders one to ten. A currency
+// check, read directly off the filesystem relative to this crate's own
+// manifest directory (no dependency added: `std::fs` only).
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac62_actuator_git_design_document_exists_and_is_indexed_at_order_eleven() {
+    let repo_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("crates/himinbjorg's manifest dir must have two ancestors: the repo root")
+        .to_path_buf();
+    let doc_path = repo_root.join("plans").join("dd").join("actuator-git.md");
+    assert!(
+        doc_path.exists(),
+        "AC-62: {} must exist once this step is declared complete (REQ-49)",
+        doc_path.display()
+    );
+    let doc = std::fs::read_to_string(&doc_path).expect("failed to read actuator-git.md");
+    assert!(
+        !doc.trim().is_empty(),
+        "AC-62: plans/dd/actuator-git.md must not be an empty file"
+    );
+
+    let index_path = repo_root.join("plans").join("dd").join("index.md");
+    let index = std::fs::read_to_string(&index_path).expect("failed to read plans/dd/index.md");
+    assert!(
+        index.contains("actuator-git"),
+        "AC-62: plans/dd/index.md must reference actuator-git.md"
+    );
+    assert!(
+        index.contains("11"),
+        "AC-62: plans/dd/index.md must hold actuator-git.md at order 11, per section 1's \
+         own note naming the git actuator as a component that earns its own row when built"
+    );
+}

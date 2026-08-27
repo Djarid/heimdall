@@ -75,9 +75,16 @@ TESTS_DIR = CRATE_DIR / "tests"
 LIB_RS = SRC_DIR / "lib.rs"
 TYPES_RS = SRC_DIR / "types.rs"
 
-# HB3-3: the exact two in-workspace path dependencies this crate is permitted, and no
-# other entry of any kind (REQ-3, REQ-30).
-PERMITTED_PATH_DEPENDENCIES: frozenset[str] = frozenset({"boundary-gjoll", "hierarchy-vor"})
+# HB3-3, widened by `.opencode/plans/git-actuator-step-four.md` REQ-6 (AC-3, AC-51):
+# the exact THREE in-workspace path dependencies this crate is permitted, and no
+# other entry of any kind (REQ-3, REQ-30). Widening this set from two names to three
+# is itself AC-51's own claim; `rust_gate_harness.check_dependency_posture`'s default
+# (no allowlist argument, used by `boundary-gjoll` and `hierarchy-vor` directly) is
+# UNCHANGED by this widening, so those two crates keep their strict, zero-dependency
+# behaviour byte for byte (AC-51, section 9.2 of that spec).
+PERMITTED_PATH_DEPENDENCIES: frozenset[str] = frozenset(
+    {"boundary-gjoll", "hierarchy-vor", "actuator-git"}
+)
 
 # REQ-8: the AgentContext field set, fixed and enumerable, and the four public
 # interfaces plus the refusal/decision types their signatures name (section 6.1 and
@@ -450,14 +457,49 @@ def check_no_queue_or_escalate_construction(src_dir: Path = SRC_DIR) -> SurfaceC
     )
 
 
+_STD_PROCESS_RE = re.compile(r"std::process\b")
+
+
+def check_no_std_process(src_dir: Path = SRC_DIR) -> SurfaceCheckResult:
+    """AC-4, added by `.opencode/plans/git-actuator-step-four.md` REQ-7: no
+    `.rs` file under `crates/himinbjorg/src/` references `std::process`.
+    `crates/actuator-git/` is now the only crate in the workspace permitted to
+    touch it (REQ-7); this check is `himinbjorg`'s own half of that claim.
+    Comments are stripped first, mirroring
+    `check_no_queue_or_escalate_construction`'s own discipline, so a doc
+    comment mentioning `std::process` in prose is never mistaken for a real
+    reference."""
+    files = _load_rust_files(src_dir)
+    if not files:
+        return SurfaceCheckResult(ok=False, detail=f"no .rs files found under {src_dir}")
+    violations: list[str] = []
+    for fname, raw_src in files.items():
+        src = _strip_line_comments(raw_src)
+        for m in _STD_PROCESS_RE.finditer(src):
+            lineno = src.count("\n", 0, m.start()) + 1
+            violations.append(
+                f"{fname}:{lineno}: found `std::process` outside a comment under src/ "
+                f"(REQ-7: actuator-git is now the only crate in the workspace permitted "
+                f"to touch std::process)"
+            )
+    if violations:
+        return SurfaceCheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
+    return SurfaceCheckResult(
+        ok=True,
+        detail="std::process appears nowhere under crates/himinbjorg/src/ (AC-4, REQ-7).",
+    )
+
+
 def check_public_surface() -> SurfaceCheckResult:
-    """Runs all three public-surface checks (REQ-27 step 3) and aggregates."""
+    """Runs all four public-surface checks (REQ-27 step 3, widened by AC-4)
+    and aggregates."""
     violations: list[str] = []
     details: list[str] = []
     for result in (
         check_agent_context_fields(),
         check_public_reexports(),
         check_no_queue_or_escalate_construction(),
+        check_no_std_process(),
     ):
         if not result.ok:
             violations += result.violations or [result.detail]
@@ -624,6 +666,28 @@ def control_check() -> list[str]:
                 "only mention of Decision::Queue"
             )
 
+        # AC-4 control: a planted std::process reference must be caught.
+        bad_process_dir = Path(d) / "src_process"
+        bad_process_dir.mkdir()
+        (bad_process_dir / "leaky.rs").write_text(
+            "fn f() {\n    let _ = std::process::Command::new(\"git\");\n}\n"
+        )
+        process_result = check_no_std_process(bad_process_dir)
+        if process_result.ok:
+            failures.append("AC-4 control did NOT catch a planted std::process reference")
+
+        # Control the control: a doc-comment-only mention must not be flagged.
+        clean_process_dir = Path(d) / "src_process_clean"
+        clean_process_dir.mkdir()
+        (clean_process_dir / "leaky.rs").write_text(
+            "// this module never touches std::process (REQ-7)\nfn f() {}\n"
+        )
+        clean_process_result = check_no_std_process(clean_process_dir)
+        if not clean_process_result.ok:
+            failures.append(
+                "AC-4 control WRONGLY flagged a doc-comment-only mention of std::process"
+            )
+
     return failures
 
 
@@ -642,8 +706,9 @@ def main() -> int:
         return 1
     print("  [PASS] negative controls: a disallowed dependency, a stray test construct "
           "in src/, a raw-content-shaped AgentContext field, a missing interface "
-          "re-export and a planted Decision::Queue construction are all caught, and "
-          "none of their clean counterparts is wrongly flagged.")
+          "re-export, a planted Decision::Queue construction and a planted std::process "
+          "reference (AC-4) are all caught, and none of their clean counterparts is "
+          "wrongly flagged.")
     print()
 
     dep_result = check_dependency_posture()
