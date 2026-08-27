@@ -79,7 +79,9 @@ scan scope and arms nothing.
 from __future__ import annotations
 
 import re
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -523,8 +525,109 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
     return ok
 
 
+# ---------------------------------------------------------------------------------
+# REQ-43/AC-47 (build-order step five, process-engine-step-five-spec.md): a
+# forward-looking negative-control extension, anticipating PE-6's own
+# widening of this detector with an allowlist for `broker_authorised_action`.
+# Proves, against a SYNTHETIC temporary tree (never this repository's own
+# working tree), that the exactly-one-required allowlist polarity would
+# still bite in both directions after that widening lands:
+#
+#   1. A synthetic UNLISTED non-test call site of `actuator_git::execute`
+#      appearing alongside the genuine allowlisted one must still be
+#      reported as critical.
+#   2. The allowlisted call site synthetically DISAPPEARING (the count
+#      falling to zero) must still be reported as critical.
+#
+# `broker_authorised_action`'s own group carries NO allowlist mechanism yet
+# (REQ-40): every non-test call site is unconditionally fatal today, which
+# this also proves against a synthetic tree, so the baseline PE-6/REQ-38
+# will widen deliberately (one named entry) is itself demonstrated to be
+# real and not vacuous.
+# ---------------------------------------------------------------------------------
+
+
+def _write_synthetic_tree(files: dict[str, str]) -> Path:
+    """Builds a temporary directory tree from a `{relative_path: source}`
+    mapping and returns its root. Caller must remove it (see
+    `shutil.rmtree`); never touches this repository's own working tree."""
+    root = Path(tempfile.mkdtemp(prefix="actuator-invocation-boundary-synthetic-"))
+    for rel, src in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src, encoding="utf-8")
+    return root
+
+
+def synthetic_widening_control() -> list[str]:
+    failures: list[str] = []
+
+    allowlisted_broker_rs = (
+        "pub fn broker_authorised_action() {\n"
+        "    let _ = actuator_git::execute(&op);\n"
+        "}\n"
+    )
+
+    # Direction 1: an extra, UNLISTED non-test call site of
+    # actuator_git::execute alongside the genuine allowlisted one.
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/broker.rs": allowlisted_broker_rs,
+        "crates/process-engine/src/sequence.rs": (
+            "fn run() {\n    let _ = actuator_git::execute(&op2);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "actuator_git::execute alongside the allowlisted one was not reported "
+                "as critical (this is the exactly-one-required polarity REQ-38/AC-47 "
+                "depend on staying fatal after PE-6 widens this detector)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Direction 2: the allowlisted call site DISAPPEARS (the file exists but
+    # no longer calls execute at all; the count falls to zero).
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/broker.rs": "pub fn broker_authorised_action() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: the allowlisted call site of "
+                "actuator_git::execute vanishing (count falls to zero) was not reported "
+                "as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # broker_authorised_action has no allowlist mechanism yet (REQ-40): any
+    # non-test call site is unconditionally fatal today. Proves that
+    # baseline holds on a synthetic tree, anticipating PE-6/REQ-38's own
+    # deliberate widening (one named entry) rather than a silent one.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": (
+            "fn run() {\n"
+            "    let _ = himinbjorg::broker_authorised_action(&c, &a, &s, &w, &mut r);\n"
+            "}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a non-test call site of "
+                "broker_authorised_action on a synthetic tree was not reported as "
+                "critical (no allowlist mechanism exists for this symbol today, "
+                "REQ-40; every non-test call site must be fatal until REQ-38 widens "
+                "this deliberately)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    return failures
+
+
 def main() -> int:
     control_failures = control_check()
+    control_failures += synthetic_widening_control()
     if control_failures:
         print("ACTUATOR INVOCATION BOUNDARY negative control FAILED:")
         for cf in control_failures:

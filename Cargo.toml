@@ -5,6 +5,7 @@ members = [
     "crates/hierarchy-vor",
     "crates/himinbjorg",
     "crates/actuator-git",
+    "crates/process-engine",
 ]
 
 [workspace.package]

@@ -99,7 +99,9 @@ invariant 3.1's authorisation-path scan scope and arms nothing.
 from __future__ import annotations
 
 import re
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -703,8 +705,121 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
     return ok
 
 
+# ---------------------------------------------------------------------------------
+# REQ-43/AC-47 (build-order step five, process-engine-step-five-spec.md): a
+# forward-looking negative-control extension, anticipating PE-6's own
+# widening of group one with an allowlist for the engine's non-test call
+# sites of Himinbjörg's own interfaces. Proves, against SYNTHETIC temporary
+# trees (never this repository's own working tree), that:
+#
+#   1. Group two's (`consequentiality::evaluate`) existing exactly-one-
+#      required allowlist polarity still bites in both directions: a second,
+#      unlisted non-test call site alongside the genuine allowlisted one, and
+#      the allowlisted site disappearing (count falls to zero).
+#   2. Group one (the public interfaces) and group three
+#      (`load_verified_cohort`, scoped to `crates/himinbjorg/`) -- both
+#      carrying NO allowlist mechanism yet -- still report any non-test call
+#      site as critical today, which is the baseline PE-6/REQ-38, REQ-39 and
+#      REQ-40 will widen deliberately (named entries) rather than silently.
+# ---------------------------------------------------------------------------------
+
+
+def _write_synthetic_tree(files: dict[str, str]) -> Path:
+    """Builds a temporary directory tree from a `{relative_path: source}`
+    mapping and returns its root. Caller must remove it; never touches this
+    repository's own working tree."""
+    root = Path(tempfile.mkdtemp(prefix="himinbjorg-invocation-boundary-synthetic-"))
+    for rel, src in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src, encoding="utf-8")
+    return root
+
+
+def synthetic_widening_control() -> list[str]:
+    failures: list[str] = []
+
+    allowlisted_gate_bridge_rs = (
+        "fn f() {\n"
+        "    let _ = boundary_gjoll::consequentiality::evaluate(&p, &c, &r);\n"
+        "}\n"
+    )
+
+    # Group 2, direction 1: an extra, UNLISTED non-test call site of
+    # consequentiality::evaluate alongside the genuine allowlisted one.
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/gate_bridge.rs": allowlisted_gate_bridge_rs,
+        "crates/himinbjorg/src/other_module.rs": (
+            "fn g() {\n    let _ = boundary_gjoll::consequentiality::evaluate(&p2, &c2, &r2);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "consequentiality::evaluate alongside the allowlisted one was not "
+                "reported as critical (EC-18's own exactly-one-required polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Group 2, direction 2: the allowlisted call site DISAPPEARS.
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/gate_bridge.rs": "fn f() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: the allowlisted call site of "
+                "consequentiality::evaluate vanishing (count falls to zero) was not "
+                "reported as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Group 1: the public interfaces, no allowlist mechanism yet (REQ-28,
+    # widened later by REQ-39/PE-6). Any non-test call site is
+    # unconditionally fatal today; proves that on a synthetic tree.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": (
+            "fn run() {\n"
+            "    let _ = himinbjorg::validate_proposal(&c, &s, &p);\n"
+            "}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a non-test call site of one of Himinbjörg's "
+                "own public interfaces on a synthetic tree was not reported as critical "
+                "(group one carries no allowlist mechanism today, REQ-39 widens this "
+                "deliberately)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Group 3: load_verified_cohort, scoped to crates/himinbjorg/, no
+    # allowlist mechanism (REQ-41 keeps it that way even after PE-6). Any
+    # non-test call site INSIDE that directory is unconditionally fatal
+    # today; proves that on a synthetic tree.
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/context.rs": (
+            "fn f() {\n    let _ = hierarchy_vor::load_verified_cohort(&t);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a non-test call site of load_verified_cohort "
+                "inside crates/himinbjorg/ on a synthetic tree was not reported as "
+                "critical (group three carries no allowlist mechanism and REQ-41 keeps "
+                "it that way)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    return failures
+
+
 def main() -> int:
     control_failures = control_check()
+    control_failures += synthetic_widening_control()
     if control_failures:
         print("HIMINBJORG INVOCATION BOUNDARY negative control FAILED:")
         for cf in control_failures:

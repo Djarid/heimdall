@@ -60,6 +60,7 @@ anticipate.
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -396,8 +397,77 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------------
+# REQ-43/AC-47 (build-order step five, process-engine-step-five-spec.md): a
+# forward-looking negative-control extension, anticipating REQ-40's own
+# widening of this detector with an allowlist naming
+# `crates/process-engine/src/main.rs` as the one permitted non-test call
+# site of `load_verified_cohort`. This detector carries NO allowlist
+# mechanism at all today (REQ-45's own closing sentence), so the meaningful
+# thing to prove ahead of that widening is that a synthetic non-test call
+# site -- including one at exactly the path the future allowlist will name
+# -- is still reported as critical now, against a SYNTHETIC temporary tree
+# (never this repository's own working tree). "The allowlisted site
+# disappearing" has no meaning yet, because no allowlist exists; that half
+# of REQ-43 becomes exercisable only once REQ-40 lands, and is named here as
+# a limit rather than faked.
+# ---------------------------------------------------------------------------------
+
+
+def _write_synthetic_tree(files: dict[str, str]) -> Path:
+    """Builds a temporary directory tree from a `{relative_path: source}`
+    mapping and returns its root. Caller must remove it; never touches this
+    repository's own working tree."""
+    root = Path(tempfile.mkdtemp(prefix="vor-invocation-boundary-synthetic-"))
+    for rel, src in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src, encoding="utf-8")
+    return root
+
+
+def synthetic_widening_control() -> list[str]:
+    failures: list[str] = []
+
+    # A non-test call site at exactly the path REQ-40's own future allowlist
+    # will name. Today, with no allowlist mechanism at all, this must still
+    # be reported as a critical non-test call site.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/main.rs": (
+            "fn main() {\n    let c = hierarchy_vor::load_verified_cohort(&t);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a non-test call site of load_verified_cohort "
+                "at crates/process-engine/src/main.rs on a synthetic tree was not "
+                "reported as critical (no allowlist mechanism exists for this detector "
+                "today, REQ-45; REQ-40 widens this deliberately with exactly one named "
+                "entry at this exact path, never silently)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Sanity companion: a synthetic tree with no cohort mention at all must
+    # still report a clean boundary, so the detector is not simply always
+    # failing.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/main.rs": "fn main() {}\n",
+    })
+    try:
+        if not print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a synthetic tree with no mention of any "
+                "cohort symbol was wrongly reported as having a non-test call site")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    return failures
+
+
 def main() -> int:
     control_failures = control_check()
+    control_failures += synthetic_widening_control()
     if control_failures:
         print("VOR INVOCATION BOUNDARY negative control FAILED:")
         for cf in control_failures:
