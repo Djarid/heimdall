@@ -8,16 +8,18 @@ Run from the repo root:
     python -m ontology.tests.rust_gateway_harness
 
 What this proves, and what it does not. A green result here means the crate at
-`crates/himinbjorg/` carries no dependency beyond its two permitted in-workspace path
-dependencies (`boundary-gjoll`, `hierarchy-vor`), keeps every test construct out of
-`src/`, re-exports exactly its four public interfaces plus their refusal and decision
+`crates/himinbjorg/` carries no dependency beyond its permitted in-workspace path
+dependencies (widened by `.opencode/plans/git-actuator-step-four.md` REQ-6 from two
+names to three: `boundary-gjoll`, `hierarchy-vor`, `actuator-git`), keeps every test
+construct out of `src/`, re-exports exactly its public interfaces (the original four
+plus step four's fifth, `broker_authorised_action`) plus their refusal and decision
 types with an `AgentContext` carrying no raw-content-shaped field, never constructs
 `Decision::Queue` or `Decision::Escalate` outside a test path, and passes its own Rust
 suite (or loudly skips that one step alone, if no toolchain is present). It says
 NOTHING about invariant 3.6's live-invocation status: whether the gate this crate calls
 is itself called by anything outside this crate's own tests is a DIFFERENT and
-separately governed claim, reported live by `ontology.tests.himinbjorg_invocation_harness`,
-not by this module.
+separately governed claim, reported live by `ontology.tests.himinbjorg_invocation_harness`
+and `ontology.tests.actuator_invocation_harness`, not by this module.
 
 Four checks, run in this fixed order (REQ-27), the first three fatal regardless of
 whether a Rust toolchain is even present, because dependency posture, test isolation and
@@ -35,11 +37,11 @@ toolchain:
      file name appears under both `src/` and either `unit_tests/` or `tests/`.
   3. Public-surface checks. `AgentContext`'s field set matches the enumerated names
      (REQ-8) and contains no raw-content-shaped field (`content`, `payload`, `raw`,
-     `body`, `text`, `window`); the crate re-exports exactly the four public
-     interfaces plus their refusal and decision types (`ContextRefusal`,
-     `DefinitionRefusal`, `BrokerRefusal`, `ProposalDecision`); `Decision::Queue` and
-     `Decision::Escalate` appear in no construction position outside a test path
-     (REQ-21).
+     `body`, `text`, `window`); the crate re-exports exactly its public interfaces
+     (the original four plus step four's `broker_authorised_action`) plus their
+     refusal and decision types (`ContextRefusal`, `DefinitionRefusal`,
+     `BrokerRefusal`, `ProposalDecision`); `Decision::Queue` and `Decision::Escalate`
+     appear in no construction position outside a test path (REQ-21).
   4. The Rust suite, invoked via the REUSED `toolchain_present` and `run_rust_suite`
      helpers (REQ-30), scoped to this crate's own manifest. Skip discipline follows
      `memgraph_integration_harness.py`'s precedent (also `rust_gate_harness.py`'s own):
@@ -106,7 +108,22 @@ RAW_CONTENT_TRIGGER_WORDS: frozenset[str] = frozenset(
     {"content", "payload", "raw", "body", "text", "window"}
 )
 EXPECTED_INTERFACE_FUNCTIONS: frozenset[str] = frozenset(
-    {"build_context", "enforce_definition", "validate_proposal", "broker_action"}
+    {
+        "build_context",
+        "enforce_definition",
+        "validate_proposal",
+        "broker_action",
+        # Widened by `.opencode/plans/git-actuator-step-four.md` (REQ-31,
+        # section 5.2, section 10 file 18): the witness-carrying entry
+        # point is a genuine fifth public interface, re-exported at the
+        # crate root alongside the original four. Its own zero-non-test-
+        # caller claim (REQ-40, AC-47) is reported live by
+        # `ontology.tests.himinbjorg_invocation_harness` and
+        # `ontology.tests.actuator_invocation_harness`, not by this
+        # module: this check only confirms the crate's public surface is
+        # sufficient, exactly as it already does for the original four.
+        "broker_authorised_action",
+    }
 )
 EXPECTED_REFUSAL_DECISION_TYPES: frozenset[str] = frozenset(
     {"ContextRefusal", "DefinitionRefusal", "BrokerRefusal", "ProposalDecision"}
@@ -376,11 +393,12 @@ def _reexported_names(lib_src: str) -> set[str]:
 
 
 def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
-    """REQ-27 step 3 item 2: the crate re-exports exactly the four public
+    """REQ-27 step 3 item 2: the crate re-exports exactly its public
     interfaces (`build_context`, `enforce_definition`, `validate_proposal`,
-    `broker_action`), no more and no fewer, plus their refusal and decision
-    types (`ContextRefusal`, `DefinitionRefusal`, `BrokerRefusal`,
-    `ProposalDecision`)."""
+    `broker_action`, and, widened by `.opencode/plans/git-actuator-step-four.md`
+    REQ-31/section 5.2, `broker_authorised_action`), no more and no fewer,
+    plus their refusal and decision types (`ContextRefusal`,
+    `DefinitionRefusal`, `BrokerRefusal`, `ProposalDecision`)."""
     if not lib_rs_path.exists():
         return SurfaceCheckResult(ok=False, detail=f"{lib_rs_path} does not exist")
     src = lib_rs_path.read_text(encoding="utf-8")
@@ -392,7 +410,8 @@ def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
         missing = EXPECTED_INTERFACE_FUNCTIONS - functions_present
         violations.append(
             f"missing re-exported interface function(s): {sorted(missing)} (REQ-27 "
-            f"expects the crate to re-export exactly the four public interfaces)"
+            f"expects the crate to re-export exactly its public interfaces, "
+            f"{sorted(EXPECTED_INTERFACE_FUNCTIONS)})"
         )
     unexpected_function_like = {
         n for n in reexported
@@ -402,8 +421,8 @@ def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
     if unexpected_function_like:
         violations.append(
             f"unexpected additional function-shaped re-export(s): "
-            f"{sorted(unexpected_function_like)} (REQ-27 expects exactly the four "
-            f"named interfaces, no more)"
+            f"{sorted(unexpected_function_like)} (REQ-27 expects exactly the named "
+            f"interfaces, {sorted(EXPECTED_INTERFACE_FUNCTIONS)}, no more)"
         )
 
     missing_types = EXPECTED_REFUSAL_DECISION_TYPES - reexported

@@ -370,24 +370,57 @@ def check_operation_enum_has_exactly_two_variants(types_rs_path: Path = TYPES_RS
     return SurfaceCheckResult(ok=True, detail="GitOperation declares exactly two variants.")
 
 
+_CONST_ARRAY_RE_TEMPLATE = r"const\s+{name}\s*:[^=]*=\s*&?\["
+
+
+def _const_array_body(src: str, const_name: str) -> "str | None":
+    """The body text of a `const <const_name>: ... = &[...];` array literal,
+    found by naive bracket-depth matching from the first `[` after `=` to its
+    matching `]`, mirroring `_enum_variant_count`'s brace-matching technique
+    above (this file's own established discipline for isolating a single
+    item's body rather than searching the whole file). Scoping to this body
+    is what lets `check_permitted_target_allowlist` below tell
+    `PERMITTED_TARGETS`'s own entries apart from an unrelated, legitimate
+    defence-in-depth arm (REQ-16's `PROTECTED_REFS`) that names the same
+    forbidden strings elsewhere in this same file."""
+    m = re.search(_CONST_ARRAY_RE_TEMPLATE.format(name=re.escape(const_name)), src)
+    if not m:
+        return None
+    depth = 1
+    i = m.end()
+    start = i
+    while i < len(src) and depth > 0:
+        if src[i] == "[":
+            depth += 1
+        elif src[i] == "]":
+            depth -= 1
+        i += 1
+    return src[start : i - 1]
+
+
 def check_permitted_target_allowlist(targets_rs_path: Path = TARGETS_RS) -> SurfaceCheckResult:
     """REQ-14, REQ-15: the permitted-target allowlist is non-empty and
     excludes `main` and `master`, checked textually against targets.rs's own
     source (a mechanical proxy: this cannot execute the compile-time assertion
     itself, which is `cargo build`'s own job; it looks for the literal
     forbidden ref names appearing as allowlist entries, which is a distinct,
-    complementary signal)."""
+    complementary signal). The absence check is scoped to `PERMITTED_TARGETS`'s
+    own body only (via `_const_array_body`), never to the whole file: REQ-16's
+    `PROTECTED_REFS` defence-in-depth arm legitimately names `main` and
+    `master` elsewhere in this same file, and that is not a REQ-15
+    violation."""
     if not targets_rs_path.exists():
         return SurfaceCheckResult(ok=False, detail=f"{targets_rs_path} does not exist")
     src = _strip_line_comments(targets_rs_path.read_text(encoding="utf-8"))
+    allowlist_body = _const_array_body(src, "PERMITTED_TARGETS")
+    if allowlist_body is None:
+        return SurfaceCheckResult(ok=False, detail="could not find PERMITTED_TARGETS in targets.rs")
     violations: list[str] = []
     for protected in sorted(PROTECTED_REF_NAMES):
-        if re.search(rf'"{protected}"', src):
+        if re.search(rf'"{protected}"', allowlist_body):
             violations.append(
-                f"targets.rs contains the literal string {protected!r}: REQ-15 requires "
-                f"main and master to be ABSENT from the permitted-target allowlist, and "
-                f"their mere appearance anywhere in this file (even inside the defence-"
-                f"in-depth arm) is worth a human's attention to confirm it is not the "
+                f"PERMITTED_TARGETS contains the literal string {protected!r}: REQ-15 "
+                f"requires main and master to be ABSENT from the permitted-target "
                 f"allowlist itself"
             )
     if not re.search(r"assert!\s*\(", src):
@@ -399,8 +432,8 @@ def check_permitted_target_allowlist(targets_rs_path: Path = TARGETS_RS) -> Surf
         return SurfaceCheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
     return SurfaceCheckResult(
         ok=True,
-        detail="targets.rs contains a compile-time assertion and no literal 'main'/'master' "
-               "string outside a comment.",
+        detail="targets.rs contains a compile-time assertion and PERMITTED_TARGETS itself "
+               "contains no literal 'main'/'master' string.",
     )
 
 
