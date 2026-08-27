@@ -52,6 +52,7 @@ The Detailed Design is split by component, one document each, so a document stay
 | 8 | `gjoll.md` | Gjöll value integrity | 3 | The sink-declaration schema (the unattested root) and the gates |
 | 9 | `gjallarhorn.md` | Gjallarhorn alerting | 3 | Containment decoupled from alerting; the protected channel |
 | 10 | `vor.md` | Vör hierarchy-plane cohort attestation | 3 | Build-order step two of `plans/synthesis-bootstrap.md` (D108): one hardcoded, attested cohort, so step three (Himinbjörg's minimal slice) has something concrete to bind to |
+| 11 | `actuator-git.md` | The git actuator | 3 | Build-order step four of `plans/synthesis-bootstrap.md` (D108): the actuator that fills Himinbjörg's one actuator slot, shelling out to the system `git` binary for exactly commit and push, so the first real, gated, executed action in this project's history becomes possible |
 
 Two components carry the pre-mortem's top risks and get the deepest treatment: Himinbjörg (`himinbjorg.md`, the largest unbuilt piece) and the Gjöll sink-declaration schema (`gjoll.md`, named "the root" in `ADVERSARIAL_REVIEW.md` 5.1).
 

@@ -143,17 +143,22 @@ Himinbjörg reads Mímisbrunnr and does not own it. The credential store and the
 
 ## 10. Build delta from today
 
-D111 (build-order step three of `plans/synthesis-bootstrap.md`, D108) delivered the first five
-of the six bullets below at minimal fidelity in `crates/himinbjorg/`, not at Phase-3
-implementation fidelity; the sixth remains wholly outstanding. This section now records which
-is which, rather than treating the whole list as unbuilt.
+D111 (build-order step three of `plans/synthesis-bootstrap.md`, D108) delivered five of six
+items at minimal fidelity in `crates/himinbjorg/`, not at Phase-3 implementation fidelity, and
+left the sixth, credential brokering, and HB-6's write-before-fire obligation with it, wholly
+outstanding because nothing could execute yet. D112 (build-order step four) now delivers both,
+also at minimal fidelity, by filling `broker_action`'s one actuator slot: a new crate,
+`crates/actuator-git/` (`plans/dd/actuator-git.md`), and a new, witness-carrying sibling entry
+point, `broker_authorised_action`. This section records which item moved and which did not,
+rather than treating either list as static.
 
 **Delivered at minimal fidelity:**
 
 - **The gateway process itself, as the sole owner of the control channel.** Delivered as a
   library crate with a real public surface (`build_context`, `enforce_definition`,
-  `validate_proposal`, `broker_action`), not yet a running process; nothing calls the crate's
-  own interfaces outside its tests today (D111, `ontology/tests/himinbjorg_invocation_harness.py`),
+  `validate_proposal`, `broker_action`, and, since D112, `broker_authorised_action`), not yet a
+  running process; nothing calls any of the crate's own interfaces outside its tests today
+  (`ontology/tests/himinbjorg_invocation_harness.py`, `ontology/tests/actuator_invocation_harness.py`),
   because the process engine that would own the control channel at runtime is build-order step
   five.
 - **Context construction (the `build_context` interface).** Delivered for exactly one hardcoded
@@ -166,37 +171,76 @@ is which, rather than treating the whole list as unbuilt.
   `permitted_actions`, and `trust_ceiling` is checked by byte equality only, never ranked or
   clamped (HB3-9, D97's open question left open). Deny-by-default holds (an action absent from
   the intersection cannot pass check one), but the ten control groups themselves are not built.
-- **The six-check proposal-validation pipeline, with the Gjöll gate wired into check 5.**
-  Delivered and real, the load-bearing part of this step: all six checks run without
-  short-circuiting, and check 5 calls `boundary_gjoll::consequentiality::evaluate` exactly once,
-  fail closed, the first non-test Rust call site of Gjöll's gate. This does not advance
-  invariant 3.6 (the crate's own interfaces have zero non-test callers, so the caller of the
-  caller does not yet exist), and it does not compute flow-to-sink transitive reachability for
-  `action_critical`: a D24 agent-scoped **membership** test against the verified cohort's
-  `consequential_sinks()` stands in for it, deliberately narrower.
-- **Credential brokering, refuse-only.** The full `broker_action` signature exists and dispatches
-  to a single actuator slot, but that slot is unimplemented, so every call refuses
-  `NoActuatorAvailable` and nothing built so far can execute anything. The single-holder
-  pattern's real form (an actual credential store, actual scoping) is not delivered.
+- **The six-check proposal-validation pipeline, with the Gjöll gate wired into check 5, and now
+  minting a witness on `Allow`.** Delivered and real, the load-bearing part of D111: all six
+  checks run without short-circuiting, and check 5 calls
+  `boundary_gjoll::consequentiality::evaluate` exactly once, fail closed, the first non-test Rust
+  call site of Gjöll's gate. D112 adds one thing to this pipeline: `validate_proposal` mints an
+  opaque `Authorisation` witness if and only if the decision is `Decision::Allow`, read back
+  through `ProposalDecision::authorisation()`. This still does not advance invariant 3.6 (the
+  crate's own interfaces, including the new one, have zero non-test callers, so the caller of the
+  caller does not yet exist), and it still does not compute flow-to-sink transitive reachability
+  for `action_critical`: the D24 agent-scoped **membership** test against the verified cohort's
+  `consequential_sinks()` stands in for it, unchanged and deliberately narrower.
+- **Credential brokering: `broker_action` refuse-only forever, `broker_authorised_action`
+  witness-carrying and able to reach the actuator.** This is the item D111 left wholly
+  outstanding, now delivered at minimal fidelity rather than remaining unbuilt. `broker_action`
+  keeps its exact three-argument signature and remains refuse-only by construction: its
+  arguments carry no authorisation evidence, so it can never authorise anything, and its refusal
+  reason is corrected from `NoActuatorAvailable`, which would now be a false statement, to
+  `NoAuthorisationEvidence`. Credential brokering itself is no longer refuse-only across the
+  board: `broker_authorised_action`, a separate, witness-carrying entry point, sequences the
+  credential-scope check (unchanged and real, run first on both entry points), a byte-equality
+  witness match and a write to the audit seam below, before reaching the single non-test call
+  site of `actuator_git::execute` in the whole repository. The single-holder pattern's general
+  form (an actual credential store, actual scoping beyond the hardcoded allowlist) is still not
+  delivered.
+- **Writing the decision to a fail-closed audit seam before the actuator fires (HB-6), at minimal
+  fidelity.** Also delivered by D112, and also an item D111 could defer honestly only because
+  nothing could execute yet. `crates/himinbjorg/src/audit.rs` provides `DecisionRecorder`, a
+  narrow one-method write contract, and `MinimalDecisionRecorder`, one append-only
+  implementation with no update and no delete operation. `broker_authorised_action` calls the
+  write before the actuator call, structurally rather than by comment (the `?` operator makes the
+  actuator call reachable only from a point that already holds the write's `Ok`), and a failed
+  write refuses without invoking the actuator (HK-4's load-bearing property: an unlogged decision
+  is treated as no decision). This satisfies HK-4's block-on-failed-log property and HK-2's
+  no-mutating-interface property only, at the fidelity `plans/dd/hlidskjalf.md` section 8 records:
+  unsigned, unchained, in process and not durable.
+- **The git actuator itself.** Delivered as `crates/actuator-git/`, the repository's fourth Rust
+  crate, described fully in `plans/dd/actuator-git.md`. It fills `broker_action`'s one actuator
+  slot without changing that function's interface, exactly as D111 specified the slot would
+  eventually be filled.
 
-**Wholly outstanding, not delivered at any fidelity by D111:**
+**Wholly outstanding, not delivered at any fidelity:**
 
 - the world-model subgraph query in `build_context` (needs a Rust Mímisbrunnr, not built),
 - the full ten-group `HEIMDALL.md` control-surface schema (one hardcoded surface stands in),
 - the trust-ceiling ordering and clamp, HB-3's full ranked form (D97's open question, still open),
 - `Decision::Queue` and `Decision::Escalate` becoming reachable (need Gjallarhorn's protected
   channel and Hliðskjálf respectively, neither built),
-- writing the decision and its check record to Hliðskjálf before an allowed action fires (HB-6;
-  not violated by D111 only because `broker_action`'s refuse-only posture means nothing can fire
-  at all),
-- the git actuator itself (build-order step four, which fills `broker_action`'s one slot without
-  changing its interface),
+- a signed, chained, durable Hliðskjálf with `verify_chain` and Gjallarhorn wiring, which the
+  `DecisionRecorder` trait added by D112 is the extension point for, not a replacement of,
 - the credential broker's general form and the single-holder pattern's real implementation,
 - the Harness Boundary Interface binding to OpenCode/Gleipnir (tool-call interception,
   agent-start enforcement, provider-request interception, trust ownership, episode capture),
 - the canary wrap Himinbjörg constructs for a Fenrir task,
 - the process engine's fixed five-step sequence (build-order step five), which is what would
   give this crate's own interfaces a non-test caller and start advancing invariant 3.6.
+
+**Two named residuals D112 added, carried here as well as in `plans/dd/actuator-git.md`'s own
+deferred table and `DECISIONS.md`'s D112 row, rather than left in only one place:**
+
+- **EC-12: the witness is not single use.** A caller holding a valid `Authorisation` can call
+  `broker_authorised_action` twice with it and drive two identical executions. Replay resistance
+  needs the process engine's sequencing (build-order step five) or a nonce carried in the audit
+  record; neither exists yet.
+- **EC-13: a lying recorder defeats the audit.** `DecisionRecorder`'s contract asks every
+  implementation to retain what it reports as written, but nothing in the type system enforces
+  that a returned `Ok` means anything was actually kept. A caller supplying a recorder whose
+  write always reports success without retaining anything lets the actuator execute with no
+  surviving record of the decision that authorised it. This is the same class of limit as D103's
+  limit two and D100's in-process label rewrite: named, not closed, and not detected by anything
+  built here.
 
 **A verification-gap residual, also recorded in `DECISIONS.md` D111.** Every behavioural test of
 `validate_proposal`'s six-check sequence in `crates/himinbjorg/unit_tests/six_checks.rs` (AC-15 to
@@ -207,14 +251,17 @@ provisioned, including the one this crate was built and verified on; only the di
 in `unit_tests/gate_bridge_failclosed.rs` avoid this gating. This is architecturally forced by
 REQ-20 (there is no fixture-constructible `AgentContext`/`EffectiveSurface`), not a shortcut
 taken here, but a green `cargo test --workspace` run on a machine without that secret must not be
-read as having exercised the six-check sequence's own assertions.
+read as having exercised the six-check sequence's own assertions. D112's own new tests
+(`unit_tests/witness_and_audit.rs`) deliberately do not repeat this residual: every one of them
+executes real assertions with no provisioned secret required, closing D111's recorded gap for the
+new tests specifically, not retroactively for `six_checks.rs`.
 
-This remains the largest single build in Phases 1 to 3 and the phase's critical path; D111 is a
-minimal-fidelity slice of it, not its completion. The reference binding still reuses Gleipnir's
-proven deny-by-default permission map, trust-tier ladder, deterministic proposal-then-act
-sequencing and single-holder credential broker where the Harness Boundary Interface binding is
-eventually built; none of that binding exists yet. See `DECISIONS.md` D111 for the full build
-record and the line-budget breakdown.
+This remains the largest single build in Phases 1 to 3 and the phase's critical path; D111 and
+D112 are minimal-fidelity slices of it, not its completion. The reference binding still reuses
+Gleipnir's proven deny-by-default permission map, trust-tier ladder, deterministic
+proposal-then-act sequencing and single-holder credential broker where the Harness Boundary
+Interface binding is eventually built; none of that binding exists yet. See `DECISIONS.md` D111
+and D112 for the full build record and the line-budget breakdowns.
 
 ## 11. Test plan
 

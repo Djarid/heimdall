@@ -122,6 +122,14 @@ class Report:
         # detector, folded in following the run_rust_cohort pattern above.
         self.rust_gateway_failures = 0
         self.himinbjorg_invocation_failures = 0
+        # D112 (`.opencode/plans/git-actuator-step-four.md` REQ-45): the git
+        # actuator's posture detector and its own live invocation-boundary
+        # detector, folded in following the run_rust_gateway/
+        # run_himinbjorg_invocation_boundary pattern above, exactly, and
+        # additively: no existing counter or obligation above changes
+        # behaviour.
+        self.rust_actuator_failures = 0
+        self.actuator_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -1018,6 +1026,87 @@ def run_himinbjorg_invocation_boundary(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_actuator(rep: Report) -> None:
+    """D112 (`.opencode/plans/git-actuator-step-four.md` REQ-43): the git
+    actuator's posture detector at `crates/actuator-git/` proves dependency
+    posture (an empty `[dependencies]` table and, unlike `boundary-gjoll`'s
+    and `hierarchy-vor`'s own precedent, an empty `[dev-dependencies]` table
+    too, and no `license` manifest field), test and code isolation, the
+    mechanical surface properties of section 4.1 to 4.5
+    (`#![forbid(unsafe_code)]` present and unviolated, the two-variant
+    operation enum, the non-empty permitted-target allowlist excluding
+    `main` and `master`), an AC-51 cross-harness regression check against
+    `rust_gateway_harness`'s own widened allowlist, and the Rust suite; it
+    does NOT advance invariant 3.6's live-invocation status, which
+    `run_actuator_invocation_boundary` below governs separately. Wired in
+    following the `run_rust_gateway` precedent: this standalone
+    sub-harness's own `main()` already returns a real pass/fail code (0
+    clean, 1 on failure), so a failure here is folded into the main suite's
+    fatal count rather than left unregistered. Run it directly for detail
+    (`python -m ontology.tests.rust_actuator_harness`)."""
+    import contextlib
+    import io
+    from . import rust_actuator_harness
+
+    rep.line("=== D112 Git actuator posture: dependency posture, test and code "
+              "isolation, mechanical surface properties and the Rust suite, not "
+              "invariant 3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_actuator_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/actuator-git/ carries an empty [dependencies] table "
+                  "and no [dev-dependencies] table and no license field, keeps every "
+                  "test construct out of src/, carries #![forbid(unsafe_code)] with no "
+                  "unsafe keyword anywhere in its source, declares its operation "
+                  "vocabulary as exactly two variants, carries a non-empty permitted-"
+                  "target allowlist excluding main and master, and passes its own Rust "
+                  "suite (or loudly skips that one step alone, if no toolchain is "
+                  "present). This proves mechanical posture, not invariant 3.6's "
+                  "live-invocation status (run the module directly for detail)")
+    else:
+        rep.rust_actuator_failures += 1
+        rep.line("  [CRITICAL] Git actuator posture detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_actuator_invocation_boundary(rep: Report) -> None:
+    """D112 (`.opencode/plans/git-actuator-step-four.md` REQ-44): the live
+    invocation-boundary detector for `actuator-git::execute` and
+    Himinbjörg's own witness-carrying entry point, `broker_authorised_action`,
+    on `himinbjorg_invocation_harness`'s precedent (D96, D110, D111). Reads
+    exactly one non-test call site of `actuator_git::execute` (the
+    allowlisted one, inside `crates/himinbjorg/src/broker.rs`) and zero
+    non-test call sites of `broker_authorised_action` today; it does NOT
+    advance invariant 3.6 (REQ-40: the process engine that will call
+    `broker_authorised_action` is build-order step five, not yet built).
+    Wired in following the `run_himinbjorg_invocation_boundary` precedent:
+    this standalone sub-harness's own `main()` already returns a real
+    pass/fail code (0 clean, 1 on failure), so a failure here is folded into
+    the main suite's fatal count rather than left unregistered. Run it
+    directly for detail (`python -m
+    ontology.tests.actuator_invocation_harness`)."""
+    import contextlib
+    import io
+    from . import actuator_invocation_harness
+
+    rep.line("=== D112 Git actuator invocation boundary: a token scan, weaker than "
+              "an AST scan, not invariant 3.6 -- the actuator's one non-test caller "
+              "sits inside a crate whose own witness-carrying entry point has zero "
+              "non-test callers of its own ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = actuator_invocation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] exactly one non-test call site of actuator_git::execute "
+                  "(the allowlisted one, inside himinbjorg's broker module) and zero "
+                  "non-test call sites of broker_authorised_action; the negative "
+                  "controls prove the scanner bites. This does not advance invariant "
+                  "3.6 (run the module directly for detail)")
+    else:
+        rep.actuator_invocation_failures += 1
+        rep.line("  [CRITICAL] Git actuator invocation boundary detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_sink_attestation(rep: Report) -> None:
     """D94: attests WHO declared a sink, refusing an unattested or tampered
     declaration at load, closing the config-tamper / supply-chain axis of the root
@@ -1476,6 +1565,8 @@ def main() -> int:
     run_vor_invocation_boundary(rep)
     run_rust_gateway(rep)
     run_himinbjorg_invocation_boundary(rep)
+    run_rust_actuator(rep)
+    run_actuator_invocation_boundary(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1496,7 +1587,9 @@ def main() -> int:
              + rep.rust_cohort_failures
              + rep.vor_invocation_failures
              + rep.rust_gateway_failures
-             + rep.himinbjorg_invocation_failures)
+             + rep.himinbjorg_invocation_failures
+             + rep.rust_actuator_failures
+             + rep.actuator_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

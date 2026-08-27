@@ -127,6 +127,45 @@ the shape of "an in-workspace path dependency on an already-empty-table,
 `unsafe`-forbidding crate" is pre-permitted, and only by explicit allowlist,
 never by default.
 
+**The third-path-dependency ruling (D112), extending HB3-3 rather than
+replacing it.** `crates/himinbjorg/` needed a third in-workspace path
+dependency, `crates/actuator-git/`, so `himinbjorg`'s own `[dependencies]`
+table now carries exactly three entries rather than two. This is the same
+ruling as HB3-3 above, applied a second time: the new dependency is on a crate
+whose own `[dependencies]` table is empty and which carries
+`#![forbid(unsafe_code)]`, so it introduces no new reachability to a model
+call or a network call, and duplicating `actuator-git`'s logic inside
+`himinbjorg` to keep the table at two entries would mean maintaining a second
+process-spawning module, worse on every axis than a named, reviewed
+dependency. `ontology/tests/rust_gateway_harness.py`'s own
+`PERMITTED_PATH_DEPENDENCIES` widens from two names to three
+(`boundary-gjoll`, `hierarchy-vor`, `actuator-git`) by the same mechanism HB3-3
+already established: `rust_gate_harness.check_dependency_posture`'s own
+default allowlist stays an empty `frozenset`, so `boundary-gjoll` and
+`hierarchy-vor` keep their strict, zero-dependency behaviour byte for byte,
+unaffected by the widening. Adding a **fourth** kind of dependency to any
+future crate's gate-adjacent path remains a deliberate trust-boundary decision
+requiring its own `DECISIONS.md` row, exactly as HB3-3 already required for
+the third.
+
+**The `std::process`-in-one-crate ruling (D112).** Before this step, no crate
+in the workspace touched `std::process` at all; the git actuator is the first
+to need it, to spawn the system `git` binary. The ruling is to isolate every
+line that touches `std::process` inside `crates/actuator-git/src/execute.rs`,
+the one module in the whole workspace permitted to reference it, rather than
+spawning a process directly from `himinbjorg`'s own `broker` module. This
+keeps the load-bearing property section 4's opening rule protects, that there
+is no crate through which a model call or a network call could be reached,
+stated as a mechanically checkable fact about a named module rather than
+about the workspace's dependency graph alone: `ontology/tests/rust_actuator_harness.py`
+scans `crates/actuator-git/src/` for `std::process` and expects to find it
+only in `execute.rs`, and the widened `ontology/tests/rust_gateway_harness.py`
+scans `crates/himinbjorg/src/` and expects to find no reference to it at all,
+so `himinbjorg` calling the actuator's own `execute` function is not confused
+with `himinbjorg` spawning a process itself. A future crate needing to touch
+`std::process` for a second, unrelated reason reopens this ruling with its own
+`DECISIONS.md` row rather than being pre-permitted by this one.
+
 **The out-of-tree secret convention (D110), recorded as the standing pattern for
 a future crate needing similar provenance.** Where a crate's correctness
 depends on a secret the source tree itself must not contain (an attestation
@@ -265,6 +304,25 @@ build anything. In particular it does not:
   and where nothing exists to replay, still carry the four mechanical obligations named
   above, native Rust tests standing in for vector parity, not for the mechanical posture
   checks. This closes the bullet as it was originally scoped; no case it named is left open.
+  **A second genuinely-new-component case confirms the ruling generalises rather than being
+  a one-off (D112).** `crates/actuator-git/` has no Python analogue at any fidelity, not even
+  a dormant stub: nothing under `ontology/` models a git actuator, because the whole point of
+  building one in Rust is that no Python equivalent was ever written or intended (D105 rules
+  the actuator, like the rest of the hierarchy and process planes, is Rust). Correctness is
+  established the same way D111's own resolution names: Rust-native unit and integration
+  tests written directly against `.opencode/plans/git-actuator-step-four.md`'s own
+  requirements and acceptance criteria, with no golden-vector replay step, while the four
+  mechanical obligations carry forward unchanged in shape: dependency posture (widened again,
+  reusing `check_dependency_posture` by import), test-and-code isolation, public-surface
+  sufficiency (`crates/actuator-git/tests/public_surface.rs`, mirroring `hierarchy-vor`'s own),
+  and live invocation-boundary detection (`ontology/tests/actuator_invocation_harness.py`, on
+  the same precedent, reporting both the actuator's own single non-test call site and the
+  witness-carrying entry point's zero). Both new checks fold into a new standalone sub-harness,
+  `ontology/tests/rust_actuator_harness.py`, on `rust_gateway_harness.py`'s exact shape. No
+  further case remains open that this bullet's own wording leaves unresolved: a third
+  genuinely-new Rust component inherits the same choice between D110's replay-what-exists
+  case and D111's and D112's native-test case, decided by whether a Python reference exists
+  to replay, not by anything left undecided here.
 
 ---
 

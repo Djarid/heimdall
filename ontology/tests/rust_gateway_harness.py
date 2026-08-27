@@ -8,16 +8,18 @@ Run from the repo root:
     python -m ontology.tests.rust_gateway_harness
 
 What this proves, and what it does not. A green result here means the crate at
-`crates/himinbjorg/` carries no dependency beyond its two permitted in-workspace path
-dependencies (`boundary-gjoll`, `hierarchy-vor`), keeps every test construct out of
-`src/`, re-exports exactly its four public interfaces plus their refusal and decision
+`crates/himinbjorg/` carries no dependency beyond its permitted in-workspace path
+dependencies (widened by `.opencode/plans/git-actuator-step-four.md` REQ-6 from two
+names to three: `boundary-gjoll`, `hierarchy-vor`, `actuator-git`), keeps every test
+construct out of `src/`, re-exports exactly its public interfaces (the original four
+plus step four's fifth, `broker_authorised_action`) plus their refusal and decision
 types with an `AgentContext` carrying no raw-content-shaped field, never constructs
 `Decision::Queue` or `Decision::Escalate` outside a test path, and passes its own Rust
 suite (or loudly skips that one step alone, if no toolchain is present). It says
 NOTHING about invariant 3.6's live-invocation status: whether the gate this crate calls
 is itself called by anything outside this crate's own tests is a DIFFERENT and
-separately governed claim, reported live by `ontology.tests.himinbjorg_invocation_harness`,
-not by this module.
+separately governed claim, reported live by `ontology.tests.himinbjorg_invocation_harness`
+and `ontology.tests.actuator_invocation_harness`, not by this module.
 
 Four checks, run in this fixed order (REQ-27), the first three fatal regardless of
 whether a Rust toolchain is even present, because dependency posture, test isolation and
@@ -35,11 +37,11 @@ toolchain:
      file name appears under both `src/` and either `unit_tests/` or `tests/`.
   3. Public-surface checks. `AgentContext`'s field set matches the enumerated names
      (REQ-8) and contains no raw-content-shaped field (`content`, `payload`, `raw`,
-     `body`, `text`, `window`); the crate re-exports exactly the four public
-     interfaces plus their refusal and decision types (`ContextRefusal`,
-     `DefinitionRefusal`, `BrokerRefusal`, `ProposalDecision`); `Decision::Queue` and
-     `Decision::Escalate` appear in no construction position outside a test path
-     (REQ-21).
+     `body`, `text`, `window`); the crate re-exports exactly its public interfaces
+     (the original four plus step four's `broker_authorised_action`) plus their
+     refusal and decision types (`ContextRefusal`, `DefinitionRefusal`,
+     `BrokerRefusal`, `ProposalDecision`); `Decision::Queue` and `Decision::Escalate`
+     appear in no construction position outside a test path (REQ-21).
   4. The Rust suite, invoked via the REUSED `toolchain_present` and `run_rust_suite`
      helpers (REQ-30), scoped to this crate's own manifest. Skip discipline follows
      `memgraph_integration_harness.py`'s precedent (also `rust_gate_harness.py`'s own):
@@ -75,9 +77,16 @@ TESTS_DIR = CRATE_DIR / "tests"
 LIB_RS = SRC_DIR / "lib.rs"
 TYPES_RS = SRC_DIR / "types.rs"
 
-# HB3-3: the exact two in-workspace path dependencies this crate is permitted, and no
-# other entry of any kind (REQ-3, REQ-30).
-PERMITTED_PATH_DEPENDENCIES: frozenset[str] = frozenset({"boundary-gjoll", "hierarchy-vor"})
+# HB3-3, widened by `.opencode/plans/git-actuator-step-four.md` REQ-6 (AC-3, AC-51):
+# the exact THREE in-workspace path dependencies this crate is permitted, and no
+# other entry of any kind (REQ-3, REQ-30). Widening this set from two names to three
+# is itself AC-51's own claim; `rust_gate_harness.check_dependency_posture`'s default
+# (no allowlist argument, used by `boundary-gjoll` and `hierarchy-vor` directly) is
+# UNCHANGED by this widening, so those two crates keep their strict, zero-dependency
+# behaviour byte for byte (AC-51, section 9.2 of that spec).
+PERMITTED_PATH_DEPENDENCIES: frozenset[str] = frozenset(
+    {"boundary-gjoll", "hierarchy-vor", "actuator-git"}
+)
 
 # REQ-8: the AgentContext field set, fixed and enumerable, and the four public
 # interfaces plus the refusal/decision types their signatures name (section 6.1 and
@@ -99,7 +108,22 @@ RAW_CONTENT_TRIGGER_WORDS: frozenset[str] = frozenset(
     {"content", "payload", "raw", "body", "text", "window"}
 )
 EXPECTED_INTERFACE_FUNCTIONS: frozenset[str] = frozenset(
-    {"build_context", "enforce_definition", "validate_proposal", "broker_action"}
+    {
+        "build_context",
+        "enforce_definition",
+        "validate_proposal",
+        "broker_action",
+        # Widened by `.opencode/plans/git-actuator-step-four.md` (REQ-31,
+        # section 5.2, section 10 file 18): the witness-carrying entry
+        # point is a genuine fifth public interface, re-exported at the
+        # crate root alongside the original four. Its own zero-non-test-
+        # caller claim (REQ-40, AC-47) is reported live by
+        # `ontology.tests.himinbjorg_invocation_harness` and
+        # `ontology.tests.actuator_invocation_harness`, not by this
+        # module: this check only confirms the crate's public surface is
+        # sufficient, exactly as it already does for the original four.
+        "broker_authorised_action",
+    }
 )
 EXPECTED_REFUSAL_DECISION_TYPES: frozenset[str] = frozenset(
     {"ContextRefusal", "DefinitionRefusal", "BrokerRefusal", "ProposalDecision"}
@@ -369,11 +393,12 @@ def _reexported_names(lib_src: str) -> set[str]:
 
 
 def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
-    """REQ-27 step 3 item 2: the crate re-exports exactly the four public
+    """REQ-27 step 3 item 2: the crate re-exports exactly its public
     interfaces (`build_context`, `enforce_definition`, `validate_proposal`,
-    `broker_action`), no more and no fewer, plus their refusal and decision
-    types (`ContextRefusal`, `DefinitionRefusal`, `BrokerRefusal`,
-    `ProposalDecision`)."""
+    `broker_action`, and, widened by `.opencode/plans/git-actuator-step-four.md`
+    REQ-31/section 5.2, `broker_authorised_action`), no more and no fewer,
+    plus their refusal and decision types (`ContextRefusal`,
+    `DefinitionRefusal`, `BrokerRefusal`, `ProposalDecision`)."""
     if not lib_rs_path.exists():
         return SurfaceCheckResult(ok=False, detail=f"{lib_rs_path} does not exist")
     src = lib_rs_path.read_text(encoding="utf-8")
@@ -385,7 +410,8 @@ def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
         missing = EXPECTED_INTERFACE_FUNCTIONS - functions_present
         violations.append(
             f"missing re-exported interface function(s): {sorted(missing)} (REQ-27 "
-            f"expects the crate to re-export exactly the four public interfaces)"
+            f"expects the crate to re-export exactly its public interfaces, "
+            f"{sorted(EXPECTED_INTERFACE_FUNCTIONS)})"
         )
     unexpected_function_like = {
         n for n in reexported
@@ -395,8 +421,8 @@ def check_public_reexports(lib_rs_path: Path = LIB_RS) -> SurfaceCheckResult:
     if unexpected_function_like:
         violations.append(
             f"unexpected additional function-shaped re-export(s): "
-            f"{sorted(unexpected_function_like)} (REQ-27 expects exactly the four "
-            f"named interfaces, no more)"
+            f"{sorted(unexpected_function_like)} (REQ-27 expects exactly the named "
+            f"interfaces, {sorted(EXPECTED_INTERFACE_FUNCTIONS)}, no more)"
         )
 
     missing_types = EXPECTED_REFUSAL_DECISION_TYPES - reexported
@@ -450,14 +476,49 @@ def check_no_queue_or_escalate_construction(src_dir: Path = SRC_DIR) -> SurfaceC
     )
 
 
+_STD_PROCESS_RE = re.compile(r"std::process\b")
+
+
+def check_no_std_process(src_dir: Path = SRC_DIR) -> SurfaceCheckResult:
+    """AC-4, added by `.opencode/plans/git-actuator-step-four.md` REQ-7: no
+    `.rs` file under `crates/himinbjorg/src/` references `std::process`.
+    `crates/actuator-git/` is now the only crate in the workspace permitted to
+    touch it (REQ-7); this check is `himinbjorg`'s own half of that claim.
+    Comments are stripped first, mirroring
+    `check_no_queue_or_escalate_construction`'s own discipline, so a doc
+    comment mentioning `std::process` in prose is never mistaken for a real
+    reference."""
+    files = _load_rust_files(src_dir)
+    if not files:
+        return SurfaceCheckResult(ok=False, detail=f"no .rs files found under {src_dir}")
+    violations: list[str] = []
+    for fname, raw_src in files.items():
+        src = _strip_line_comments(raw_src)
+        for m in _STD_PROCESS_RE.finditer(src):
+            lineno = src.count("\n", 0, m.start()) + 1
+            violations.append(
+                f"{fname}:{lineno}: found `std::process` outside a comment under src/ "
+                f"(REQ-7: actuator-git is now the only crate in the workspace permitted "
+                f"to touch std::process)"
+            )
+    if violations:
+        return SurfaceCheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
+    return SurfaceCheckResult(
+        ok=True,
+        detail="std::process appears nowhere under crates/himinbjorg/src/ (AC-4, REQ-7).",
+    )
+
+
 def check_public_surface() -> SurfaceCheckResult:
-    """Runs all three public-surface checks (REQ-27 step 3) and aggregates."""
+    """Runs all four public-surface checks (REQ-27 step 3, widened by AC-4)
+    and aggregates."""
     violations: list[str] = []
     details: list[str] = []
     for result in (
         check_agent_context_fields(),
         check_public_reexports(),
         check_no_queue_or_escalate_construction(),
+        check_no_std_process(),
     ):
         if not result.ok:
             violations += result.violations or [result.detail]
@@ -624,6 +685,28 @@ def control_check() -> list[str]:
                 "only mention of Decision::Queue"
             )
 
+        # AC-4 control: a planted std::process reference must be caught.
+        bad_process_dir = Path(d) / "src_process"
+        bad_process_dir.mkdir()
+        (bad_process_dir / "leaky.rs").write_text(
+            "fn f() {\n    let _ = std::process::Command::new(\"git\");\n}\n"
+        )
+        process_result = check_no_std_process(bad_process_dir)
+        if process_result.ok:
+            failures.append("AC-4 control did NOT catch a planted std::process reference")
+
+        # Control the control: a doc-comment-only mention must not be flagged.
+        clean_process_dir = Path(d) / "src_process_clean"
+        clean_process_dir.mkdir()
+        (clean_process_dir / "leaky.rs").write_text(
+            "// this module never touches std::process (REQ-7)\nfn f() {}\n"
+        )
+        clean_process_result = check_no_std_process(clean_process_dir)
+        if not clean_process_result.ok:
+            failures.append(
+                "AC-4 control WRONGLY flagged a doc-comment-only mention of std::process"
+            )
+
     return failures
 
 
@@ -642,8 +725,9 @@ def main() -> int:
         return 1
     print("  [PASS] negative controls: a disallowed dependency, a stray test construct "
           "in src/, a raw-content-shaped AgentContext field, a missing interface "
-          "re-export and a planted Decision::Queue construction are all caught, and "
-          "none of their clean counterparts is wrongly flagged.")
+          "re-export, a planted Decision::Queue construction and a planted std::process "
+          "reference (AC-4) are all caught, and none of their clean counterparts is "
+          "wrongly flagged.")
     print()
 
     dep_result = check_dependency_posture()

@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D111)
+## 0. Resume here (handoff, last updated after D112)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -334,6 +334,58 @@ form, the Harness Boundary Interface binding, the canary wrap for a Fenrir task,
 and the process engine's fixed five-step sequence. See D111 in `DECISIONS.md`
 and `plans/dd/himinbjorg.md` for the full breakdown.
 
+**D112 then completes build-order step four: the git actuator fills `broker_action`'s
+one actuator slot, and the first real, gated, executed action in this project's
+history becomes possible.** `crates/actuator-git/`, the repository's fourth Rust
+crate, carries exactly two operations, a commit and a push, each built from one
+fixed, positive-match-validated argument shape, spawned with no shell on any path.
+A hardcoded, non-empty push-target allowlist excludes `main` and `master` by
+absence, never by an enumerated denylist, and the working repository is resolved
+from an environment-named path with five fail-closed refusal conditions, including
+a development-time guard against operating on this repository's own working tree.
+Authorisation reaches it through a new, witness-carrying sibling entry point in
+`crates/himinbjorg/`, `broker_authorised_action`, never by widening `broker_action`,
+which keeps its exact three-argument signature and stays refuse-only forever (its
+refusal reason corrected from `NoActuatorAvailable`, now a false statement, to
+`NoAuthorisationEvidence`). `validate_proposal` mints an opaque `Authorisation`
+witness if and only if its decision is `Decision::Allow`; `broker_authorised_action`
+sequences the credential-scope check, a byte-equality witness match and a write to
+a new minimal audit seam (`crates/himinbjorg/src/audit.rs`, `DecisionRecorder` and
+one append-only `MinimalDecisionRecorder`) before the single non-test call site of
+`actuator_git::execute` in the whole repository. This is HB-6 becoming a live
+obligation for the first time, satisfied only at minimal fidelity: unsigned,
+unchained, in process and not durable, exactly the fidelity
+`plans/dd/hlidskjalf.md` section 8 now records, not the signed chained service that
+document's earlier sections specify. **This does not advance invariant 3.6:**
+`broker_authorised_action` has zero non-test callers, reported live by two
+independent detectors (`ontology/tests/actuator_invocation_harness.py`, the widened
+`ontology/tests/himinbjorg_invocation_harness.py`), because the process engine that
+will call it is build-order step five, not yet built. **Two residuals are named,
+not closed:** EC-12, the witness is not single use, so a caller holding one can
+drive two identical executions; and EC-13, a caller supplying a recorder whose
+write reports success without retaining anything defeats the audit obligation,
+the same class of limit as D103's limit two and D100's in-process label rewrite.
+**The bar does not move, verified live:** 22 critical findings, all false-inert;
+the invariant 3.1 guard at 34 scanned files, unaffected, because `crates/` sits
+outside its scan roots; `pipeline_score_harness` at 48 percent layer-one and 33 of
+33 (100 percent) pipeline containment; `gjoll_invocation_harness` at six test call
+sites and zero non-test call sites. One figure moves for the reason this step's own
+tests predict: `vor_invocation_harness` now reports six test call sites of
+`load_verified_cohort`, not five, because this step's own new
+`witness_and_audit.rs` calls it too; the non-test count stays zero. **A line-budget
+deviation is accepted here too, reported against the build spec's own four-row
+budget table rather than one figure:** `crates/actuator-git/src/` came to 998
+lines against a roughly-550-line budget (81 percent over); `crates/himinbjorg/src/`
+grew by 566 lines over D111's own 1,326-line baseline against a roughly-350-line
+budget for this step's additions (62 percent over); Rust tests across both crates
+came to 2,895 lines against a roughly-1,100-line budget (163 percent over, the
+largest proportional overage of the four crates so far); new and changed Python
+came to approximately 1,359 lines against a roughly-900-line budget (about 51
+percent over, the Python figure honestly qualified as an estimate for the three
+additively-modified files, since `git diff` was not available to the agent role
+that produced it). See D112 in `DECISIONS.md` and `plans/dd/actuator-git.md` for
+the full breakdown.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -391,7 +443,7 @@ Rust suite itself is run directly with Cargo from the repository root:
 
 ```
 poc/.venv/bin/python -m ontology.tests.rust_cohort_harness    # digest drift, dependency posture, surface checks, cargo test: PASS; real-cohort marker reported as exercised or as a named gap
-poc/.venv/bin/python -m ontology.tests.vor_invocation_harness # zero non-test call sites (test call sites now five, not two, since crates/himinbjorg/'s own tests call load_verified_cohort too; unchanged is the zero non-test figure)
+poc/.venv/bin/python -m ontology.tests.vor_invocation_harness # zero non-test call sites (test call sites now six, not two, since crates/himinbjorg/'s own tests, including D112's witness_and_audit.rs, call load_verified_cohort too; unchanged is the zero non-test figure)
 cargo test -p hierarchy-vor -- --nocapture                    # 26 unit tests, three integration tests: PASS; prints VOR-REAL-COHORT-NOT-EXERCISED if no secret is provisioned
 ```
 
@@ -404,6 +456,17 @@ Rust suite itself is run directly with Cargo from the repository root:
 poc/.venv/bin/python -m ontology.tests.rust_gateway_harness         # dependency posture, test/code isolation, public-surface sufficiency, cargo test: PASS
 poc/.venv/bin/python -m ontology.tests.himinbjorg_invocation_harness # zero non-test callers of the four interfaces; exactly one allowlisted non-test call site of consequentiality::evaluate; zero non-test call sites of load_verified_cohort inside this crate
 cargo test -p himinbjorg                                            # 25 unit tests, two integration tests: PASS; prints HIMINBJORG-REAL-COHORT-NOT-EXERCISED if no secret is provisioned
+```
+
+D112 (the git actuator, and Himinbjörg's own witness-carrying entry point) is likewise
+registered inside `ontology.tests.harness` (`run_rust_actuator`,
+`run_actuator_invocation_boundary`), but has standalone entry points too, and the Rust
+suite itself is run directly with Cargo from the repository root:
+
+```
+poc/.venv/bin/python -m ontology.tests.rust_actuator_harness         # dependency posture, test/code isolation, mechanical surface properties, cargo test: PASS
+poc/.venv/bin/python -m ontology.tests.actuator_invocation_harness   # exactly one allowlisted non-test call site of actuator_git::execute; zero non-test call sites of broker_authorised_action
+cargo test -p actuator-git                                           # 21 unit tests, 15 integration tests: PASS, no provisioned secret or network required
 ```
 
 **D102 registers D93 and D94 as main-suite fatal-gated obligations, and deliberately leaves
@@ -422,22 +485,25 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Build the git actuator: build-order step four (D108).** Steps one (D109, Gjöll re-expressed
-   in Rust), two (D110, Vör's minimal single-cohort form) and three (D111, Himinbjörg's minimal
-   four-interface slice) are all now complete, and step four is load-bearing for the same reason
-   step three was: `broker_action` in `crates/himinbjorg/` has a real signature and a real
-   dispatch seam to exactly one actuator slot, but that slot is unimplemented, so every call
-   refuses `NoActuatorAvailable` and nothing built so far can execute anything. Step four's job,
-   per D108's own text, is to shell out to the system git binary for exactly commit and push,
-   filling that one slot without changing `broker_action`'s interface; git itself is a compiled,
-   externally audited tool, so this is not a boundary violation, and the actuator must only ever
-   execute what `validate_proposal`'s six checks (including the real gate call at check five)
-   have already authorised. This is also where HB-6 (logging the decision to Hliðskjálf before
-   an allowed action fires) first becomes a live obligation rather than a structurally
-   unreachable one: step three could defer it honestly because nothing could fire; step four
-   changes that. See `plans/synthesis-bootstrap.md` section six for the full build order and the
-   target loop's definition, and `plans/dd/himinbjorg.md` section 6.1 for the `broker_action`
-   interface step four fills.
+1. **Build the process engine: build-order step five (D108).** Steps one to four (D109 Gjöll
+   re-expressed in Rust, D110 Vör's minimal single-cohort form, D111 Himinbjörg's minimal
+   four-interface slice, D112 the git actuator filling `broker_action`'s one slot) are all now
+   complete, and step five is load-bearing for the same reason step four was: `broker_authorised_action`
+   and `actuator_git::execute` can both genuinely execute a real, gated action, but nothing in the
+   repository calls either outside a test, so invariant 3.6 is not advanced and the target loop has
+   never run. Step five's job, per `plans/synthesis-bootstrap.md` section 5, is a fixed sequence,
+   not Gleipnir's general transition table: task in, a stubbed cognition step, a propose-action
+   step, a gate step (Himinbjörg's `validate_proposal`), an execute step (`broker_authorised_action`,
+   supplying a real `DecisionRecorder` and the `Authorisation` `validate_proposal` minted), result
+   out. No loop caps, because there is exactly one path and nothing to loop; no human-question gate,
+   because the target loop's action is deliberately chosen low-stakes enough not to need one for this
+   first proof. Both are named explicitly as deferred, not silently dropped. Once step five lands,
+   step six is running the target loop end to end (D108's definition of done: a real commit reachable
+   in the git remote's history, AND a deliberately disallowed action, for example a push to a
+   protected branch, shown blocked by the same pipeline rather than a special case), and step seven
+   is replacing the cognition stub with a real model call. See `plans/synthesis-bootstrap.md` sections
+   5 to 7 for the full build order and the target loop's definition, and `plans/dd/actuator-git.md`
+   and `plans/dd/himinbjorg.md` section 10 for what step four left this step to call.
 2. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
    is running this exact false-inert attack vector against models independently, with no
    exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
@@ -639,6 +705,25 @@ against the spec's own roughly 700-line budget, 626 lines over (about 89 percent
 overage of the three crates so far; accepted on the same non-padding grounds (see D111 in
 `DECISIONS.md` for the full breakdown).
 
+D112 then completed build-order step four: the git actuator fills `broker_action`'s one slot, at
+`crates/actuator-git/`, the repository's fourth Rust crate, without changing that function's
+signature. `broker_action` stays refuse-only forever; a new witness-carrying sibling entry point,
+`himinbjorg::broker_authorised_action`, sequences the credential-scope check, a byte-equality
+witness match and a write to a new minimal audit seam (`crates/himinbjorg/src/audit.rs`,
+`DecisionRecorder` and `MinimalDecisionRecorder`) before the single non-test call site of
+`actuator_git::execute` in the whole repository, so a commit and a push can now genuinely execute.
+This is HB-6 becoming a live obligation for the first time, satisfied only at minimal fidelity
+(unsigned, unchained, in process, not durable), and it still does not advance invariant 3.6: the
+new entry point has zero non-test callers, reported live by two independent detectors, because the
+process engine that will call it is build-order step five, not yet built. Two residuals are named
+rather than closed: the witness is not single use (EC-12, replay needs step five's sequencing or a
+nonce), and a caller supplying a recorder whose write reports success without retaining anything
+defeats the audit obligation (EC-13, the same class of limit as D103's limit two and D100's
+in-process label rewrite). The crate's non-test source came to 998 lines against the spec's own
+roughly 550-line budget, 448 lines over (about 81 percent); `crates/himinbjorg/src/`'s own
+additions came to 566 lines against a roughly 350-line budget for this step (about 62 percent
+over); see D112 in `DECISIONS.md` and `plans/dd/actuator-git.md` for the full breakdown.
+
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
 into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
@@ -718,12 +803,12 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 110 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 112 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
 | `plans/hld.md` | The High-Level Design: the build-oriented engineering view of the whole system across all six phases, with a per-component achievement baseline, a harness-agnostic integration interface and a risk register (D73) |
-| `plans/dd/` | The Detailed Design, implementation fidelity for Phases 1-3: an index (conventions, the OpenCode/Gleipnir harness binding, cross-cutting contracts) plus nine component documents (Bifröst, Mímisbrunnr, Nornir, Fenrir, Hliðskjálf, Himinbjörg, Gjöll, Gjallarhorn, Vör) (D73; Vör added by D110, extending the set past the original eight named in the HLD, per `plans/dd/index.md` section 1) |
+| `plans/dd/` | The Detailed Design, implementation fidelity for Phases 1-3: an index (conventions, the OpenCode/Gleipnir harness binding, cross-cutting contracts) plus ten component documents (Bifröst, Mímisbrunnr, Nornir, Fenrir, Hliðskjálf, Himinbjörg, Gjöll, Gjallarhorn, Vör, the git actuator) (D73; Vör added by D110 and the git actuator by D112, both extending the set past the original eight named in the HLD, per `plans/dd/index.md` section 1) |
 | `plans/hld_scoping_brainstorm.md` | The scoping analysis behind D73: the achievement audit and the three converged decisions (harness, classifier stance, phasing) |
 | `plans/synthesis-capability-matrix.md` | The capability-mapping matrix for Heimdall's synthesis with AETOS and Gleipnir: what each contributes, the four control planes, and the rulings and open items from that working session (D105) |
 | `plans/synthesis-architecture.md` | The follow-on architecture draft: concrete module boundaries for the four control planes, grounded in Himinbjörg, Gjöll, Hliðskjálf and Mímisbrunnr's existing Detailed Design documents, plus a hierarchy-plane trust-tier lattice, a candidate context-shielding technique and a sketched Rust workspace layout (D106) |
@@ -885,10 +970,10 @@ named remaining refinement, contained by Gjoll at action time, not here.
   intersection, never the union, of Himinbjörg's hardcoded global default and the cohort's
   `permitted_actions`; `trust_ceiling` is checked by byte equality only, never ranked or clamped
   (D97's open question stays open). `broker_action` is refuse-only: the full signature exists, one
-  actuator slot exists, unimplemented, and every call refuses `NoActuatorAvailable`, so nothing in
-  this crate can execute anything; the git actuator (build-order step four) fills that slot. The
-  crate has exactly two `[dependencies]` entries, both in-workspace path dependencies on
-  `boundary-gjoll` and `hierarchy-vor`, and no dependency of any other kind. Two new sub-harnesses
+  actuator slot exists, and every call refuses either `NoActuatorAvailable` (nothing available at
+  D111) or, since D112 filled that slot, `NoAuthorisationEvidence` (the slot is filled but this
+  function's own arguments carry no authorisation evidence). At D111 the crate had exactly two
+  `[dependencies]` entries; D112 (below) widened that to three. Two new sub-harnesses
   (`ontology/tests/rust_gateway_harness.py`, `ontology/tests/himinbjorg_invocation_harness.py`)
   fold additively into the main suite on `run_rust_cohort`'s exact shape;
   `ontology/tests/rust_gate_harness.py`'s `check_dependency_posture` gained an optional allowlist
@@ -896,6 +981,29 @@ named remaining refinement, contained by Gjoll at action time, not here.
   `ontology/yggdrasil/control_surface.py`, `ontology/nornir/gjoll.py`, `ontology/nornir/engine.py`
   or `ontology/nornir/authorisation_record.py`, all confirmed unchanged. The code licence is OPEN
   (section 5). See `plans/dd/himinbjorg.md` for the full design and `DECISIONS.md` D111 for the
+  line-budget breakdown.
+- **The repository's fourth Rust crate** (`crates/actuator-git/`, D112): fills `broker_action`'s
+  one actuator slot without changing its signature. Five modules, each with one reason to change:
+  `types` (the operation, outcome and refusal vocabularies), `argv` (the fixed argument shapes and
+  the single positive-match value validator), `targets` (the permitted push-target allowlist,
+  excluding `main` and `master` by absence, never by an enumerated denylist), `repo` (the
+  working-repository resolver, five fail-closed refusal conditions) and `execute` (the process
+  spawn, the only module in the whole workspace that touches `std::process`). `[dependencies]` is
+  empty and the crate carries `#![forbid(unsafe_code)]` with no `unsafe` keyword anywhere in its
+  source. `crates/himinbjorg/` gains a third in-workspace path dependency (`actuator-git`), an
+  opaque `Authorisation` witness minted by `validate_proposal` if and only if its decision is
+  `Decision::Allow`, a new `audit.rs` module (`DecisionRecorder`, `MinimalDecisionRecorder`, HB-6's
+  seam at minimal fidelity) and a new witness-carrying entry point, `broker_authorised_action`,
+  which sequences the credential-scope check, a byte-equality witness match and the audit write
+  before the single non-test call site of `actuator_git::execute` in the whole repository.
+  `broker_action` itself keeps its exact three-argument signature and stays refuse-only forever.
+  This does not advance invariant 3.6 (`broker_authorised_action` has zero non-test callers,
+  reported live by two new sub-harnesses, `ontology/tests/rust_actuator_harness.py` and
+  `ontology/tests/actuator_invocation_harness.py`, folded additively into the main suite on
+  `run_rust_gateway`'s exact shape). Two residuals are named, not closed: the witness is not
+  single use (EC-12), and a lying `DecisionRecorder` defeats the audit obligation (EC-13, the same
+  class of limit as D103's limit two and D100's in-process label rewrite). The code licence is OPEN
+  (section 5). See `plans/dd/actuator-git.md` for the full design and `DECISIONS.md` D112 for the
   line-budget breakdown.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
@@ -919,7 +1027,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
-| **D109/D110/D111: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml` or `crates/himinbjorg/Cargo.toml` carries a `license` field | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks a third crate, not only the first two. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
+| **D109/D110/D111/D112: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml` or `crates/actuator-git/Cargo.toml` carries a `license` field | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks a fourth crate, not only the first three. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -1072,32 +1180,42 @@ corpus the author never saw.
    remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
    new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
    OPEN, unresolved by this build.
-7. **Done: build-order steps one to three of `plans/synthesis-bootstrap.md` (D108), re-expressing
-   Gjöll's gate (D109), Vör's minimal single-cohort form (D110) and Himinbjörg's minimal
-   four-interface slice (D111) in Rust.** `crates/boundary-gjoll/` carries a pure total rule core
-   behind a registry-mandatory consequentiality shell, checked against 22 golden vectors (six
-   with a layer-two section) exported from the three existing Python harnesses, with a
-   source-digest drift detector folded into the main suite. It designs out the Python
-   no-registry branch, D97's named residual and D100's stamp-rewrite limit; it defers D93's
-   cross-check, D103's `AgentContext` attestation, D94's sink-declaration attestation and the
-   four re-validation gates. `crates/hierarchy-vor/` then re-expresses D103's attested-record
-   substrate generically and carries exactly one hardcoded, attested cohort (`heimdall-dev`)
-   behind a single mandatory entry point, checked against ten golden vectors plus a
-   separately-recorded cross-substrate check; it closes D103's limit one for this record type in
+7. **Done: build-order steps one to four of `plans/synthesis-bootstrap.md` (D108), re-expressing
+   Gjöll's gate (D109), Vör's minimal single-cohort form (D110), Himinbjörg's minimal
+   four-interface slice (D111) and the git actuator (D112) in Rust.** `crates/boundary-gjoll/`
+   carries a pure total rule core behind a registry-mandatory consequentiality shell, checked
+   against 22 golden vectors (six with a layer-two section) exported from the three existing
+   Python harnesses, with a source-digest drift detector folded into the main suite. It designs
+   out the Python no-registry branch, D97's named residual and D100's stamp-rewrite limit; it
+   defers D93's cross-check, D103's `AgentContext` attestation, D94's sink-declaration attestation
+   and the four re-validation gates. `crates/hierarchy-vor/` then re-expresses D103's
+   attested-record substrate generically and carries exactly one hardcoded, attested cohort
+   (`heimdall-dev`) behind a single mandatory entry point, checked against ten golden vectors plus
+   a separately-recorded cross-substrate check; it closes D103's limit one for this record type in
    this crate only, and does not close D103's limit two, advance invariant 3.6 or touch
    `AgentContext`/`resolve()`/`gjoll.py`. `crates/himinbjorg/` then carries all four Himinbjörg
    interfaces at minimal fidelity across seven modules, with `validate_proposal`'s check five
    making the first non-test Rust call site of Gjöll's gate; this does not advance invariant 3.6
    either (the crate's own four interfaces have zero non-test callers), does not compute
    flow-to-sink transitive reachability for `action_critical` (a D24 membership test stands in),
-   and `broker_action` is refuse-only, so nothing built so far can execute anything. All three
-   crates' line budgets were exceeded and all three overages are accepted and recorded (D109
-   about 34 percent over on non-test Rust; D110 about 82 percent over; D111 about 89 percent
-   over, the largest of the three), not absorbed silently. **This is now the load-bearing item:
-   build-order step four, the git actuator, depends on step three having landed and is promoted
-   to priority item one above.** Steps five to seven (the process engine, the end-to-end loop,
-   real cognition) follow it. The code licence (section 5) blocks publication of all three crates
-   and should be settled before a fourth one is added.
+   and `broker_action` is refuse-only, so nothing built by that step could execute anything.
+   `crates/actuator-git/` then fills `broker_action`'s one slot, without changing its signature: a
+   new witness-carrying entry point, `broker_authorised_action`, sequences the credential-scope
+   check, a byte-equality witness match and a write to a new minimal audit seam
+   (`crates/himinbjorg/src/audit.rs`) before the single non-test call site of `actuator_git::execute`
+   in the whole repository, so a real commit and push can now genuinely execute. This still does
+   not advance invariant 3.6 (`broker_authorised_action` itself has zero non-test callers), and two
+   residuals are named rather than closed: the witness is not single use (EC-12), and a lying
+   `DecisionRecorder` defeats the audit obligation (EC-13, the same class of limit as D103's limit
+   two). All four crates' line budgets were exceeded and all four overages are accepted and
+   recorded (D109 about 34 percent over on non-test Rust; D110 about 82 percent over; D111 about
+   89 percent over; D112 about 81 percent over on `crates/actuator-git/src/` and about 62 percent
+   over on `crates/himinbjorg/src/`'s own additions, reported against the build spec's own four-row
+   budget table rather than one figure), not absorbed silently. **This is now the load-bearing
+   item: build-order step five, the process engine, depends on step four having landed and is
+   promoted to priority item one above.** Steps six and seven (the end-to-end loop, real
+   cognition) follow it. The code licence (section 5) blocks publication of all four crates and
+   should be settled before a fifth one is added.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

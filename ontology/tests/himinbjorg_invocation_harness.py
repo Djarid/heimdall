@@ -27,10 +27,11 @@ Rust, in a crate nothing calls" is not "the gate is invoked live against a real 
 
 Three symbol groups tracked, each answering a different question:
 
-  1. Himinbjörg's own four public interfaces (`build_context`, `enforce_definition`,
-     `validate_proposal`, `broker_action`), scanned across the WHOLE repo. Expected
-     zero non-test call sites on the day this lands: nothing outside this crate's own
-     tests calls them yet.
+  1. Himinbjörg's own public entry points (`build_context`, `enforce_definition`,
+     `validate_proposal`, `broker_action`, and, added by
+     `.opencode/plans/git-actuator-step-four.md` REQ-40/AC-47, `broker_authorised_action`),
+     scanned across the WHOLE repo. Expected zero non-test call sites on the day this
+     lands: nothing outside this crate's own tests calls any of them yet.
 
      A real collision risk exists and is handled explicitly: `boundary-gjoll` declares
      its OWN, unrelated `declaration::validate_proposal` (the D81 five-condition
@@ -110,7 +111,22 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _EXCLUDED_DIR_NAMES: frozenset[str] = frozenset({".git", "target", ".venv", "__pycache__"})
 
 INTERFACE_SYMBOLS: frozenset[str] = frozenset(
-    {"build_context", "enforce_definition", "validate_proposal", "broker_action"}
+    {
+        "build_context",
+        "enforce_definition",
+        "validate_proposal",
+        "broker_action",
+        # Added by `.opencode/plans/git-actuator-step-four.md` REQ-40 (AC-47):
+        # the witness-carrying entry point. Its own claim (REQ-40) is that it
+        # has ZERO non-test callers at this build step, because the process
+        # engine that would call it is build-order step five, not yet built.
+        # Folded into this SAME symbol group, rather than a new one, because
+        # it answers the identical question group 1 already asks ("who calls
+        # one of Himinbjörg's own entry points"), on the same resolution
+        # rules (qualified, crate::-qualified from within this crate, or
+        # bound by a `use himinbjorg::...` import).
+        "broker_authorised_action",
+    }
 )
 
 # The crate's own path, in parts, used both to decide when `crate::<name>(` genuinely
@@ -300,10 +316,12 @@ def _strip_comments_and_strings(src: str) -> tuple[str, bool]:
 # ---------------------------------------------------------------------------------
 
 _QUALIFIED_INTERFACE_CALL_RE = re.compile(
-    r"\bhiminbjorg::(build_context|enforce_definition|validate_proposal|broker_action)\s*\("
+    r"\bhiminbjorg::(build_context|enforce_definition|validate_proposal|broker_action"
+    r"|broker_authorised_action)\s*\("
 )
 _CRATE_INTERFACE_CALL_RE = re.compile(
-    r"\bcrate::(build_context|enforce_definition|validate_proposal|broker_action)\s*\("
+    r"\bcrate::(build_context|enforce_definition|validate_proposal|broker_action"
+    r"|broker_authorised_action)\s*\("
 )
 _USE_HIMINBJORG_SINGLE_RE = re.compile(
     r"use\s+himinbjorg::(\w+)(?:\s+as\s+(\w+))?\s*;"
@@ -612,9 +630,10 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
         for f in result.unscanned_files:
             print(f"  [CRITICAL] could not tokenise cleanly: {f}")
 
-    # Group 1: the four public interfaces.
+    # Group 1: the public entry points (widened by AC-47 to include
+    # broker_authorised_action).
     test_files, non_test_files = classify(result.interface_sites)
-    print(f"HIMINBJORG INVOCATION BOUNDARY -- the four public interfaces "
+    print(f"HIMINBJORG INVOCATION BOUNDARY -- the public entry points "
           f"({', '.join(sorted(INTERFACE_SYMBOLS))}): {len(test_files)} test call "
           f"site(s), {len(non_test_files)} non-test call site(s) (expected zero: the "
           f"process engine that would call these is step five, not yet built).")

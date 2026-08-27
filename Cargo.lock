@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "actuator-git"
+version = "0.1.0"
+
+[[package]]
 name = "boundary-gjoll"
 version = "0.1.0"
 dependencies = [
@@ -22,6 +26,7 @@ dependencies = [
 name = "himinbjorg"
 version = "0.1.0"
 dependencies = [
+ "actuator-git",
  "boundary-gjoll",
  "hierarchy-vor",
 ]

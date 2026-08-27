@@ -64,8 +64,8 @@
 use crate::gate_bridge::evaluate_taint_compatibility;
 use crate::sinks;
 use crate::types::{
-    AgentContext, CheckId, CheckOutcome, CheckRecord, Decision, EffectiveSurface, Proposal,
-    ProposalDecision,
+    AgentContext, Authorisation, CheckId, CheckOutcome, CheckRecord, Decision, EffectiveSurface,
+    Proposal, ProposalDecision,
 };
 
 /// Check one (REQ-11): the action exists in the agent's permitted action
@@ -225,6 +225,15 @@ fn check_resource_budget_not_exceeded(
 /// any [`CheckOutcome::NotEvaluated`], yields [`Decision::Block`]. This
 /// function never constructs [`Decision::Queue`] or [`Decision::Escalate`]
 /// (HB3-6, REQ-21).
+///
+/// **Extended by exactly one thing (section 9.3 of
+/// `.opencode/plans/git-actuator-step-four.md`): mints the [`Authorisation`]
+/// witness if and only if the decision is [`Decision::Allow`] (REQ-27).**
+/// This is the only place in the crate [`Authorisation::new`] is ever
+/// called. `Allow` implies all six records are `Pass` by the very
+/// definition of `decision` immediately below, so the witness's own
+/// documented guarantee ("the six records that produced it, every one
+/// `Pass`") holds by construction, not by a separate check repeated here.
 pub fn validate_proposal(
     context: &AgentContext<'_>,
     surface: &EffectiveSurface<'_>,
@@ -269,5 +278,23 @@ pub fn validate_proposal(
         Decision::Block
     };
 
-    ProposalDecision { decision, checks }
+    // REQ-27: the witness is minted if and only if decision == Allow, never
+    // on Block, and Queue/Escalate are never constructed above at all, so
+    // neither can reach this branch.
+    let authorisation = if decision == Decision::Allow {
+        Some(Authorisation::new(
+            proposal.action_name.clone(),
+            proposal.target.clone(),
+            proposal.sink.clone(),
+            checks.clone(),
+        ))
+    } else {
+        None
+    };
+
+    ProposalDecision {
+        decision,
+        checks,
+        authorisation,
+    }
 }
