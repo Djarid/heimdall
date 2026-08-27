@@ -969,8 +969,9 @@ def run_rust_gateway(rep: Report) -> None:
     with contextlib.redirect_stdout(io.StringIO()):
         rc = rust_gateway_harness.main()
     if rc == 0:
-        rep.line("  [PASS] crates/himinbjorg/ carries no dependency beyond its two "
-                  "permitted in-workspace path dependencies, keeps every test "
+        rep.line("  [PASS] crates/himinbjorg/ carries no dependency beyond its three "
+                  "permitted in-workspace path dependencies (boundary-gjoll, "
+                  "hierarchy-vor, actuator-git), keeps every test "
                   "construct out of src/, re-exports exactly its four public "
                   "interfaces plus their refusal and decision types with an "
                   "AgentContext carrying no raw-content-shaped field, never "
