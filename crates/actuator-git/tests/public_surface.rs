@@ -58,11 +58,18 @@
 //! compiled INTO that crate via `lib.rs`'s `#[cfg(test)] #[path]` mechanism,
 //! but does NOT bind this file: an integration-test crate under `tests/` is
 //! compiled separately and is free to use `unsafe`. Every test below that
-//! calls `std::env::set_var` or `remove_var` therefore lives here, restores
-//! the previous value afterwards, and carries the same single-threaded
-//! caveat `hierarchy-vor`'s own equivalent test states: no other test in
-//! this binary reads or writes the working-repository environment variable
-//! concurrently.
+//! calls `std::env::set_var` or `remove_var` does so exclusively through
+//! `with_working_repo_env`, and restores the previous value afterwards.
+//! Rust's default test harness runs `#[test]` functions concurrently as
+//! threads within one process, so this crate's own eleven callers of
+//! `with_working_repo_env` DO race on the shared process environment
+//! variable unless serialised; `with_working_repo_env` therefore holds a
+//! process-wide `static Mutex<()>` for its entire mutate-then-execute
+//! critical section (set the variable, run `f`, restore the previous
+//! value), so no two test threads can interleave their mutation and
+//! `execute()` call. This is unlike `hierarchy-vor`'s own equivalent test,
+//! which has only one such caller and genuinely needs no serialisation; this
+//! crate's suite does.
 //!
 //! **REQ-46, exercised unconditionally.** Every test below builds its own
 //! throwaway working repository, and (where a push is exercised) its own
@@ -131,11 +138,20 @@ const FIXTURE_REMOTE: &str = "origin";
 const FIXTURE_REF: &str = "fixture-integration-branch";
 const WORKING_REPO_ENV_VAR: &str = "HEIMDALL_ACTUATOR_GIT_WORKING_REPO";
 
-/// A fresh, empty, initialised working repository outside this repository's
-/// own working tree, with a committer identity configured (git refuses to
-/// commit without one) and its default branch renamed to [`FIXTURE_REF`] so
-/// a push of that name is unambiguous regardless of the host's
-/// `init.defaultBranch` configuration.
+/// A fresh, initialised working repository outside this repository's own
+/// working tree, with a committer identity configured (git refuses to
+/// commit without one), its default branch renamed to [`FIXTURE_REF`] so a
+/// push of that name is unambiguous regardless of the host's
+/// `init.defaultBranch` configuration, and one file written and staged so
+/// there is genuinely something committable. Staging happens HERE, in the
+/// fixture, via a direct `git add` shell-out: the actuator itself exposes
+/// only `Commit` and `Push` (REQ-8 forbids a third operation), so it must
+/// never stage anything on a caller's behalf, and EC-4 requires that a
+/// commit against a genuinely empty index fail rather than be special-cased
+/// into success. Without this staged file, every test committing against a
+/// freshly `init_working_repo`-created repository would be exercising EC-4's
+/// "nothing to commit" failure instead of the success path it intends to
+/// exercise.
 fn init_working_repo(label: &str) -> PathBuf {
     let dir = scratch_dir(label).join("work");
     std::fs::create_dir_all(&dir).expect("failed to create working repo dir");
@@ -143,6 +159,9 @@ fn init_working_repo(label: &str) -> PathBuf {
     run_git(&["config", "user.name", "actuator-git test fixture"], &dir);
     run_git(&["config", "user.email", "actuator-git-fixture@example.invalid"], &dir);
     run_git(&["checkout", "--quiet", "-B", FIXTURE_REF], &dir);
+    std::fs::write(dir.join("fixture.txt"), b"actuator-git fixture content\n")
+        .expect("failed to write fixture committable file");
+    run_git(&["add", "fixture.txt"], &dir);
     dir
 }
 
@@ -169,17 +188,33 @@ fn cleanup(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Serialises every call to [`with_working_repo_env`] across concurrently
+/// running test threads. Rust's default multi-threaded test harness runs
+/// `#[test]` functions as concurrent threads in one process; this crate's
+/// eleven callers of `with_working_repo_env` all mutate the same process
+/// environment variable, so without this lock two threads can interleave
+/// (thread A sets the variable, thread B overwrites it with its own path,
+/// thread A's `execute()` call then runs against thread B's repository),
+/// which surfaced as an intermittent `index.lock` failure in `ac28` under
+/// the default harness. Holding this lock for the entire
+/// mutate-then-execute-then-restore critical section makes that
+/// interleaving impossible: only one thread at a time can have the
+/// variable set to its own value while it calls `execute()`.
+static WORKING_REPO_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Sets the working-repository environment variable to `path`, runs `f`, then
-/// restores whatever value the variable held before. The ONE shape of
-/// environment mutation in this crate's suite (see this file's header for why
-/// it must live here and nowhere else).
+/// restores whatever value the variable held before, all while holding
+/// [`WORKING_REPO_ENV_LOCK`] so no other concurrently running test thread can
+/// interleave its own mutation of the same variable into this critical
+/// section (see this file's header and the lock's own doc comment for why).
 fn with_working_repo_env<R>(path: Option<&Path>, f: impl FnOnce() -> R) -> R {
+    let _guard = WORKING_REPO_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let previous = std::env::var(WORKING_REPO_ENV_VAR).ok();
-    // SAFETY: test-only mutation of this process's own environment, following
-    // `hierarchy-vor/tests/public_surface.rs`'s own `environment_mutating_...`
-    // test's exact justification: each `cargo test` target compiles to its
-    // own OS process, and no other test in this binary reads or writes this
-    // specific variable concurrently.
+    // SAFETY: test-only mutation of this process's own environment. The lock
+    // held above (not merely "no other test touches this variable") is what
+    // makes this safe under the default concurrent test harness.
     unsafe {
         match path {
             Some(p) => std::env::set_var(WORKING_REPO_ENV_VAR, p),
