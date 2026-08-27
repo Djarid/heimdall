@@ -44,9 +44,12 @@ In scope:
   environment-named path, never from the inherited working directory or a path
   baked into the binary.
 - Spawn the process under a controlled environment, a bounded wall-clock limit,
-  and honest exit-status mapping, and report a success, a refusal, or the
-  partial-effect case (a commit that succeeded followed by a push that refused)
-  distinctly.
+  and honest exit-status mapping, and report a success or a refusal distinctly.
+  The refusal vocabulary also names the partial-effect case (a commit that
+  succeeded followed by a push that refused) as a category distinct from a
+  success or nothing having happened, but no call this crate makes can produce
+  it at this fidelity (section 13, deferred item 13): naming the category is
+  in scope for this step; making it reachable is not.
 
 Out of scope, named rather than smoothed:
 
@@ -90,10 +93,15 @@ spawn (`execute`'s own internals) are all `pub(crate)`, reachable only through
 A success (`ActuationOutcome`) names only which operation ran, `Committed` or
 `Pushed`, and nothing it did not observe: no commit identifier, because obtaining
 one would need a third git operation the closed set forbids, and no field derived
-from parsing git's own output. Where a commit succeeds and the subsequent push
-refuses, the outcome distinguishes that partial-effect case explicitly
-(`ActuationRefusal::PartialEffect`): it is reported neither as a success nor as
-nothing having happened, because a local commit is a real effect that happened.
+from parsing git's own output. The refusal vocabulary names the partial-effect
+case, a commit that succeeded followed by a push that refused
+(`ActuationRefusal::PartialEffect`), as a category that must be reported neither
+as a success nor as nothing having happened, because a local commit is a real
+effect that happened. That variant is named and typed today but currently
+unreachable: `execute` performs exactly one operation per call (REQ-8), so no
+call ever holds both a commit outcome and a push outcome to combine, and the
+crate's one non-test caller authorises and executes exactly one operation per
+witness on the same grounds. See section 13, deferred item 13.
 
 ## 4. The argument-safety contract
 
@@ -208,9 +216,13 @@ a success or a partial success:
 - the process not exiting within the bounded wall-clock limit (terminated on
   expiry);
 - a non-zero exit status, or a status the platform reports as absent (a signalled
-  process), never treated as a success or a partial success; and
-- the partial-effect case (a commit that succeeded, a push that then refused),
-  reported distinctly rather than as a success or as nothing having happened.
+  process), never treated as a success or a partial success.
+
+The vocabulary also names the partial-effect case (a commit that succeeded, a
+push that then refused) as one that must be reported distinctly rather than as
+a success or as nothing having happened, but no path through this crate today
+constructs it: `execute` performs exactly one operation per call, so no single
+call ever holds both outcomes to distinguish (section 13, deferred item 13).
 
 Upstream, inside `himinbjorg::broker::broker_authorised_action`, three further
 gates run before the actuator is ever reached, and a failure at any of them
@@ -422,6 +434,7 @@ following `plans/dd/vor.md` section 7's precedent for this table's shape.
 | 10 | The Harness Boundary Interface binding to OpenCode/Gleipnir, and the canary wrap for a Fenrir task | Unchanged from D111 |
 | 11 | The process engine's fixed five-step sequence | Build-order step five, and the thing that would give `broker_authorised_action` a non-test caller and start advancing invariant 3.6 |
 | 12 | Verification of the resolved `git` binary's identity | EC-2's trust root |
+| 13 | `ActuationRefusal::PartialEffect` becoming reachable | Build-order step five, item 11 above: `execute` performs exactly one operation per call and `broker_authorised_action` authorises exactly one operation per witness, so no code path in this build holds both a commit outcome and a subsequent push outcome to combine. The variant is named and typed, not delivered behaviour |
 
 Also carried forward, stated so a reviewer can check it directly rather than
 infer it: a caller supplying a recorder whose write always reports success

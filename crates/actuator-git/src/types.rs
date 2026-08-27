@@ -122,6 +122,20 @@ pub enum ActuationRefusal {
     /// subsequent push refused. Reported neither as a success nor as nothing
     /// having happened: a local commit is a real effect that happened and
     /// must not be reported away.
+    ///
+    /// **Named, typed and currently unreachable, stated plainly rather than
+    /// smoothed over.** No code path in this build constructs this variant.
+    /// `execute` performs exactly one operation per call (REQ-8): a single
+    /// `GitOperation::Commit` or a single `GitOperation::Push`, never both in
+    /// sequence, so no call ever holds a prior commit outcome and a
+    /// subsequent push outcome at once, and `himinbjorg::broker::broker_authorised_action`
+    /// (this crate's one non-test caller) authorises and executes exactly one
+    /// operation per witness, on the same grounds. This variant exists as a
+    /// name for a real category of outcome that the vocabulary must be able
+    /// to represent the day something chains a commit and a push under one
+    /// call; making it reachable is build-order step five's job (the process
+    /// engine's fixed five-step sequence), not this crate's, per
+    /// `plans/synthesis-bootstrap.md` sections 5 and 6.
     PartialEffect {
         /// A bounded, human-readable description of the partial effect: what succeeded and what then refused.
         diagnostic: String,
