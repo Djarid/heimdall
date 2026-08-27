@@ -206,6 +206,69 @@ pub enum CheckOutcome {
 /// (REQ-23).
 pub type CheckRecord = (CheckId, CheckOutcome);
 
+/// The authorisation witness (GA-1, REQ-26 to REQ-28 of
+/// `.opencode/plans/git-actuator-step-four.md`). Opaque: every field is
+/// private, there is no public constructor, no public conversion, no
+/// `Clone`, no `Copy`, no `Default` and no `cfg` escape hatch a downstream
+/// caller could enable, following `hierarchy_vor::VerifiedCohort`'s own
+/// precedent (REQ-26). The only way to obtain one is
+/// [`crate::validation::validate_proposal`] returning a [`Decision::Allow`]
+/// and reading it back through [`ProposalDecision::authorisation`]; the only
+/// place one is constructed at all is [`Authorisation::new`], `pub(crate)`
+/// and called from nowhere but `validation` (REQ-27).
+///
+/// It is not a bare token (REQ-28): it identifies the action name, the
+/// target and the sink it authorises, and carries the six [`CheckRecord`]s
+/// that produced it, all read back through the accessors below.
+#[derive(Debug)]
+pub struct Authorisation {
+    action_name: String,
+    target: String,
+    sink: String,
+    checks: Vec<CheckRecord>,
+}
+
+impl Authorisation {
+    /// The only constructor, `pub(crate)` so no caller outside this crate
+    /// can mint one directly (REQ-26). Called from exactly one place:
+    /// `validation::validate_proposal`, and only when its decision is
+    /// [`Decision::Allow`] (REQ-27).
+    pub(crate) fn new(
+        action_name: String,
+        target: String,
+        sink: String,
+        checks: Vec<CheckRecord>,
+    ) -> Self {
+        Authorisation {
+            action_name,
+            target,
+            sink,
+            checks,
+        }
+    }
+
+    /// The action name this witness authorises.
+    pub fn action_name(&self) -> &str {
+        &self.action_name
+    }
+
+    /// The target this witness authorises.
+    pub fn target(&self) -> &str {
+        &self.target
+    }
+
+    /// The sink this witness authorises.
+    pub fn sink(&self) -> &str {
+        &self.sink
+    }
+
+    /// The six [`CheckRecord`]s that produced this witness, every one
+    /// [`CheckOutcome::Pass`] (REQ-27, REQ-28).
+    pub fn checks(&self) -> &[CheckRecord] {
+        &self.checks
+    }
+}
+
 /// The closed four-variant decision vocabulary
 /// `plans/dd/himinbjorg.md` section 5.2 names (section 7, REQ-21).
 /// [`Decision::Queue`] and [`Decision::Escalate`] are declared here and
@@ -230,10 +293,32 @@ pub enum Decision {
 /// `ProposalDecision`, not `ValidationOutcome`, because
 /// `boundary_gjoll::declaration` already exports a type of that name).
 /// `Allow` if and only if all six [`CheckRecord`]s are `Pass` (REQ-10).
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `authorisation` is `pub(crate)` because [`Authorisation`] itself has no
+/// public constructor: only `validate_proposal` ever sets it, and only to
+/// `Some` when `decision == Decision::Allow` (REQ-27). It carries no
+/// `Clone`, `PartialEq` or `Eq` derive as a consequence: [`Authorisation`]
+/// implements none of the three by design (REQ-26), so this type does not
+/// either. Nothing in this crate or its tests relies on comparing or
+/// cloning a whole `ProposalDecision` value; only its `decision` and
+/// `checks` fields, and the [`ProposalDecision::authorisation`] accessor,
+/// are read anywhere.
+#[derive(Debug)]
 pub struct ProposalDecision {
     pub decision: Decision,
     pub checks: Vec<CheckRecord>,
+    pub(crate) authorisation: Option<Authorisation>,
+}
+
+impl ProposalDecision {
+    /// `Some` if and only if `decision == Decision::Allow` (REQ-27): a
+    /// witness is minted exactly when all six [`CheckRecord`]s are
+    /// [`CheckOutcome::Pass`], never on [`Decision::Block`], and
+    /// [`Decision::Queue`] and [`Decision::Escalate`] stay unconstructed
+    /// anywhere in this crate, so neither can reach this accessor at all.
+    pub fn authorisation(&self) -> Option<&Authorisation> {
+        self.authorisation.as_ref()
+    }
 }
 
 /// `broker_action`'s (a later phase of this issue) input action: the action
@@ -261,23 +346,101 @@ impl Scope {
 }
 
 /// `broker_action`'s (a later phase of this issue) success type. Uninhabited
-/// in step three (section 7): nothing can succeed, because the single
-/// actuator slot is unimplemented (REQ-22).
+/// in step three, and **still** uninhabited now that an actuator exists
+/// behind [`crate::broker::broker_authorised_action`] instead (section 7,
+/// section 5.2 of `.opencode/plans/git-actuator-step-four.md`): nothing can
+/// succeed through `broker_action`, because its three arguments carry no
+/// authorisation evidence and it must not become a second execution path
+/// (REQ-30). No `Ok` value of this type is constructible anywhere, by any
+/// caller, so that is a structural property of the type, not merely an
+/// unenforced convention. [`crate::broker::broker_authorised_action`] uses
+/// [`ActuationReceipt`] instead, a separate, inhabited type.
 #[derive(Debug)]
 pub enum BrokerResult {}
 
-/// The closed set of ways `broker_action` (a later phase of this issue) can
-/// refuse (section 7). [`BrokerRefusal::NoActuatorAvailable`] is the only
-/// variant reachable in step three: the single actuator slot behind
-/// `broker_action` is unimplemented, so every call refuses with this
-/// variant, never a success value (REQ-22).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The closed set of ways `broker_action` and
+/// `broker_authorised_action` (`.opencode/plans/git-actuator-step-four.md`,
+/// REQ-26 to REQ-39) can refuse (section 7, section 5.2). Additive over
+/// step three's two variants; every match over this enum in this crate
+/// carries no wildcard arm, so a future variant forces every match site to
+/// be revisited (EC-18).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BrokerRefusal {
-    /// The single actuator slot behind `broker_action` is unimplemented.
-    /// The only variant reachable in step three.
+    /// The actuator itself is genuinely unavailable. Declared for the
+    /// interface's full shape; not the reason `broker_action` refuses any
+    /// more (that would be a false statement now that an actuator exists,
+    /// REQ-30): retained for a genuine future case in which the actuator
+    /// slot behind `broker_authorised_action` cannot be reached at all,
+    /// distinct from the actuator being reached and then refusing (which is
+    /// [`BrokerRefusal::ActuatorRefused`] instead). Unconstructed by any
+    /// non-test path at this build step, following [`Decision::Queue`] and
+    /// [`Decision::Escalate`]'s own precedent for a declared-but-currently-
+    /// unreachable variant.
     NoActuatorAvailable,
-    /// The credential scope is not permitted for the requested action.
-    /// Declared for the interface's full shape; not exercised further than
-    /// its own refusal arm in step three.
+    /// The credential scope is not permitted for the requested action. The
+    /// scope check runs first, and is real, on both entry points (REQ-37).
     ScopeNotPermitted,
+    /// `broker_action`'s own corrected refusal reason (REQ-30): its three
+    /// arguments carry no authorisation evidence, so it can never authorise
+    /// anything and always refuses with this variant once the scope check
+    /// clears. Replaces `NoActuatorAvailable` for this case, which would be
+    /// a false statement now that an actuator exists behind
+    /// `broker_authorised_action`.
+    NoAuthorisationEvidence,
+    /// `broker_authorised_action`'s witness-match refusal (REQ-29): the
+    /// action it was asked to broker does not byte-equal, on both action
+    /// name and target, the action the supplied [`Authorisation`]
+    /// authorises. A witness for one action never authorises a different
+    /// one (EC-11).
+    WitnessMismatch,
+    /// `broker_authorised_action`'s audit-write refusal (REQ-31, REQ-32):
+    /// the [`crate::audit::DecisionRecorder`] write failed, so the action
+    /// does not execute. An unlogged decision is treated as no decision
+    /// (HK-4): there is no branch on which the actuator is invoked after a
+    /// failed or skipped write.
+    AuditWriteFailed {
+        /// The recorder's own diagnostic, carried through unmodified.
+        diagnostic: String,
+    },
+    /// `broker_authorised_action`'s mapping of an authorised action name to
+    /// an `actuator_git::GitOperation` failed to recognise the action
+    /// (defence in depth only, following `DefinitionRefusal::EmptyIntersection`'s
+    /// precedent): structurally unreachable in practice, because check one
+    /// of `validate_proposal` never mints a witness for an action name
+    /// outside `hierarchy_vor::cohort::PERMITTED_ACTIONS`'s own two members,
+    /// which this module's mapping already covers exhaustively. Never
+    /// described as the mechanism that restricts which actions can execute;
+    /// that restriction is check one's, and the witness match's.
+    UnrecognisedAction,
+    /// `actuator-git`'s own refusal, carried through verbatim, dropping
+    /// nothing (REQ-38, following `gate_bridge::evaluate_taint_compatibility`'s
+    /// REQ-19 precedent for the gate's own reasons). Two different
+    /// `actuator_git::ActuationRefusal` variants always map to two
+    /// different values here: this variant wraps the whole enum rather than
+    /// collapsing it to an opaque marker.
+    ActuatorRefused(actuator_git::ActuationRefusal),
+}
+
+/// Himinbjörg's own success shape for `broker_authorised_action` (REQ-25,
+/// REQ-38 of `.opencode/plans/git-actuator-step-four.md`), wrapping what
+/// `actuator-git` reported and binding the executed action to the identity
+/// of the record [`crate::audit::DecisionRecorder::record`] wrote before the
+/// actuator ran (REQ-31). `record_id` is a sequence number local to this
+/// process, assigned once the audit write for this call has already
+/// succeeded (REQ-33's structural ordering): it identifies which call
+/// produced this receipt, not a durable identifier the recorder itself
+/// returned, because [`crate::audit::DecisionRecorder::record`]'s own
+/// contract (REQ-31) reports success or failure only, never an identity.
+/// A future recorder with its own durable identifier is one of the things a
+/// real Hliðskjálf would add (deferred, `plans/dd/hlidskjalf.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActuationReceipt {
+    /// What `actuator-git` reported as having happened, and nothing it did
+    /// not observe (REQ-25): no commit identifier, no field derived from
+    /// parsing git's own output.
+    pub operation: actuator_git::ActuationOutcome,
+    /// This process's own sequence number for the audit write that preceded
+    /// this receipt (see this type's own doc comment for the honest limit
+    /// on what "identity" means here).
+    pub record_id: usize,
 }

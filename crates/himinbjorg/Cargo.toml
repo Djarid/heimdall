@@ -5,5 +5,6 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [dependencies]
+actuator-git = { path = "../actuator-git" }
 boundary-gjoll = { path = "../boundary-gjoll" }
 hierarchy-vor = { path = "../hierarchy-vor" }
