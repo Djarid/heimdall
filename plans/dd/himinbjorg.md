@@ -146,21 +146,30 @@ Himinbjörg reads Mímisbrunnr and does not own it. The credential store and the
 D111 (build-order step three of `plans/synthesis-bootstrap.md`, D108) delivered five of six
 items at minimal fidelity in `crates/himinbjorg/`, not at Phase-3 implementation fidelity, and
 left the sixth, credential brokering, and HB-6's write-before-fire obligation with it, wholly
-outstanding because nothing could execute yet. D112 (build-order step four) now delivers both,
+outstanding because nothing could execute yet. D112 (build-order step four) then delivered both,
 also at minimal fidelity, by filling `broker_action`'s one actuator slot: a new crate,
 `crates/actuator-git/` (`plans/dd/actuator-git.md`), and a new, witness-carrying sibling entry
-point, `broker_authorised_action`. This section records which item moved and which did not,
-rather than treating either list as static.
+point, `broker_authorised_action`. D113 (build-order step five) now delivers the one item both
+of those steps left outstanding: the process engine's fixed five-step sequence, previously the
+last item on the wholly-outstanding list below, moves to delivered, and the "nothing calls any of
+the crate's own interfaces outside its tests today" caveat the first bullet below carried since
+D111 stops being true. This section records which item moved and which did not, rather than
+treating either list as static.
 
 **Delivered at minimal fidelity:**
 
 - **The gateway process itself, as the sole owner of the control channel.** Delivered as a
   library crate with a real public surface (`build_context`, `enforce_definition`,
   `validate_proposal`, `broker_action`, and, since D112, `broker_authorised_action`), not yet a
-  running process; nothing calls any of the crate's own interfaces outside its tests today
-  (`ontology/tests/himinbjorg_invocation_harness.py`, `ontology/tests/actuator_invocation_harness.py`),
-  because the process engine that would own the control channel at runtime is build-order step
-  five.
+  running process. Since D113, this crate's own four public interfaces (never `broker_action`,
+  which stays refuse-only) have their first genuine non-test caller: `crates/process-engine/`,
+  a new fifth crate outside `crates/himinbjorg/`'s own boundary (PE-1 of that step's own
+  rulings), reached through `himinbjorg_invocation_harness.py`'s widened, symbol-and-path-keyed
+  allowlist. This is not the process engine "owning the control channel at runtime" in the
+  sense `plans/synthesis-architecture.md` once sketched (that language is itself corrected, see
+  that document and D113): the engine is a caller of Himinbjörg's own interfaces, one crate
+  among callers this crate does not privilege, not a resident structure inside this crate's own
+  boundary.
 - **Context construction (the `build_context` interface).** Delivered for exactly one hardcoded
   agent, refusing any other agent id; the world-model subgraph query is explicitly **not**
   delivered (section 3 below), because there is no Rust Mímisbrunnr yet, so the field is absent
@@ -210,6 +219,22 @@ rather than treating either list as static.
   crate, described fully in `plans/dd/actuator-git.md`. It fills `broker_action`'s one actuator
   slot without changing that function's interface, exactly as D111 specified the slot would
   eventually be filled.
+- **The process engine's fixed five-step sequence, moved from wholly outstanding to delivered
+  at minimal fidelity (D113).** Delivered as `crates/process-engine/`, the repository's fifth
+  Rust crate, described fully in `plans/dd/process-engine.md`. It is the caller this crate's
+  own interfaces lacked: `build_context`, `enforce_definition`, `validate_proposal` and
+  `broker_authorised_action` now each have exactly one non-test call site, all inside the
+  engine's own `sequence.rs`, and `load_verified_cohort` has one, inside the engine's own
+  `startup.rs`. `broker_action` is unaffected and keeps its zero non-test callers, because the
+  engine calls `broker_authorised_action` exclusively and cannot name `broker_action`'s own
+  actuator slot at all. This does not advance invariant 3.6 beyond the narrow sense the live
+  detectors measure (the authorisation path gaining its first non-test caller); it is not
+  observed end-to-end containment, which stays delegated externally (D91, D92), and it is not a
+  claim that the target loop has run: a commit proposal that passes all six checks still refuses
+  at the actuator with `ActuationRefusal::ExitStatus`, because nothing in the workspace can stage
+  a change (PE-3 of that step's own rulings), the designed outcome, not a defect. `action_critical`
+  stays the D24 agent-scoped membership test, unchanged; the engine adds no flow-to-sink
+  transitive reachability.
 
 **Wholly outstanding, not delivered at any fidelity:**
 
@@ -223,9 +248,7 @@ rather than treating either list as static.
 - the credential broker's general form and the single-holder pattern's real implementation,
 - the Harness Boundary Interface binding to OpenCode/Gleipnir (tool-call interception,
   agent-start enforcement, provider-request interception, trust ownership, episode capture),
-- the canary wrap Himinbjörg constructs for a Fenrir task,
-- the process engine's fixed five-step sequence (build-order step five), which is what would
-  give this crate's own interfaces a non-test caller and start advancing invariant 3.6.
+- the canary wrap Himinbjörg constructs for a Fenrir task.
 
 **Two named residuals D112 added, carried here as well as in `plans/dd/actuator-git.md`'s own
 deferred table and `DECISIONS.md`'s D112 row, rather than left in only one place:**

@@ -1159,8 +1159,9 @@ def run_actuator_invocation_boundary(rep: Report) -> None:
         rc = actuator_invocation_harness.main()
     if rc == 0:
         rep.line("  [PASS] exactly one non-test call site of actuator_git::execute "
-                  "(the allowlisted one, inside himinbjorg's broker module) and zero "
-                  "non-test call sites of broker_authorised_action; the negative "
+                  "(the allowlisted one, inside himinbjorg's broker module) and exactly "
+                  "one non-test call site of broker_authorised_action (the allowlisted "
+                  "one, inside crates/process-engine/src/sequence.rs); the negative "
                   "controls prove the scanner bites. This does not advance invariant "
                   "3.6 (run the module directly for detail)")
     else:

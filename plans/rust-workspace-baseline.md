@@ -166,6 +166,45 @@ with `himinbjorg` spawning a process itself. A future crate needing to touch
 `std::process` for a second, unrelated reason reopens this ruling with its own
 `DECISIONS.md` row rather than being pre-permitted by this one.
 
+**The fifth crate's path-dependency ruling (D113), extending HB3-3 and D112 rather
+than replacing them, plus a disclosed exception neither anticipated.** Build-order
+step five's `crates/process-engine/` needed real, callable access to
+`himinbjorg::validate_proposal` and `himinbjorg::broker_authorised_action`, so its
+own `[dependencies]` table was scoped, in the build spec, to exactly two
+in-workspace path entries, `himinbjorg` and `hierarchy-vor`. The crate as built
+carries a **third**, `boundary-gjoll`, disclosed in the crate's own `Cargo.toml`
+comment and `src/lib.rs` doc comment rather than left for a reader to discover: it
+exists because `himinbjorg::ProposalParameter`'s own fields
+(`consume_mode: boundary_gjoll::types::ConsumeMode`, `trust_level:
+boundary_gjoll::types::TrustLevel`) are unmodifiable, out-of-scope `himinbjorg`
+content, and Rust's extern-prelude resolution does not make a transitive
+dependency's items nameable without a direct dependency declaration on the crate
+that defines them, a claim confirmed empirically with a minimal three-crate
+reproduction before it was relied on, not assumed from first principles. Both the
+crate's own `DefaultCognitionStep`, which must build a genuinely non-empty
+`Vec<ProposalParameter>`, and its own already-committed
+`unit_tests/cognition_and_proposal.rs` construct `ProposalParameter` values
+directly and so need `ConsumeMode`/`TrustLevel` resolvable by name. This is the
+same shape of ruling as HB3-3 and D112's own third-dependency extension of it,
+applied a third time to a different crate: the new dependency is on a crate whose
+own `[dependencies]` table is empty and which carries `#![forbid(unsafe_code)]`,
+so it introduces no new reachability to a model call or a network call, and it is
+for **value construction only**. The load-bearing property this section exists to
+protect is untouched: `crates/process-engine/` still never depends on
+`actuator-git`, never names `actuator_git::` anywhere in its own source, and never
+calls `boundary_gjoll::consequentiality::evaluate` or any other Gjöll gate function
+directly, so the gate is still reached only through
+`himinbjorg::validate_proposal`, never bypassed. `ontology/tests/rust_process_engine_harness.py`
+checks this against the **real, disclosed three-name** table
+(`boundary-gjoll`, `hierarchy-vor`, `himinbjorg`), not the build spec's literal
+two-name text, and states the discrepancy in its own output rather than silently
+reconciling it; `rust_gate_harness.check_dependency_posture`'s own empty default
+stays untouched, so `boundary-gjoll` and `hierarchy-vor` keep their strict,
+zero-dependency behaviour byte for byte. Adding a **fourth** kind of dependency to
+any future crate's gate-adjacent path remains a deliberate trust-boundary decision
+requiring its own `DECISIONS.md` row, exactly as HB3-3 and D112 already required
+for the second and third.
+
 **The out-of-tree secret convention (D110), recorded as the standing pattern for
 a future crate needing similar provenance.** Where a crate's correctness
 depends on a secret the source tree itself must not contain (an attestation
@@ -317,12 +356,103 @@ build anything. In particular it does not:
   sufficiency (`crates/actuator-git/tests/public_surface.rs`, mirroring `hierarchy-vor`'s own),
   and live invocation-boundary detection (`ontology/tests/actuator_invocation_harness.py`, on
   the same precedent, reporting both the actuator's own single non-test call site and the
-  witness-carrying entry point's zero). Both new checks fold into a new standalone sub-harness,
+  witness-carrying entry point's zero).   Both new checks fold into a new standalone sub-harness,
   `ontology/tests/rust_actuator_harness.py`, on `rust_gateway_harness.py`'s exact shape. No
   further case remains open that this bullet's own wording leaves unresolved: a third
   genuinely-new Rust component inherits the same choice between D110's replay-what-exists
   case and D111's and D112's native-test case, decided by whether a Python reference exists
   to replay, not by anything left undecided here.
+  **A third genuinely-new-component case confirms the ruling generalises to a fifth crate
+  (D113).** `crates/process-engine/` has no Python analogue at any fidelity either, not even a
+  dormant stub: nothing under `ontology/` models a fixed sequencing engine, because the whole
+  point of building one in Rust is that Gleipnir's own state-machine mechanism is re-expressed
+  natively rather than ported from a Python original that never existed here (D105, D108).
+  Correctness is established the same way D111's and D112's own resolutions name: Rust-native
+  unit and integration tests written directly against
+  `.opencode/plans/process-engine-step-five-spec.md`'s own requirements and acceptance
+  criteria, with no golden-vector replay step, while the four mechanical obligations carry
+  forward unchanged in shape: dependency posture (widened again, reusing
+  `check_dependency_posture` by import, against the real, disclosed three-name table section 4
+  above records), test-and-code isolation (including the workspace's first binary target,
+  `src/main.rs`, section 9 below), public-surface sufficiency
+  (`crates/process-engine/tests/public_surface.rs`, mirroring `hierarchy-vor`'s and
+  `actuator-git`'s own), and live invocation-boundary detection, this time across three
+  existing detectors widened with a reviewed allowlist entry each
+  (`ontology/tests/actuator_invocation_harness.py`, `ontology/tests/himinbjorg_invocation_harness.py`,
+  `ontology/tests/vor_invocation_harness.py`) rather than one new one. The new mechanical
+  obligations fold into a new standalone sub-harness, `ontology/tests/rust_process_engine_harness.py`,
+  on `rust_actuator_harness.py`'s exact shape. This is the third instance of the same choice
+  the bullet above already named as inherited, not a new rule: a fourth genuinely-new Rust
+  component decides the same way, by whether a Python reference exists to replay.
+
+## 9. Binary-target posture (D113, the workspace's first binary)
+
+`crates/process-engine/` is the workspace's first crate to carry a `[[bin]]` target
+alongside its library. Every ruling above this point governs a library crate root
+(`src/lib.rs`); a binary crate root (`src/main.rs`) is a separate compilation unit
+with its own attributes, and a future crate adding one inherits this section rather
+than the library rules above by analogy. The load-bearing property section 4 exists
+to protect, that there is no crate through which a model call or a network call
+could be reached, is unaffected by a binary target as such: what changes is that the
+workspace stops being auditable purely by static posture checks over libraries and
+gains a runnable surface, so the following properties are stated once here rather
+than assumed.
+
+- **What a binary may read.** A binary owns every environment read for its own
+  crate, or delegates that reading to exactly one named startup module its `main.rs`
+  calls; no other module under that crate's `src/` may read an environment variable,
+  read a file or resolve a path. The library half of the crate takes its
+  preconditions as already-resolved parameters and reads none of them itself,
+  mirroring how `himinbjorg::build_context` and `enforce_definition` already take an
+  already-verified `&hierarchy_vor::VerifiedCohort` rather than loading one.
+- **What a binary may not do.** No step logic, no proposal or decision shaping, no
+  cognition and no outcome interpretation beyond mapping a result to a documented
+  exit code and printing it. No argument parsing and no configuration-file read: a
+  binary's task, if it has one, is a hardcoded named constant carrying a
+  compile-time non-emptiness assertion, on the same no-configuration-surface
+  reasoning the cognition seam and the gating constants elsewhere in a crate already
+  follow, so there is no surface through which the guarded population could change
+  what the binary does. No loop, no daemon mode, no retry, no signal handler and no
+  scheduler: a binary runs its crate's own sequence at most once per process.
+- **`#![forbid(unsafe_code)]` is not inherited.** A binary crate root is a separate
+  compilation unit from the library, so its own attributes must be stated
+  explicitly at the top of `src/main.rs` rather than assumed to follow from the
+  library's own `#![forbid(unsafe_code)]` at the top of `src/lib.rs`. Both files
+  carry the attribute independently.
+- **Exit codes are a small, closed, documented set.** Every outcome a binary can
+  reach maps to a named exit-code constant with its own doc comment, all distinct,
+  the whole set documented in one place. Zero is reserved for the fully successful
+  case; every other outcome, including a startup refusal, maps to its own
+  non-zero, never-reused code. No outcome maps to an undocumented code and no
+  failing outcome maps to zero.
+- **The one disclosed, narrow exception to the empty-`std::process`-outside-`execute.rs`
+  rule.** Section 4's `std::process`-in-one-crate ruling (D112) forbids a second
+  crate from spawning a subprocess; it says nothing about a binary terminating its
+  own. Mapping an outcome to the process's own real exit code needs
+  `std::process::exit`, and Rust has no other route to it. A binary's `main.rs` may
+  therefore reference `std::process::exit` alone, confined to that one file, never
+  `std::process::Command` or any other subprocess-spawning item, and this must be
+  disclosed in the binary's own doc comment rather than left for a scanner to
+  discover unexplained. A mechanical check distinguishes the two: it is a violation
+  for `std::process::Command`, or for `std::process` of any kind, to appear
+  anywhere outside `crates/actuator-git/src/execute.rs` and the one disclosed
+  `std::process::exit` call site named above.
+- **How the invocation detectors classify `src/main.rs`.** All three of this
+  repository's live invocation-boundary detectors (`ontology/tests/actuator_invocation_harness.py`,
+  `ontology/tests/himinbjorg_invocation_harness.py`, `ontology/tests/vor_invocation_harness.py`)
+  share one `_is_test_path` implementation, keyed on whether `"unit_tests"` or
+  `"tests"` appears among a path's own directory components. `src/main.rs` contains
+  neither, so it classifies as **non-test** under all three, exactly like any other
+  file under `src/`. A binary target does not need, and must not be given, a special
+  case in any detector: it is scanned, and if it calls an allowlist-governed symbol
+  it needs its own reviewed entry naming it, on the same exactly-one-required
+  polarity as every other non-test call site.
+
+Realised first by `crates/process-engine/src/main.rs` (D113): it delegates every
+environment read to `src/startup.rs`, carries its own `#![forbid(unsafe_code)]`,
+parses no arguments, reads its one hardcoded task from named constants, maps its
+outcome to one of a small documented set of exit-code constants, and carries the
+one disclosed `std::process::exit` exception stated above, confined to that file.
 
 ---
 

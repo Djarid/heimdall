@@ -30,11 +30,11 @@ the ninth per-component document, and it is not a component the HLD indexed:
 D106's hierarchy plane (`plans/synthesis-architecture.md`) introduced Vör,
 Himinbjörg's process/hierarchy-plane sibling, as new structure around the eight
 components already indexed rather than as one of them, so no row existed here
-for it until it was built. Any further hierarchy-plane or process-plane
-component D106/D107 name but this document set has not yet indexed
-(Himinbjörg's minimal slice, the git actuator, the process engine) earns its
-own row the same way, when it is built, rather than being retrofitted into the
-original ordering.
+for it until it was built. `actuator-git.md` (D112, order 11) and
+`process-engine.md` (D113, order 12) each earned their own row the same way,
+when built. Any further hierarchy-plane or process-plane component D106/D107
+name but this document set has not yet indexed earns its own row identically,
+rather than being retrofitted into the original ordering.
 
 ## 2. Document set
 
@@ -53,6 +53,7 @@ The Detailed Design is split by component, one document each, so a document stay
 | 9 | `gjallarhorn.md` | Gjallarhorn alerting | 3 | Containment decoupled from alerting; the protected channel |
 | 10 | `vor.md` | Vör hierarchy-plane cohort attestation | 3 | Build-order step two of `plans/synthesis-bootstrap.md` (D108): one hardcoded, attested cohort, so step three (Himinbjörg's minimal slice) has something concrete to bind to |
 | 11 | `actuator-git.md` | The git actuator | 3 | Build-order step four of `plans/synthesis-bootstrap.md` (D108): the actuator that fills Himinbjörg's one actuator slot, shelling out to the system `git` binary for exactly commit and push, so the first real, gated, executed action in this project's history becomes possible |
+| 12 | `process-engine.md` | The process engine | 3 | Build-order step five of `plans/synthesis-bootstrap.md` (D108): the fixed five-step sequence that gives `himinbjorg::validate_proposal`, `broker_authorised_action`, Himinbjörg's other three interfaces and `hierarchy_vor::load_verified_cohort` each their first genuine non-test caller |
 
 Two components carry the pre-mortem's top risks and get the deepest treatment: Himinbjörg (`himinbjorg.md`, the largest unbuilt piece) and the Gjöll sink-declaration schema (`gjoll.md`, named "the root" in `ADVERSARIAL_REVIEW.md` 5.1).
 
