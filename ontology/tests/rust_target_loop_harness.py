@@ -69,7 +69,18 @@ every check below if any control fails:
      under `crates/process-engine/src/`; the resolution carries no default,
      fallback, case-folding, trimming, prefix or numeric-index pattern; and
      no `EngineTask` field assignment anywhere in the crate is fed directly
-     from an identifier that names the selector.
+     from an identifier that names the selector. Also: `derive_selector_name`
+     (REQ-11's own positive derivation rule) is applied to every
+     `(action_name, target, selector_name)` triple extracted, by
+     textual/regex scan, from the REAL `main.rs` constants, never merely
+     self-tested in isolation, so an edit to a member's `action_name` or
+     `target` without the matching `selector_name` edit is caught here.
+  2b. The two independently hand-maintained, position-aligned arrays --
+      `main.rs`'s `TASK_MEMBERS` and `startup.rs`'s `ACCEPTED_SELECTOR_NAMES`
+      -- are asserted to list the same five selector names in the same
+      order (REQ-39), since the selector resolves one shared index into
+      both; a reordering of one without the other would otherwise silently
+      route a selector name to the wrong member.
   3. The postures already checked for step five, restated (REQ-40),
      DUPLICATED here rather than imported from `rust_process_engine_harness`
      (a target-loop regression and an engine-crate posture regression are
@@ -207,6 +218,41 @@ def derive_selector_name(action_name: str, target: str) -> str:
     prefix = "action:git."
     leaf = action_name[len(prefix):] if action_name.startswith(prefix) else action_name
     return f"{leaf}-{target}"
+
+
+# `derive_selector_name`'s own isolated self-test inside `control_check()`
+# proves the FUNCTION is correct; it proves nothing about whether the REAL,
+# committed `P1_SELECTOR_NAME` .. `N3_SELECTOR_NAME` constants in main.rs
+# actually satisfy it. `extract_member_selector_triples` below closes that
+# gap: a genuine textual/regex extraction (this repository's own source
+# scan proxy discipline, never a full parser and never a hardcoded copy of
+# the expected values, which would drift silently the same way) of each
+# member's own `(action_name, target, selector_name)` triple, so
+# `check_selector_containment` can apply `derive_selector_name` to the
+# REAL extracted pair and assert the result against the REAL extracted
+# selector name.
+_SELECTOR_NAME_CONST_RE = re.compile(r'const\s+(\w+)_SELECTOR_NAME\s*:\s*&str\s*=\s*"([^"]*)"')
+
+
+def extract_member_selector_triples(src: str) -> list[tuple[str, str, str, str]]:
+    """Extracts every `(prefix, action_name, target, selector_name)`
+    quadruple this source text's own `const <PREFIX>_SELECTOR_NAME`,
+    `const <PREFIX>_ACTION_NAME` and `const <PREFIX>_TARGET` constants
+    carry, by textual/regex extraction alone. A prefix whose companion
+    `_ACTION_NAME` or `_TARGET` constant is missing is silently skipped
+    here rather than raising; this stays a pure extraction step, and the
+    caller decides what an empty or partial result means."""
+    triples: list[tuple[str, str, str, str]] = []
+    for prefix, selector_name in _SELECTOR_NAME_CONST_RE.findall(src):
+        action_match = re.search(
+            rf'const\s+{re.escape(prefix)}_ACTION_NAME\s*:\s*&str\s*=\s*"([^"]*)"', src
+        )
+        target_match = re.search(
+            rf'const\s+{re.escape(prefix)}_TARGET\s*:\s*&str\s*=\s*"([^"]*)"', src
+        )
+        if action_match and target_match:
+            triples.append((prefix, action_match.group(1), target_match.group(1), selector_name))
+    return triples
 
 
 def _strip_line_comments(src: str) -> str:
@@ -380,14 +426,160 @@ def check_selector_containment(
             f"an index into the closed array (REQ-18, REQ-39)"
         )
 
+    # REQ-11's derivation rule, applied to the REAL, extracted constants
+    # (finding I1's own fix): a member whose `action_name` or `target`
+    # changed without its own `selector_name` following would otherwise
+    # pass this harness undetected, since `derive_selector_name`'s own
+    # self-test in `control_check()` exercises the function alone, never
+    # the committed constants.
+    main_raw = files.get("main.rs")
+    if main_raw is not None:
+        main_cleaned = _strip_line_comments(main_raw)
+        for prefix, action_name, target, selector_name in extract_member_selector_triples(main_cleaned):
+            derived = derive_selector_name(action_name, target)
+            if derived != selector_name:
+                violations.append(
+                    f"main.rs: {prefix}_SELECTOR_NAME is {selector_name!r}, but REQ-11's "
+                    f"derivation rule applied to {prefix}_ACTION_NAME={action_name!r} and "
+                    f"{prefix}_TARGET={target!r} derives {derived!r} instead -- an edit to "
+                    f"the action name or target without the matching selector-name edit "
+                    f"would otherwise pass undetected"
+                )
+
     if violations:
         return CheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
     return CheckResult(
         ok=True,
         detail=f"{TASK_SELECTOR_ENV_VAR_NAME}/{TASK_SELECTOR_ENV_VAR_VALUE} appear in "
                f"{startup_filename} alone; the resolution carries no default, fallback, "
-               f"case-folding, trimming, prefix or numeric-index pattern; and no "
-               f"EngineTask field is fed directly from a selector-named identifier.",
+               f"case-folding, trimming, prefix or numeric-index pattern; no EngineTask "
+               f"field is fed directly from a selector-named identifier; and every "
+               f"extracted (action_name, target, selector_name) triple found in main.rs "
+               f"satisfies REQ-11's derivation rule.",
+    )
+
+
+# ---------------------------------------------------------------------------------
+# Check 2b: main.rs's `TASK_MEMBERS` and startup.rs's own
+# `ACCEPTED_SELECTOR_NAMES` agree, position for position (REQ-39, finding
+# I2). The two arrays are independently hand-maintained (startup.rs's own
+# doc comment says so directly: "The two arrays are independent,
+# hand-maintained agreements... an edit to either array without the
+# matching edit to the other is a silent divergence neither compiler nor
+# this module can detect by itself"); nothing mechanical checked that
+# claim until now. Extraction only, on this file's own established
+# discipline: never a hardcoded copy of either array's expected order,
+# which would drift silently the same way finding I2 itself describes.
+# ---------------------------------------------------------------------------------
+
+_TASK_MEMBERS_ARRAY_RE = re.compile(
+    r"const\s+TASK_MEMBERS\s*:\s*\[EngineTaskMember;\s*5\]\s*=\s*\[(.*?)\];", re.DOTALL
+)
+_MEMBER_SELECTOR_FIELD_RE = re.compile(r"selector_name\s*:\s*(\w+)_SELECTOR_NAME")
+_ACCEPTED_SELECTOR_NAMES_ARRAY_RE = re.compile(
+    r"const\s+ACCEPTED_SELECTOR_NAMES\s*:\s*\[&str;\s*5\]\s*=\s*\[(.*?)\];", re.DOTALL
+)
+_QUOTED_STRING_RE = re.compile(r'"([^"]*)"')
+
+
+def extract_task_members_selector_order(main_rs_src: str) -> list[str] | None:
+    """Extracts the ordered list of selector names as `TASK_MEMBERS`
+    itself lists its members, from main.rs's own committed source text:
+    finds the `TASK_MEMBERS` array literal, reads each member's own
+    `selector_name: <PREFIX>_SELECTOR_NAME` field in the order the
+    members appear, and resolves each prefix to that prefix's own `const
+    <PREFIX>_SELECTOR_NAME: &str = "..."` literal. Returns `None` if the
+    array literal, or a field it references, cannot be found -- never
+    raises -- so a caller can report absence as its own violation rather
+    than crashing."""
+    array_match = _TASK_MEMBERS_ARRAY_RE.search(main_rs_src)
+    if array_match is None:
+        return None
+    prefixes = _MEMBER_SELECTOR_FIELD_RE.findall(array_match.group(1))
+    if not prefixes:
+        return None
+    const_map = dict(_SELECTOR_NAME_CONST_RE.findall(main_rs_src))
+    names: list[str] = []
+    for prefix in prefixes:
+        name = const_map.get(prefix)
+        if name is None:
+            return None
+        names.append(name)
+    return names
+
+
+def extract_accepted_selector_names_order(startup_rs_src: str) -> list[str] | None:
+    """Extracts the ordered list of selector names as
+    `ACCEPTED_SELECTOR_NAMES` itself lists them, from startup.rs's own
+    committed source text, by the same textual/regex extraction
+    discipline. Returns `None` if the array literal cannot be found."""
+    array_match = _ACCEPTED_SELECTOR_NAMES_ARRAY_RE.search(startup_rs_src)
+    if array_match is None:
+        return None
+    names = _QUOTED_STRING_RE.findall(array_match.group(1))
+    if not names:
+        return None
+    return names
+
+
+def check_task_members_and_accepted_selector_order_agree(
+    main_rs_path: Path = MAIN_RS, startup_rs_path: Path = STARTUP_RS
+) -> CheckResult:
+    """Extracts, from both committed files' source text, the ordered list
+    of the five selector names as they actually appear -- from main.rs's
+    `TASK_MEMBERS` and from startup.rs's `ACCEPTED_SELECTOR_NAMES` -- and
+    asserts the two ordered lists are identical, position for position
+    (REQ-39, finding I2). A reordering of one array without the matching
+    reordering of the other would otherwise silently route a selector
+    name to the wrong member; nothing else in this crate or this harness
+    checks that the two independently hand-maintained arrays agree."""
+    if not main_rs_path.exists():
+        return CheckResult(ok=False, detail=f"{main_rs_path} does not exist")
+    if not startup_rs_path.exists():
+        return CheckResult(ok=False, detail=f"{startup_rs_path} does not exist")
+
+    main_src = _strip_line_comments(main_rs_path.read_text(encoding="utf-8"))
+    startup_src = _strip_line_comments(startup_rs_path.read_text(encoding="utf-8"))
+
+    main_order = extract_task_members_selector_order(main_src)
+    startup_order = extract_accepted_selector_names_order(startup_src)
+
+    if main_order is None:
+        return CheckResult(
+            ok=False,
+            detail=f"could not extract TASK_MEMBERS's own selector-name order from "
+                   f"{main_rs_path}",
+        )
+    if startup_order is None:
+        return CheckResult(
+            ok=False,
+            detail=f"could not extract ACCEPTED_SELECTOR_NAMES's own order from "
+                   f"{startup_rs_path}",
+        )
+
+    violations: list[str] = []
+    if len(main_order) != len(startup_order):
+        violations.append(
+            f"TASK_MEMBERS lists {len(main_order)} selector name(s) but "
+            f"ACCEPTED_SELECTOR_NAMES lists {len(startup_order)}; the two arrays must be "
+            f"the same length to share one index space"
+        )
+    else:
+        for i, (m_name, s_name) in enumerate(zip(main_order, startup_order)):
+            if m_name != s_name:
+                violations.append(
+                    f"position {i}: TASK_MEMBERS names {m_name!r} but "
+                    f"ACCEPTED_SELECTOR_NAMES names {s_name!r} -- the selector resolves "
+                    f"one shared index into both arrays (REQ-39), so a reordering of one "
+                    f"without the other would route a selector name to the wrong member"
+                )
+
+    if violations:
+        return CheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
+    return CheckResult(
+        ok=True,
+        detail=f"TASK_MEMBERS and ACCEPTED_SELECTOR_NAMES list the same "
+               f"{len(main_order)} selector names in the same order.",
     )
 
 
@@ -629,6 +821,70 @@ def _synthetic_main_rs_all_five(extra_asserts: int = 0, distinct_assert: bool = 
     return "\n".join(lines)
 
 
+_MEMBER_PREFIXES: tuple[str, ...] = ("P1", "P2", "N1", "N2", "N3")
+
+
+def _synthetic_full_main_rs(
+    selector_overrides: dict[str, str] | None = None,
+    member_order: list[int] | None = None,
+) -> str:
+    """Builds a synthetic main.rs carrying the REAL file's own shape (one
+    `const <PREFIX>_SELECTOR_NAME`/`_ACTION_NAME`/`_TARGET` triple per
+    member, and one `TASK_MEMBERS` array literal referencing them by
+    name, in `EngineTaskMember { selector_name: <PREFIX>_SELECTOR_NAME,
+    ... }` form), on `TASK_TABLE`'s own five rows. Used by both the
+    finding-I1 derivation-application controls and the finding-I2
+    order-agreement controls below, so a single fixture generator proves
+    both checks bite against a realistic, committed-shaped file rather
+    than only against `derive_selector_name`'s or the array-order
+    extraction's own isolated inputs.
+
+    `selector_overrides` maps a prefix to a replacement selector-name
+    literal (used to plant a REQ-11 derivation mismatch without touching
+    the real file). `member_order` reorders which row occupies which
+    `TASK_MEMBERS` array position (used to plant an order-agreement
+    mismatch against a startup.rs fixture)."""
+    selector_overrides = selector_overrides or {}
+    indices = member_order if member_order is not None else list(range(len(TASK_TABLE)))
+    lines = ["#![forbid(unsafe_code)]", "fn main() {}", ""]
+    for i, row in enumerate(TASK_TABLE):
+        prefix = _MEMBER_PREFIXES[i]
+        selector, task_id, action_name, target, sink, _cost = row
+        selector = selector_overrides.get(prefix, selector)
+        lines.append(f'const {prefix}_SELECTOR_NAME: &str = "{selector}";')
+        lines.append(f'const {prefix}_TASK_ID: &str = "{task_id}";')
+        lines.append(f'const {prefix}_ACTION_NAME: &str = "{action_name}";')
+        lines.append(f'const {prefix}_TARGET: &str = "{target}";')
+        lines.append(f'const {prefix}_SINK: &str = "{sink}";')
+    lines.append("const TASK_MEMBERS: [EngineTaskMember; 5] = [")
+    for i in indices:
+        prefix = _MEMBER_PREFIXES[i]
+        lines.append("    EngineTaskMember {")
+        lines.append(f"        selector_name: {prefix}_SELECTOR_NAME,")
+        lines.append(f"        task_id: {prefix}_TASK_ID,")
+        lines.append(f"        action_name: {prefix}_ACTION_NAME,")
+        lines.append(f"        target: {prefix}_TARGET,")
+        lines.append(f"        sink: {prefix}_SINK,")
+        lines.append("    },")
+    lines.append("];")
+    return "\n".join(lines)
+
+
+def _synthetic_startup_rs(selector_order: list[str] | None = None) -> str:
+    """Builds a synthetic startup.rs carrying only the shape the
+    order-agreement extraction needs: `TASK_SELECTOR_ENV_VAR`'s own
+    literal (so `check_selector_containment`'s other sub-checks do not
+    misfire on a fixture reused across both), and `ACCEPTED_SELECTOR_NAMES`
+    in the given order (`TASK_TABLE`'s own order by default)."""
+    order = selector_order if selector_order is not None else [row[0] for row in TASK_TABLE]
+    lines = [f'pub const {TASK_SELECTOR_ENV_VAR_NAME}: &str = "{TASK_SELECTOR_ENV_VAR_VALUE}";']
+    lines.append("const ACCEPTED_SELECTOR_NAMES: [&str; 5] = [")
+    for name in order:
+        lines.append(f'    "{name}",')
+    lines.append("];")
+    return "\n".join(lines)
+
+
 def control_check() -> list[str]:
     failures: list[str] = []
 
@@ -794,6 +1050,90 @@ def control_check() -> list[str]:
             failures.append(
                 "selector-containment control did NOT catch an EngineTask field fed "
                 "directly from a selector-named identifier"
+            )
+
+        # Violation (finding I1): a real-shaped main.rs whose P1_SELECTOR_NAME
+        # has been mutated so it no longer matches REQ-11's derivation rule
+        # applied to its own P1_ACTION_NAME/P1_TARGET. Proves the extraction
+        # added to check_selector_containment actually bites against a
+        # realistic, committed-shaped file -- not merely against
+        # derive_selector_name's own isolated self-test above.
+        mismatched_derivation_src = base / "src_selector_mismatched_derivation"
+        mismatched_derivation_src.mkdir()
+        (mismatched_derivation_src / "startup.rs").write_text(
+            f'pub const {TASK_SELECTOR_ENV_VAR_NAME}: &str = "{TASK_SELECTOR_ENV_VAR_VALUE}";\n'
+        )
+        (mismatched_derivation_src / "main.rs").write_text(
+            _synthetic_full_main_rs(selector_overrides={"P1": "delete-everything"})
+        )
+        mismatched_derivation_result = check_selector_containment(mismatched_derivation_src)
+        if mismatched_derivation_result.ok:
+            failures.append(
+                "selector-containment control did NOT catch a main.rs whose "
+                "P1_SELECTOR_NAME does not match REQ-11's derivation rule applied to "
+                "its own P1_ACTION_NAME/P1_TARGET"
+            )
+
+        # Legitimate (finding I1): the same real-shaped main.rs, unmutated,
+        # proving the extraction does not over-fire against a genuinely
+        # compliant set of constants.
+        correct_derivation_src = base / "src_selector_correct_derivation"
+        correct_derivation_src.mkdir()
+        (correct_derivation_src / "startup.rs").write_text(
+            f'pub const {TASK_SELECTOR_ENV_VAR_NAME}: &str = "{TASK_SELECTOR_ENV_VAR_VALUE}";\n'
+        )
+        (correct_derivation_src / "main.rs").write_text(_synthetic_full_main_rs())
+        correct_derivation_result = check_selector_containment(correct_derivation_src)
+        if not correct_derivation_result.ok:
+            failures.append(
+                f"selector-containment control WRONGLY flagged a main.rs whose selector "
+                f"names all match REQ-11's derivation rule: "
+                f"{correct_derivation_result.violations}"
+            )
+
+        # -------------------------------------------------------------
+        # Check 2b controls: TASK_MEMBERS/ACCEPTED_SELECTOR_NAMES order
+        # agreement (finding I2).
+        # -------------------------------------------------------------
+
+        # Legitimate: the two arrays list the same five names in the same
+        # order, proving the order-agreement check does not over-fire.
+        order_legit_main = base / "order_legit_main.rs"
+        order_legit_main.write_text(_synthetic_full_main_rs())
+        order_legit_startup = base / "order_legit_startup.rs"
+        order_legit_startup.write_text(_synthetic_startup_rs())
+        order_legit_result = check_task_members_and_accepted_selector_order_agree(
+            order_legit_main, order_legit_startup
+        )
+        if not order_legit_result.ok:
+            failures.append(
+                f"order-agreement control WRONGLY flagged a matching TASK_MEMBERS/"
+                f"ACCEPTED_SELECTOR_NAMES order: {order_legit_result.violations}"
+            )
+
+        # Violation: startup.rs's own ACCEPTED_SELECTOR_NAMES has its first
+        # two entries swapped relative to main.rs's own TASK_MEMBERS, with
+        # no matching edit to main.rs -- exactly the silent divergence
+        # finding I2 describes. Proves the check catches it and reports the
+        # disagreeing position by name.
+        order_bad_main = base / "order_bad_main.rs"
+        order_bad_main.write_text(_synthetic_full_main_rs())
+        order_bad_startup = base / "order_bad_startup.rs"
+        swapped_order = [row[0] for row in TASK_TABLE]
+        swapped_order[0], swapped_order[1] = swapped_order[1], swapped_order[0]
+        order_bad_startup.write_text(_synthetic_startup_rs(swapped_order))
+        order_bad_result = check_task_members_and_accepted_selector_order_agree(
+            order_bad_main, order_bad_startup
+        )
+        if order_bad_result.ok:
+            failures.append(
+                "order-agreement control did NOT catch startup.rs's ACCEPTED_SELECTOR_NAMES "
+                "being reordered relative to main.rs's own TASK_MEMBERS"
+            )
+        elif not any("position 0" in v for v in order_bad_result.violations):
+            failures.append(
+                f"order-agreement control caught the reordering but did not report the "
+                f"disagreeing position by name: {order_bad_result.violations}"
             )
 
         # -------------------------------------------------------------
@@ -976,6 +1316,9 @@ def main() -> int:
         "assertions, a missing pairwise-distinctness assertion, a mismatched "
         "selector-derivation name, a selector leaked outside startup.rs, a "
         "defaulting selector resolution, a selector-fed EngineTask field, a "
+        "real-shaped main.rs whose selector name does not match REQ-11's derivation "
+        "rule applied to its own extracted action_name/target, a "
+        "TASK_MEMBERS/ACCEPTED_SELECTOR_NAMES ordering disagreement, a "
         "two-binary-target manifest, a missing forbid(unsafe_code)/planted unsafe "
         "keyword, a planted std::process::Command call, a planted std::net call, a "
         "planted filesystem write, a planted actuator-git dependency, planted git "
@@ -995,6 +1338,16 @@ def main() -> int:
     print(f"  [{'PASS' if containment_result.ok else 'CRITICAL'}] selector containment (REQ-39): {containment_result.detail}")
     if not containment_result.ok:
         for v in containment_result.violations:
+            print(f"    - {v}")
+        return 1
+
+    order_agreement_result = check_task_members_and_accepted_selector_order_agree()
+    print(
+        f"  [{'PASS' if order_agreement_result.ok else 'CRITICAL'}] TASK_MEMBERS/"
+        f"ACCEPTED_SELECTOR_NAMES order agreement (REQ-39): {order_agreement_result.detail}"
+    )
+    if not order_agreement_result.ok:
+        for v in order_agreement_result.violations:
             print(f"    - {v}")
         return 1
 
