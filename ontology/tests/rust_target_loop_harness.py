@@ -435,7 +435,34 @@ def check_selector_containment(
     main_raw = files.get("main.rs")
     if main_raw is not None:
         main_cleaned = _strip_line_comments(main_raw)
-        for prefix, action_name, target, selector_name in extract_member_selector_triples(main_cleaned):
+        extracted_triples = extract_member_selector_triples(main_cleaned)
+        # This assertion, not the derivation loop below, is what closes the
+        # gap `extract_member_selector_triples`'s own docstring discloses: a
+        # prefix whose companion `_ACTION_NAME` or `_TARGET` constant fails
+        # to match is silently dropped BY THE EXTRACTOR, so a for-loop over
+        # its result alone can report a clean pass having checked fewer than
+        # five members, or none. This is an EXTRACTION-SHAPE problem --
+        # the regex scan could not find all five members' own constants,
+        # e.g. because a future edit to main.rs's constant-declaration shape
+        # inlined values directly into the struct literal instead of
+        # declaring them via named `const <PREFIX>_ACTION_NAME`/`_TARGET`
+        # constants -- and is reported distinctly from a REQ-11 derivation
+        # mismatch (checked in the loop below), so a reader is never left
+        # unsure which of the two failed.
+        if len(extracted_triples) != 5:
+            violations.append(
+                f"main.rs: extract_member_selector_triples found only "
+                f"{len(extracted_triples)} member (action_name, target, selector_name) "
+                f"triple(s) by regex scan, but exactly 5 are expected -- this is an "
+                f"EXTRACTION-SHAPE problem (the scan could not locate all five members' "
+                f"own companion `_ACTION_NAME`/`_TARGET` constants), not a REQ-11 "
+                f"derivation mismatch; a change to main.rs's constant-declaration shape "
+                f"(for example inlining a member's values directly into the struct "
+                f"literal instead of via named constants) would otherwise silently "
+                f"reduce how many members this check actually examines, down to zero, "
+                f"while still reporting a clean pass"
+            )
+        for prefix, action_name, target, selector_name in extracted_triples:
             derived = derive_selector_name(action_name, target)
             if derived != selector_name:
                 violations.append(
@@ -993,9 +1020,10 @@ def control_check() -> list[str]:
             "    match v { Some(x) if x == \"commit-fixture-target\" => Ok(0), _ => Err(\"refused\".to_string()) }\n"
             "}\n"
         )
-        (legit_src / "main.rs").write_text(
-            "fn main() { let task = Task { action_name: \"a\".to_string() }; }\n"
-        )
+        # Real-shaped (all five members' own constants present), so this
+        # fixture also satisfies the extraction-count assertion below,
+        # rather than incidentally tripping it while testing something else.
+        (legit_src / "main.rs").write_text(_synthetic_full_main_rs())
         legit_containment = check_selector_containment(legit_src)
         if not legit_containment.ok:
             failures.append(
@@ -1089,6 +1117,50 @@ def control_check() -> list[str]:
                 f"selector-containment control WRONGLY flagged a main.rs whose selector "
                 f"names all match REQ-11's derivation rule: "
                 f"{correct_derivation_result.violations}"
+            )
+        # Explicit, not merely incidental: proves extraction over the same
+        # unmutated fixture actually found all five triples (the exactly-5
+        # case this module's new extraction-count assertion must permit),
+        # rather than the check above passing for some unrelated reason.
+        correct_derivation_extracted = extract_member_selector_triples(
+            _strip_line_comments(_synthetic_full_main_rs())
+        )
+        if len(correct_derivation_extracted) != 5:
+            failures.append(
+                f"extraction-count control: extract_member_selector_triples found "
+                f"{len(correct_derivation_extracted)} triple(s) over a fully compliant "
+                f"synthetic main.rs, expected exactly 5"
+            )
+
+        # Violation (extraction-shape gap, one layer below finding I1): a
+        # real-shaped main.rs where P1's own companion `_ACTION_NAME`
+        # constant has been renamed, so `extract_member_selector_triples`
+        # itself -- by its own documented, silent-skip behaviour -- returns
+        # only 4 triples rather than 5. Proves `check_selector_containment`
+        # treats this as a genuine, named failure (an extraction-shape
+        # problem) rather than silently checking fewer than five members
+        # and reporting a clean pass.
+        missing_companion_src = base / "src_selector_missing_companion"
+        missing_companion_src.mkdir()
+        (missing_companion_src / "startup.rs").write_text(
+            f'pub const {TASK_SELECTOR_ENV_VAR_NAME}: &str = "{TASK_SELECTOR_ENV_VAR_VALUE}";\n'
+        )
+        broken_main_src = _synthetic_full_main_rs().replace(
+            "P1_ACTION_NAME", "P1_ACTION_NAME_RENAMED"
+        )
+        (missing_companion_src / "main.rs").write_text(broken_main_src)
+        missing_companion_result = check_selector_containment(missing_companion_src)
+        if missing_companion_result.ok:
+            failures.append(
+                "selector-containment control did NOT catch main.rs's P1 member losing "
+                "its own extractable _ACTION_NAME companion constant (extraction found "
+                "fewer than 5 triples, but the check reported a clean pass)"
+            )
+        elif not any("found only 4" in v for v in missing_companion_result.violations):
+            failures.append(
+                f"selector-containment control caught the missing companion constant "
+                f"but did not name the actual extracted count (4) as an "
+                f"extraction-shape problem: {missing_companion_result.violations}"
             )
 
         # -------------------------------------------------------------
