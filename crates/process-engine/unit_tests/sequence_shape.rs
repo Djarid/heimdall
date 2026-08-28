@@ -528,12 +528,48 @@ fn ac39_human_question_outcome_variant_is_declared_and_never_constructed_in_src(
         matches!(o, crate::EngineOutcome::AwaitingHumanDecision)
     };
 
+    // Scan for a CONSTRUCTION of the variant, not the bare variant
+    // identifier: the enum's own declaration in outcome.rs necessarily
+    // writes the identifier unqualified (`AwaitingHumanDecision,` inside
+    // the `enum EngineOutcome` body), since that is how a variant is
+    // declared at all, and the test's own `_shape_check` closure above
+    // makes that declaration mandatory for any valid implementation. A
+    // genuine construction, by contrast, always needs a qualifying path
+    // (`EngineOutcome::` or, from inside an impl block on the same type,
+    // `Self::`), which the bare declaration line never writes.
+    //
+    // A qualified occurrence is not automatically a construction, though:
+    // `crate::exit_code_for`'s own match must be exhaustive with no
+    // wildcard arm (EC-14, documented on that function), so it necessarily
+    // carries a legitimate match-arm PATTERN naming this variant on the
+    // left of `=>` (`EngineOutcome::AwaitingHumanDecision => ...`) purely
+    // to inspect an outcome some other, already-run step produced. That is
+    // matching a value, not constructing one, and REQ-35 forbids only the
+    // latter ("Given the whole crate source scanned for a construction of
+    // it" -- AC-39). A qualified occurrence NOT immediately followed by
+    // `=>` (an assignment, a return, an argument, a struct field, ...) is a
+    // real construction site and fails this test.
     let cleaned = cleaned_whole_crate_src();
+    let mut construction_hits: Vec<String> = Vec::new();
+    for construction_pattern in ["EngineOutcome::AwaitingHumanDecision", "Self::AwaitingHumanDecision"] {
+        let mut search_from = 0usize;
+        while let Some(offset) = cleaned[search_from..].find(construction_pattern) {
+            let match_start = search_from + offset;
+            let after = &cleaned[match_start + construction_pattern.len()..];
+            if !after.trim_start().starts_with("=>") {
+                construction_hits.push(format!(
+                    "{construction_pattern:?} at byte offset {match_start} (not a match-arm pattern)"
+                ));
+            }
+            search_from = match_start + construction_pattern.len();
+        }
+    }
     assert!(
-        !cleaned.contains("AwaitingHumanDecision"),
+        construction_hits.is_empty(),
         "AC-39/REQ-35: no file under crates/process-engine/src/ may construct \
          EngineOutcome::AwaitingHumanDecision; it is named and typed, never delivered, \
-         until Gjallarhorn's protected channel and an operator-answer path exist"
+         until Gjallarhorn's protected channel and an operator-answer path exist. Found: \
+         {construction_hits:?}"
     );
     for forbidden in ["unimplemented!", "todo!", "panic!"] {
         assert!(
