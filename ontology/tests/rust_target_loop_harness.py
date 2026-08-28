@@ -190,12 +190,13 @@ TASK_TABLE: tuple[tuple[str, str, str, str, str, int], ...] = (
     ("push-fixture-target", "target-loop-push-fixture-target", "action:git.push", "fixture-target", "sink:git.push", 0),
 )
 
-# Placeholder only (REQ-42): 64 zero characters, deliberately never equal to
-# a real SHA-256 digest of any non-empty file. Updating this to the real
-# digest, once TARGET_LOOP_EVIDENCE.md is committed (REQ-55), is a
-# deliberate, reviewed edit -- never something this module computes and
-# rewrites itself.
-PINNED_EVIDENCE_SHA256 = "0" * 64
+# The real SHA-256 digest of the committed TARGET_LOOP_EVIDENCE.md (REQ-42),
+# computed by hand with `shasum -a 256 TARGET_LOOP_EVIDENCE.md` after the file
+# was written and reviewed, and pinned here as a deliberate, reviewed edit --
+# never something this module computes and rewrites itself. A later edit to
+# the recorded proof is detected as digest drift rather than silently
+# absorbed.
+PINNED_EVIDENCE_SHA256 = "cf91d0383793abc6b1c428caeb8299c170df72078fd2b6e19ba116d295a3f394"
 
 
 def derive_selector_name(action_name: str, target: str) -> str:
