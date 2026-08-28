@@ -209,10 +209,13 @@ fn four_interfaces_end_to_end_and_real_cohort_verification_markers() {
             assert!(
                 matches!(
                     broker_outcome,
-                    Err(himinbjorg::BrokerRefusal::NoActuatorAvailable)
+                    Err(himinbjorg::BrokerRefusal::NoAuthorisationEvidence)
                 ),
-                "AC-41: broker_action must refuse with NoActuatorAvailable even for a \
-                 previously-Allow-validated proposal, exercised through the public surface"
+                "AC-41: broker_action must refuse with NoAuthorisationEvidence (REQ-30's \
+                 corrected reason, per broker.rs's own doc comment: NoActuatorAvailable \
+                 would now be a false statement since an actuator genuinely exists behind \
+                 broker_authorised_action) even for a previously-Allow-validated proposal, \
+                 exercised through the public surface"
             );
 
             println!(
@@ -438,6 +441,16 @@ fn ac59_a_lying_recorder_defeats_the_audit_obligation_named_not_closed() {
             run(&["init", "--quiet"]);
             run(&["config", "user.name", "ac59 fixture"]);
             run(&["config", "user.email", "ac59-fixture@example.invalid"]);
+            // Stage a real change so the commit under test has something to
+            // commit: without this, `git commit -m ...` (no `--allow-empty`,
+            // per `actuator_git::argv::build_commit_argv`) genuinely fails with
+            // "nothing to commit", which would make this test's own commit
+            // refuse for an unrelated fixture reason rather than demonstrate
+            // AC-59's point (a lying recorder does not block a real actuator
+            // effect).
+            std::fs::write(work.join("ac59-fixture-file.txt"), b"ac59 fixture content\n")
+                .expect("failed to write fixture file to stage for the commit under test");
+            run(&["add", "ac59-fixture-file.txt"]);
 
             let previous = std::env::var("HEIMDALL_ACTUATOR_GIT_WORKING_REPO").ok();
             // SAFETY: test-only mutation of this process's own environment,

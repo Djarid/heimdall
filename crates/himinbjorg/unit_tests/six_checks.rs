@@ -153,10 +153,17 @@ fn passing_parameter(id: &str) -> crate::ProposalParameter {
     }
 }
 
-fn baseline_passing_proposal() -> crate::Proposal {
+/// Builds an otherwise-passing proposal whose `target` is exactly `target`
+/// (not hardcoded): the out-of-scope value a caller such as
+/// `ac20_target_absent_from_scope_fails_check_two` passes here is the one
+/// `check_target_in_scope` actually receives, since that check reads
+/// `proposal.target`, never `TaskContext::target` (`context.rs`'s
+/// `TARGET_SCOPE` is a fixed constant, independent of the task passed to
+/// `fixture_context_and_surface`).
+fn baseline_passing_proposal(target: &str) -> crate::Proposal {
     crate::Proposal {
         action_name: hierarchy_vor::cohort::PERMITTED_ACTIONS[0].to_string(),
-        target: "fixture-target".to_string(),
+        target: target.to_string(),
         sink: hierarchy_vor::cohort::CONSEQUENTIAL_SINKS[0].to_string(),
         parameters: vec![passing_parameter("v")],
         declared_cost: 0,
@@ -178,7 +185,7 @@ fn ac15_all_six_checks_pass_decision_is_allow() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let proposal = baseline_passing_proposal();
+    let proposal = baseline_passing_proposal("fixture-target");
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
 
@@ -213,7 +220,7 @@ fn ac16_check_one_action_not_in_effective_surface_fails_alone() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.action_name = "action:totally-unknown-and-never-permitted".to_string();
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
@@ -238,7 +245,7 @@ fn ac16_check_two_target_absent_from_scope_fails_alone() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.target = "totally-unrelated-target-outside-any-hardcoded-scope-zzz".to_string();
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
@@ -263,7 +270,7 @@ fn ac16_check_four_blast_radius_over_bound_fails_alone() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     // A deliberately oversized parameter list: see this file's header note on the
     // assumed blast-radius derivation (proposal.parameters.len()).
     proposal.parameters = (0..10_000)
@@ -292,7 +299,7 @@ fn ac16_check_six_declared_cost_over_ceiling_fails_alone() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.declared_cost = u32::MAX;
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
@@ -323,7 +330,7 @@ fn ac17_two_simultaneous_failures_both_recorded_no_short_circuit() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.action_name = "action:totally-unknown-and-never-permitted".to_string();
     proposal.declared_cost = u32::MAX;
 
@@ -362,18 +369,18 @@ fn ac18_property_only_six_passes_ever_yields_allow() {
     // property under test is uniform across every one of them: never Allow
     // unless every one of the six records is Pass.
     let mut probes: Vec<crate::Proposal> = Vec::new();
-    probes.push(baseline_passing_proposal()); // all pass: the ONE allowed case
+    probes.push(baseline_passing_proposal("fixture-target")); // all pass: the ONE allowed case
 
-    let mut unknown_action = baseline_passing_proposal();
+    let mut unknown_action = baseline_passing_proposal("fixture-target");
     unknown_action.action_name = "action:totally-unknown-and-never-permitted".to_string();
     probes.push(unknown_action);
 
-    let mut unknown_action_and_target = baseline_passing_proposal();
+    let mut unknown_action_and_target = baseline_passing_proposal("fixture-target");
     unknown_action_and_target.action_name = "action:totally-unknown-and-never-permitted".to_string();
     unknown_action_and_target.target = "totally-unrelated-target-outside-any-hardcoded-scope-zzz".to_string();
     probes.push(unknown_action_and_target);
 
-    let mut everything_extreme = baseline_passing_proposal();
+    let mut everything_extreme = baseline_passing_proposal("fixture-target");
     everything_extreme.action_name = "action:totally-unknown-and-never-permitted".to_string();
     everything_extreme.target = "totally-unrelated-target-outside-any-hardcoded-scope-zzz".to_string();
     everything_extreme.declared_cost = u32::MAX;
@@ -424,7 +431,7 @@ fn ac19_cohort_permitted_but_outside_himinbjorg_default_still_fails_check_one() 
     // once `definition.rs`'s own default set is visible, rather than guessed at
     // here. The assertion below still holds the REQUIRED direction: an action
     // absent from the cohort's own set is never permitted regardless.
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.action_name = "action:definitely-outside-the-cohort-too".to_string();
     assert!(
         !hierarchy_vor::cohort::PERMITTED_ACTIONS.contains(&proposal.action_name.as_str()),
@@ -454,7 +461,13 @@ fn ac20_target_absent_from_scope_fails_check_two() {
         "totally-unrelated-target-outside-any-hardcoded-scope-zzz",
         0,
     );
-    let proposal = baseline_passing_proposal();
+    // The out-of-scope value must land on `proposal.target`, not merely on
+    // `TaskContext::target` above: `check_target_in_scope` reads
+    // `proposal.target` against the hardcoded `TARGET_SCOPE` constant, and
+    // never reads the task's own target at all (see `baseline_passing_proposal`'s
+    // own doc comment).
+    let proposal =
+        baseline_passing_proposal("totally-unrelated-target-outside-any-hardcoded-scope-zzz");
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
     let (check_two_id, check_two_outcome) = &outcome.checks[1];
@@ -478,7 +491,7 @@ fn ac21_check_three_satisfying_proposal_passes() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let proposal = baseline_passing_proposal();
+    let proposal = baseline_passing_proposal("fixture-target");
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
     let (check_three_id, check_three_outcome) = &outcome.checks[2];
@@ -518,7 +531,7 @@ fn ac22_blast_radius_boundary_is_tested_not_only_the_interior() {
     // hardcoded content and not exposed as a public constant (REQ-6), so this
     // test asserts the CONTRACT direction (small in, large out) rather than an
     // exact boundary value it cannot know from outside the crate.
-    let small_proposal = baseline_passing_proposal();
+    let small_proposal = baseline_passing_proposal("fixture-target");
     let small_outcome = crate::validate_proposal(&context, &surface, &small_proposal);
     let (_, small_check_four) = &small_outcome.checks[3];
     assert!(
@@ -526,7 +539,7 @@ fn ac22_blast_radius_boundary_is_tested_not_only_the_interior() {
         "AC-22: a minimal, single-parameter proposal must pass check four"
     );
 
-    let mut large_proposal = baseline_passing_proposal();
+    let mut large_proposal = baseline_passing_proposal("fixture-target");
     large_proposal.parameters = (0..10_000).map(|i| passing_parameter(&format!("p{i}"))).collect();
     let large_outcome = crate::validate_proposal(&context, &surface, &large_proposal);
     let (_, large_check_four) = &large_outcome.checks[3];
@@ -549,7 +562,7 @@ fn ac23_check_six_is_stateless_same_proposal_twice_identical() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let proposal = baseline_passing_proposal();
+    let proposal = baseline_passing_proposal("fixture-target");
 
     let first = crate::validate_proposal(&context, &surface, &proposal);
     let second = crate::validate_proposal(&context, &surface, &proposal);
@@ -576,7 +589,7 @@ fn ac23_declared_cost_over_ceiling_fails_at_the_boundary_plus_one() {
         return;
     };
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
-    let mut proposal = baseline_passing_proposal();
+    let mut proposal = baseline_passing_proposal("fixture-target");
     proposal.declared_cost = u32::MAX;
 
     let outcome = crate::validate_proposal(&context, &surface, &proposal);
@@ -608,11 +621,11 @@ fn ac36_no_scenario_in_this_suite_ever_yields_queue_or_escalate() {
     let (context, surface) = fixture_context_and_surface(&cohort, "fixture-target", 0);
 
     let mut probes: Vec<crate::Proposal> = Vec::new();
-    probes.push(baseline_passing_proposal());
-    let mut unknown_action = baseline_passing_proposal();
+    probes.push(baseline_passing_proposal("fixture-target"));
+    let mut unknown_action = baseline_passing_proposal("fixture-target");
     unknown_action.action_name = "action:totally-unknown-and-never-permitted".to_string();
     probes.push(unknown_action);
-    let mut oversized = baseline_passing_proposal();
+    let mut oversized = baseline_passing_proposal("fixture-target");
     oversized.parameters = (0..10_000).map(|i| passing_parameter(&format!("p{i}"))).collect();
     probes.push(oversized);
 
@@ -653,7 +666,7 @@ fn ac37_broker_action_refuses_even_after_the_proposal_validated_to_allow() {
         .expect("the one hardcoded agent id must build a context");
     let surface = crate::enforce_definition(&agent_id, &cohort)
         .expect("the one hardcoded agent id must resolve a definition");
-    let proposal = baseline_passing_proposal();
+    let proposal = baseline_passing_proposal("fixture-target");
 
     let decision = crate::validate_proposal(&context, &surface, &proposal);
     assert_eq!(
@@ -673,10 +686,13 @@ fn ac37_broker_action_refuses_even_after_the_proposal_validated_to_allow() {
     assert!(
         matches!(
             broker_outcome,
-            Err(crate::BrokerRefusal::NoActuatorAvailable)
+            Err(crate::BrokerRefusal::NoAuthorisationEvidence)
         ),
-        "AC-37/EC-14: broker_action must refuse with NoActuatorAvailable even for a \
-         previously-Allow-validated proposal; got {:?}",
+        "AC-37/EC-14: broker_action must refuse with NoAuthorisationEvidence (REQ-30's \
+         corrected reason, per broker.rs's own doc comment: NoActuatorAvailable would now \
+         be a false statement since an actuator genuinely exists behind \
+         broker_authorised_action) even for a previously-Allow-validated proposal; got \
+         {:?}",
         broker_outcome,
     );
 }
