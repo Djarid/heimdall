@@ -21,13 +21,21 @@
 //! spec that leaves a shape indicative rather than fixed):
 //!
 //!   - `crate::EngineTask { task_id: String, action_name: String, target: String,
-//!     declared_cost: u32 }`: the task shape the entry point accepts (section 7
-//!     file 6 of the spec, REQ-32). `action_name` lives on the TASK, not on
-//!     cognition's output, because PE-9/REQ-32 requires a task to be able to
-//!     name a permitted OR a deliberately disallowed action while cognition's
-//!     own output stays fixed and hardcoded (REQ-14): if the action came from
-//!     cognition alone, the two directions of PE-9 could not differ by task
-//!     alone.
+//!     sink: String, declared_cost: u32 }`: the task shape the entry point
+//!     accepts (section 7 file 6 of the spec, REQ-32). `action_name` lives on
+//!     the TASK, not on cognition's output, because PE-9/REQ-32 requires a
+//!     task to be able to name a permitted OR a deliberately disallowed
+//!     action while cognition's own output stays fixed and hardcoded
+//!     (REQ-14): if the action came from cognition alone, the two directions
+//!     of PE-9 could not differ by task alone. `sink` is the fifth field,
+//!     added for build-order step six (ST6-1, REQ-1, REQ-54,
+//!     `.opencode/plans/build-order-step-six-spec.md`), on the same
+//!     differ-by-task-alone reasoning: `CognitionOutput` lost its own `sink`
+//!     field in that same step (REQ-2), and `build_proposal` now reads it
+//!     from the task instead (REQ-3). This file's own tests below construct
+//!     every `EngineTask` literal with all five fields; none of them inspects
+//!     `sink`'s value, since this file's own concern is task-identifier
+//!     well-formedness alone.
 //!   - `crate::is_task_well_formed(task: &EngineTask) -> bool`: the structural
 //!     well-formedness predicate task.rs owns (REQ-34), assumed `pub(crate)`
 //!     and reachable from this in-crate module. This is assumed to exist as a
@@ -475,6 +483,8 @@ fn ac38_empty_task_identifier_is_not_well_formed() {
         task_id: String::new(),
         action_name: "action:git.commit".to_string(),
         target: "fixture-target".to_string(),
+        // REQ-1/REQ-54 (build-order step six): EngineTask's fifth field.
+        sink: "sink:git.commit".to_string(),
         declared_cost: 0,
     };
     assert!(
@@ -489,6 +499,8 @@ fn ac38_whitespace_only_task_identifier_is_not_well_formed() {
         task_id: "   ".to_string(),
         action_name: "action:git.commit".to_string(),
         target: "fixture-target".to_string(),
+        // REQ-1/REQ-54 (build-order step six): EngineTask's fifth field.
+        sink: "sink:git.commit".to_string(),
         declared_cost: 0,
     };
     assert!(
@@ -504,6 +516,8 @@ fn ac38_a_non_empty_task_identifier_is_well_formed() {
         task_id: "fixture-task".to_string(),
         action_name: "action:git.commit".to_string(),
         target: "fixture-target".to_string(),
+        // REQ-1/REQ-54 (build-order step six): EngineTask's fifth field.
+        sink: "sink:git.commit".to_string(),
         declared_cost: 0,
     };
     assert!(

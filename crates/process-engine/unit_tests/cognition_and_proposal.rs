@@ -17,12 +17,26 @@
 //!   - `crate::CognitionStep`: a trait with exactly one method,
 //!     `fn propose(&self, task: &crate::EngineTask) -> crate::CognitionOutput`
 //!     (REQ-13, the spec's own indicative shape, section 4.3).
-//!   - `crate::CognitionOutput { sink: String, parameters:
-//!     Vec<himinbjorg::ProposalParameter> }`: the advisory content cognition
-//!     contributes. Deliberately excludes `action_name` and `target` (both
-//!     live on `EngineTask` instead, per `sequence_shape.rs`'s header) and
-//!     `declared_cost` (assumed to come from the task too, mirroring
-//!     `himinbjorg::TaskContext`'s own `declared_cost` field).
+//!   - `crate::CognitionOutput { parameters: Vec<himinbjorg::ProposalParameter> }`:
+//!     the advisory content cognition contributes. As of build-order step six
+//!     (ST6-1, REQ-2, REQ-54, `.opencode/plans/build-order-step-six-spec.md`),
+//!     `sink` no longer lives here: it lives on `EngineTask` instead (see the
+//!     next bullet), because a push task must be able to declare
+//!     `sink:git.push` and a commit task `sink:git.commit`, while the
+//!     cognition stub's own output stays fixed and hardcoded. Deliberately
+//!     excludes `action_name` and `target` too (both live on `EngineTask`,
+//!     per `sequence_shape.rs`'s header) and `declared_cost` (assumed to come
+//!     from the task too, mirroring `himinbjorg::TaskContext`'s own
+//!     `declared_cost` field).
+//!   - `crate::EngineTask` gains a fifth public field, `sink: String`
+//!     (REQ-1, REQ-54), alongside `task_id`, `action_name`, `target` and
+//!     `declared_cost`. `fixture_task` below sets it on every task this file
+//!     constructs.
+//!   - `crate::build_proposal(task: &crate::EngineTask, cognition_output:
+//!     &crate::CognitionOutput) -> himinbjorg::Proposal` reads `sink` from
+//!     `task.sink` now, never from `cognition_output` (REQ-3, REQ-54): this
+//!     is the load-bearing change AC-19's own assertions below are updated
+//!     for.
 //!   - `crate::DefaultCognitionStep`: the one stub implementation of
 //!     `CognitionStep` this step provides (REQ-14), assumed to have a public
 //!     unit constructor reachable as `crate::DefaultCognitionStep` (a bare
@@ -98,6 +112,10 @@ fn fixture_task(action_name: &str) -> crate::EngineTask {
         task_id: "fixture-task".to_string(),
         action_name: action_name.to_string(),
         target: "fixture-target".to_string(),
+        // REQ-1/REQ-54 (build-order step six): EngineTask's fifth field.
+        // This file's own probes never inspect this value; it is set here
+        // only so the struct literal compiles once the field lands.
+        sink: "sink:git.commit".to_string(),
         declared_cost: 0,
     }
 }
@@ -112,8 +130,9 @@ struct _AC15ProbeCognition;
 
 impl crate::CognitionStep for _AC15ProbeCognition {
     fn propose(&self, task: &crate::EngineTask) -> crate::CognitionOutput {
+        // REQ-2/REQ-54 (build-order step six): CognitionOutput no longer
+        // carries a `sink` field; the sink now lives on the task alone.
         crate::CognitionOutput {
-            sink: "sink:git.commit".to_string(),
             parameters: vec![himinbjorg::ProposalParameter {
                 id: "v".to_string(),
                 consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
@@ -191,19 +210,25 @@ fn ac16_default_cognition_step_output_is_built_from_hardcoded_constants_with_no_
     let task = fixture_task("action:git.commit");
     let first = stub.propose(&task);
     let second = stub.propose(&task);
+    // REQ-2/REQ-54 (build-order step six): CognitionOutput carries
+    // `parameters` only now; the sink lives on the task instead (asserted
+    // separately by AC-19 below). The same-hardcoded-content-across-calls
+    // property is checked on `parameters`, the one field left to check it
+    // on.
     assert_eq!(
-        first.sink, second.sink,
+        first.parameters, second.parameters,
         "AC-16: the stub's output must be the same hardcoded content across repeated \
          calls with the same task -- there is no configuration surface through which it \
          could vary"
     );
     assert!(
-        !first.sink.is_empty(),
-        "AC-16: the stub's own sink constant must be non-empty"
-    );
-    assert!(
         !first.parameters.is_empty(),
         "AC-16: the stub's own parameter set must be non-empty"
+    );
+    assert!(
+        !cognition_rs.contains("DEFAULT_PROPOSED_SINK"),
+        "AC-4/REQ-2: cognition.rs must no longer carry DEFAULT_PROPOSED_SINK; the sink \
+         moved to EngineTask (REQ-1)"
     );
 }
 
@@ -262,8 +287,9 @@ struct DisallowedActionCognition;
 
 impl crate::CognitionStep for DisallowedActionCognition {
     fn propose(&self, _task: &crate::EngineTask) -> crate::CognitionOutput {
+        // REQ-2/REQ-54: no `sink` field here any more; the task this
+        // cognition is proposed against carries its own sink instead.
         crate::CognitionOutput {
-            sink: "sink:git.commit".to_string(),
             parameters: vec![himinbjorg::ProposalParameter {
                 id: "v".to_string(),
                 consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
@@ -376,8 +402,9 @@ fn ac18_documentation_states_why_cognition_trait_does_not_repeat_d112s_rejection
 #[test]
 fn ac19_build_proposal_uses_task_and_cognition_fields_only_never_himinbjorgs_gating_constants() {
     let task = fixture_task("action:git.commit");
+    // REQ-2/REQ-54 (build-order step six): CognitionOutput carries no
+    // `sink` field any more.
     let cognition_output = crate::CognitionOutput {
-        sink: "sink:git.commit".to_string(),
         parameters: vec![himinbjorg::ProposalParameter {
             id: "v".to_string(),
             consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
@@ -401,8 +428,9 @@ fn ac19_build_proposal_uses_task_and_cognition_fields_only_never_himinbjorgs_gat
         "AC-19: the proposal's declared_cost must come from the task"
     );
     assert_eq!(
-        proposal.sink, cognition_output.sink,
-        "AC-19: the proposal's sink must come from the cognition output"
+        proposal.sink, task.sink,
+        "AC-5/REQ-3/REQ-54: the proposal's sink must come from the TASK now, not from the \
+         cognition output (ST6-1's own relocation)"
     );
     assert_eq!(
         proposal.parameters, cognition_output.parameters,
@@ -415,6 +443,53 @@ fn ac19_build_proposal_uses_task_and_cognition_fields_only_never_himinbjorgs_gat
     assert_eq!(
         occurrences, 1,
         "AC-19/REQ-16: proposal.rs must be the ONE site constructing a himinbjorg::Proposal"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-5 (REQ-1, REQ-3, ST6-1, REQ-54, build-order step six): a task
+// declaring `sink:git.push` and a task declaring `sink:git.commit`, run
+// through the SAME cognition output, produce proposals whose sink
+// byte-equals the TASK's own, never the cognition output's (which no
+// longer even has one) -- proving no code path can produce a proposal
+// whose sink differs from its task's.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac5_proposal_sink_byte_equals_the_tasks_own_sink_for_both_commit_and_push() {
+    let cognition_output = crate::CognitionOutput {
+        parameters: vec![himinbjorg::ProposalParameter {
+            id: "v".to_string(),
+            consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
+            trust_level: boundary_gjoll::types::TrustLevel::Canonical,
+            type_name: "comms:informational".to_string(),
+        }],
+    };
+
+    let mut commit_task = fixture_task("action:git.commit");
+    commit_task.sink = "sink:git.commit".to_string();
+    let commit_proposal = crate::build_proposal(&commit_task, &cognition_output);
+    assert_eq!(
+        commit_proposal.sink, "sink:git.commit",
+        "AC-5: a task declaring sink:git.commit must produce a proposal declaring \
+         sink:git.commit"
+    );
+
+    let mut push_task = fixture_task("action:git.push");
+    push_task.sink = "sink:git.push".to_string();
+    let push_proposal = crate::build_proposal(&push_task, &cognition_output);
+    assert_eq!(
+        push_proposal.sink, "sink:git.push",
+        "AC-5/REQ-5: a task declaring sink:git.push must produce a proposal declaring \
+         sink:git.push -- before this step's own relocation, every proposal declared \
+         sink:git.commit regardless of the task, which is exactly the evidence-fidelity \
+         gap EC-24 names"
+    );
+
+    assert_ne!(
+        commit_proposal.sink, push_proposal.sink,
+        "AC-5: the two directions must differ by task alone, since the SAME cognition \
+         output was used for both"
     );
 }
 
