@@ -135,6 +135,12 @@ class Report:
         # run_rust_actuator pattern above, exactly, and additively: no
         # existing counter or obligation above changes behaviour.
         self.rust_process_engine_failures = 0
+        # REQ-44 (`.opencode/plans/build-order-step-six-spec.md`): the target
+        # loop's structural detector, folded in following the
+        # run_rust_process_engine pattern above, exactly, and additively: no
+        # existing counter, obligation, ordering or message above changes
+        # behaviour.
+        self.rust_target_loop_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -1124,6 +1130,66 @@ def run_rust_process_engine(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_target_loop(rep: Report) -> None:
+    """REQ-44 (`.opencode/plans/build-order-step-six-spec.md`): the target
+    loop's structural detector at `crates/process-engine/` and
+    `ontology/tools/run_target_loop.py` proves the closed five-member task
+    set and its compile-time length assertion, every member's own
+    non-emptiness assertions and the five selector names' pairwise
+    distinctness (REQ-38); the selector's containment inside `startup.rs`
+    alone, with no default, fallback, case-folding, trimming, prefix or
+    numeric-index branch and no `EngineTask` field fed from the selector
+    directly (REQ-39); the postures already checked for step five restated
+    without regression (REQ-40); the driver's own restraint, that
+    `ontology/tools/run_target_loop.py` contains no `git commit`, `git push`
+    or `git merge` invocation (REQ-41); evidence digest drift over
+    `TARGET_LOOP_EVIDENCE.md`, printing `TARGET-LOOP-EVIDENCE-PRESENT` or
+    `TARGET-LOOP-EVIDENCE-ABSENT` rather than a silent pass or skip (REQ-42,
+    REQ-43); and the crate's own Rust suite. It does NOT run the loop: it
+    spawns no git process, creates no repository, reads no secret, sets no
+    environment variable that reaches a spawned process, and invokes
+    `ontology/tools/run_target_loop.py` nowhere. It does NOT advance
+    invariant 3.6 by itself: proving that the committed structure and the
+    committed evidence are sound is not the same claim as the target loop
+    having been run for real, which stays a hand-confirmed claim outside
+    this detector (AC-1, AC-2). Wired in following the
+    `run_rust_process_engine` precedent: this standalone sub-harness's own
+    `main()` already returns a real pass/fail code (0 clean, 1 on failure),
+    so a failure here is folded into the main suite's fatal count rather
+    than left unregistered. Run it directly for detail (`python -m
+    ontology.tests.rust_target_loop_harness`)."""
+    import contextlib
+    import io
+    from . import rust_target_loop_harness
+
+    rep.line("=== REQ-44 Target loop structural detector: the closed five-member task "
+              "set, the selector's containment, the postures restated from step five, "
+              "the driver's own restraint and evidence digest drift, and the Rust "
+              "suite, not invariant 3.6's live-invocation status and not a run of the "
+              "loop itself ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_target_loop_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/process-engine/ carries the closed five-member task "
+                  "set with its compile-time length assertion, every member's own "
+                  "non-emptiness assertions and pairwise-distinct selector names, "
+                  "contains the selector's resolution inside startup.rs alone with no "
+                  "default, fallback, case-folding, trimming, prefix or numeric-index "
+                  "branch, restates the step-five postures without regression, and "
+                  "ontology/tools/run_target_loop.py contains no git commit, git push "
+                  "or git merge invocation; TARGET_LOOP_EVIDENCE.md's digest, present "
+                  "or absent, is reported by an honest printed marker rather than a "
+                  "silent pass; and its own Rust suite passes (or loudly skips that "
+                  "one step alone, if no toolchain is present). This proves committed "
+                  "structure and committed evidence, not that the loop was ever run "
+                  "and not invariant 3.6's live-invocation status by itself (run the "
+                  "module directly for detail)")
+    else:
+        rep.rust_target_loop_failures += 1
+        rep.line("  [CRITICAL] Target loop structural detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_actuator_invocation_boundary(rep: Report) -> None:
     """D112 (`.opencode/plans/git-actuator-step-four.md` REQ-44): the live
     invocation-boundary detector for `actuator-git::execute` and
@@ -1631,6 +1697,7 @@ def main() -> int:
     run_rust_actuator(rep)
     run_actuator_invocation_boundary(rep)
     run_rust_process_engine(rep)
+    run_rust_target_loop(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1654,7 +1721,8 @@ def main() -> int:
              + rep.himinbjorg_invocation_failures
              + rep.rust_actuator_failures
              + rep.actuator_invocation_failures
-             + rep.rust_process_engine_failures)
+             + rep.rust_process_engine_failures
+             + rep.rust_target_loop_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

@@ -42,6 +42,27 @@
 //!     own environment-reading boundary; this file never mutates the real
 //!     process environment, so its own tests hold unconditionally regardless
 //!     of what is or is not provisioned on the machine running them.
+//!
+//!   **A third precondition and its own signature, assumed here for build-order
+//!   step six (ST6-3, REQ-14 to REQ-19, REQ-54, `.opencode/plans/build-order-step-six-spec.md`).**
+//!   `resolve_startup_preconditions` gains a third parameter,
+//!   `task_selector_value: Option<&str>`, on the existing two's own shape
+//!   (AC-16: "it takes three already-read environment values as
+//!   parameters"), and its success type gains a third element (the selected
+//!   index into the closed, compile-time array `main.rs` owns), so the
+//!   success arm below is always matched with `Ok(_)`, never inspecting the
+//!   exact tuple shape, on this file's own existing convention.
+//!   `crate::startup::StartupRefusal` gains a third field, `selector:
+//!   Option<String>`, on `cohort`'s and `working_repo`'s own precedent:
+//!   `None` means the selector resolved to a member of the closed set;
+//!   `Some(description)` names `crate::startup::TASK_SELECTOR_ENV_VAR`
+//!   (`"HEIMDALL_ENGINE_TASK"`) and the refusal class, never a secret byte.
+//!   The selector's own closed, compile-time accepted-name set is assumed to
+//!   live entirely inside `startup.rs` (REQ-39's own containment property);
+//!   this file never names that set directly, using only one already-fixed,
+//!   known-valid member, `"commit-fixture-target"` (REQ-6's own P1 selector
+//!   name), where a resolving selector value is needed to isolate a
+//!   different precondition's own failure.
 //!   - The working-repository precondition is assumed to check only that
 //!     the named path exists and is a directory (EC-4's own instruction:
 //!     "the binary must not duplicate [the actuator's] policy, only
@@ -110,6 +131,7 @@ fn ec3_secret_path_value_absent_refuses_fail_closed_naming_the_variable() {
     let result = crate::startup::resolve_startup_preconditions(
         None,
         Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some("commit-fixture-target"),
     );
 
     match result {
@@ -129,6 +151,12 @@ fn ec3_secret_path_value_absent_refuses_fail_closed_naming_the_variable() {
                  path and must not be reported as failing when it did not; got \
                  {:?}",
                 refusal.working_repo,
+            );
+            assert!(
+                refusal.selector.is_none(),
+                "REQ-54/AC-18: a known-valid selector value must genuinely resolve on this \
+                 path and must not be reported as failing when it did not; got {:?}",
+                refusal.selector,
             );
         }
         Ok(_) => panic!(
@@ -161,6 +189,7 @@ fn ec6_secret_present_but_attestation_does_not_verify_refuses_naming_vors_own_cl
     let result = crate::startup::resolve_startup_preconditions(
         Some(secret_path.to_str().expect("scratch path must be valid UTF-8")),
         Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some("commit-fixture-target"),
     );
 
     match result {
@@ -179,6 +208,11 @@ fn ec6_secret_present_but_attestation_does_not_verify_refuses_naming_vors_own_cl
                 refusal.working_repo.is_none(),
                 "the working-repository precondition must genuinely resolve on this path"
             );
+            assert!(
+                refusal.selector.is_none(),
+                "REQ-54/AC-18: a known-valid selector value must genuinely resolve on \
+                 this path"
+            );
         }
         Ok(_) => panic!(
             "EC-6: an arbitrary, non-real secret must never verify D110's fixed committed \
@@ -196,7 +230,8 @@ fn ec6_secret_present_but_attestation_does_not_verify_refuses_naming_vors_own_cl
 
 #[test]
 fn ec4_working_repo_unset_refuses_fail_closed_naming_the_variable() {
-    let result = crate::startup::resolve_startup_preconditions(None, None);
+    let result =
+        crate::startup::resolve_startup_preconditions(None, None, Some("commit-fixture-target"));
 
     match result {
         Err(refusal) => {
@@ -226,6 +261,7 @@ fn ec4_working_repo_names_a_nonexistent_path_refuses_fail_closed() {
     let result = crate::startup::resolve_startup_preconditions(
         None,
         Some(bogus.to_str().expect("scratch path must be valid UTF-8")),
+        Some("commit-fixture-target"),
     );
 
     match result {
@@ -255,6 +291,7 @@ fn ec4_working_repo_names_a_file_not_a_directory_refuses_fail_closed() {
     let result = crate::startup::resolve_startup_preconditions(
         None,
         Some(file_path.to_str().expect("scratch path must be valid UTF-8")),
+        Some("commit-fixture-target"),
     );
 
     match result {
@@ -279,7 +316,11 @@ fn ec4_working_repo_names_a_file_not_a_directory_refuses_fail_closed() {
 
 #[test]
 fn ec5_both_preconditions_failing_are_both_named_never_only_the_first() {
-    let result = crate::startup::resolve_startup_preconditions(None, None);
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        None,
+        Some("commit-fixture-target"),
+    );
 
     match result {
         Err(refusal) => {
@@ -295,8 +336,180 @@ fn ec5_both_preconditions_failing_are_both_named_never_only_the_first() {
                  condition checked. A refusal that says only \"startup failed\", or names \
                  only one of the two, fails this criterion."
             );
+            assert!(
+                refusal.selector.is_none(),
+                "REQ-54: a known-valid selector value must genuinely resolve on this \
+                 path, keeping this test's own isolation to the existing two \
+                 preconditions intact"
+            );
         }
         Ok(_) => panic!("EC-5: with both preconditions absent, startup must never succeed"),
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// ST6-3, REQ-14 to REQ-19: HEIMDALL_ENGINE_TASK, the third fail-closed
+// startup precondition. AC-18, AC-21 and AC-59 of
+// `.opencode/plans/build-order-step-six-spec.md`.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ec29_selector_value_absent_refuses_fail_closed_naming_the_variable() {
+    let repo_dir = valid_looking_working_repo_dir("ec29-absent");
+
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        None,
+    );
+
+    match result {
+        Err(refusal) => {
+            let selector_problem = refusal.selector.as_deref().expect(
+                "AC-18/REQ-17: an absent selector value must refuse, naming \
+                 HEIMDALL_ENGINE_TASK, never defaulting to any member of the closed array",
+            );
+            assert!(
+                selector_problem.contains("HEIMDALL_ENGINE_TASK"),
+                "AC-18/REQ-17: the refusal must name the failing environment variable by \
+                 name; got {selector_problem:?}"
+            );
+            assert!(
+                refusal.working_repo.is_none(),
+                "REQ-54: the working-repository precondition must genuinely resolve on \
+                 this path and must not be reported as failing when it did not; got {:?}",
+                refusal.working_repo,
+            );
+        }
+        Ok(_) => panic!(
+            "AC-18/REQ-17: an absent selector value must never fall back to a default \
+             member of the array and must never succeed"
+        ),
+    }
+}
+
+#[test]
+fn ac18_selector_value_empty_string_refuses_fail_closed_naming_the_variable() {
+    let repo_dir = valid_looking_working_repo_dir("ac18-empty");
+
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some(""),
+    );
+
+    match result {
+        Err(refusal) => {
+            let selector_problem = refusal.selector.as_deref().expect(
+                "AC-18/REQ-17: an empty selector value must refuse, naming HEIMDALL_ENGINE_TASK",
+            );
+            assert!(
+                selector_problem.contains("HEIMDALL_ENGINE_TASK"),
+                "AC-18/REQ-17: the refusal must name the failing environment variable by \
+                 name; got {selector_problem:?}"
+            );
+        }
+        Ok(_) => panic!("AC-18/REQ-17: an empty selector value must never succeed"),
+    }
+}
+
+#[test]
+fn ac18_selector_value_whitespace_only_refuses_fail_closed_naming_the_variable() {
+    let repo_dir = valid_looking_working_repo_dir("ac18-whitespace");
+
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some("   "),
+    );
+
+    match result {
+        Err(refusal) => {
+            let selector_problem = refusal.selector.as_deref().expect(
+                "AC-18/REQ-17: a whitespace-only selector value must refuse, naming \
+                 HEIMDALL_ENGINE_TASK -- this is not merely a non-empty-length check",
+            );
+            assert!(
+                selector_problem.contains("HEIMDALL_ENGINE_TASK"),
+                "AC-18/REQ-17: the refusal must name the failing environment variable by \
+                 name; got {selector_problem:?}"
+            );
+        }
+        Ok(_) => panic!("AC-18/REQ-17: a whitespace-only selector value must never succeed"),
+    }
+}
+
+#[test]
+fn ac18_selector_value_unrecognised_refuses_fail_closed_with_no_fuzzy_match() {
+    let repo_dir = valid_looking_working_repo_dir("ac18-unrecognised");
+
+    // REQ-17: membership is exact byte equality. None of these near
+    // misses -- a one-character-short prefix, a case-differing variant, a
+    // padded variant, two numeric indices and an over-long variant -- may
+    // ever resolve to a member of the closed set.
+    for bogus in [
+        "commit-fixture-targe",
+        "COMMIT-FIXTURE-TARGET",
+        " commit-fixture-target ",
+        "0",
+        "1",
+        "commit-fixture-target-extra",
+    ] {
+        let result = crate::startup::resolve_startup_preconditions(
+            None,
+            Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+            Some(bogus),
+        );
+
+        match result {
+            Err(refusal) => {
+                let selector_problem = refusal.selector.as_deref().unwrap_or_else(|| {
+                    panic!(
+                        "AC-18/REQ-17: selector value {bogus:?} must refuse, naming \
+                         HEIMDALL_ENGINE_TASK; got no selector refusal at all (refusal: \
+                         {refusal:?})"
+                    )
+                });
+                assert!(
+                    selector_problem.contains("HEIMDALL_ENGINE_TASK"),
+                    "AC-18/REQ-17: the refusal for {bogus:?} must name the failing \
+                     environment variable by name; got {selector_problem:?}"
+                );
+            }
+            Ok(_) => panic!(
+                "AC-18/REQ-17: selector value {bogus:?} is not a byte-exact member of the \
+                 closed, compile-time accepted set and must never succeed by \
+                 case-folding, trimming, prefix, numeric-index or near-miss acceptance"
+            ),
+        }
+    }
+}
+
+#[test]
+fn ac59_all_three_preconditions_failing_are_all_named_never_only_the_first_two() {
+    let result = crate::startup::resolve_startup_preconditions(None, None, None);
+
+    match result {
+        Err(refusal) => {
+            assert!(
+                refusal.cohort.is_some(),
+                "AC-59/REQ-16: when all three preconditions fail, the cohort \
+                 precondition's own failure must still be named"
+            );
+            assert!(
+                refusal.working_repo.is_some(),
+                "AC-59/REQ-16: when all three preconditions fail, the working-repository \
+                 precondition's own failure must still be named"
+            );
+            assert!(
+                refusal.selector.is_some(),
+                "AC-59/REQ-16: when all three preconditions fail, the selector \
+                 precondition's own failure must ALSO be named -- not merely the first \
+                 two conditions checked. This extends EC-5's own property to a third \
+                 condition and weakens it nowhere."
+            );
+        }
+        Ok(_) => panic!("AC-59: with all three preconditions absent, startup must never succeed"),
     }
 }
 
@@ -321,29 +534,42 @@ fn ac32_no_secret_bytes_appear_in_any_refusal_description() {
     }
 
     // Exercise every refusal path this file can reach with this secret file
-    // in scope, and confirm none of them ever echoes it back.
+    // in scope, and confirm none of them ever echoes it back. Every
+    // scenario also leaves the selector value either absent or set to the
+    // secret's own path text (deliberately not a member of the closed set
+    // either), so REQ-54's own extension -- the no-secret-in-any-
+    // description property extended to the third field -- is genuinely
+    // exercised on `refusal.selector` too, never merely on the two
+    // pre-existing fields.
     let scenarios: Vec<Result<_, crate::startup::StartupRefusal>> = vec![
         crate::startup::resolve_startup_preconditions(
             Some(secret_path.to_str().unwrap()),
             None,
+            None,
         ),
-        crate::startup::resolve_startup_preconditions(None, None),
+        crate::startup::resolve_startup_preconditions(None, None, None),
         crate::startup::resolve_startup_preconditions(
             Some(secret_path.to_str().unwrap()),
             Some(secret_path.to_str().unwrap()), // deliberately unusable as a working repo too
+            Some(secret_path.to_str().unwrap()), // deliberately unusable as a selector too
         ),
     ];
 
     for scenario in scenarios {
         if let Err(refusal) = scenario {
-            for description in [refusal.cohort.as_deref(), refusal.working_repo.as_deref()]
-                .into_iter()
-                .flatten()
+            for description in [
+                refusal.cohort.as_deref(),
+                refusal.working_repo.as_deref(),
+                refusal.selector.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
             {
                 assert!(
                     !description.contains(known_secret_marker),
-                    "AC-29/AC-32: a refusal description must never contain a byte of the \
-                     secret file's contents; got {description:?}"
+                    "AC-29/AC-32/REQ-54: a refusal description must never contain a byte \
+                     of the secret file's contents, on any of the three fields including \
+                     the selector's own; got {description:?}"
                 );
             }
         }
@@ -434,11 +660,14 @@ fn ac33_exit_code_mapping_maps_each_constructible_outcome_case_to_its_own_docume
 
 // ---------------------------------------------------------------------------------
 // AC-34, EC-16: the startup module never defaults to the current working
-// directory, and never falls back to any candidate secret path.
+// directory, and never falls back to any candidate secret path. Extended
+// by REQ-54/AC-18/AC-19/AC-20 (build-order step six) to the third,
+// selector precondition: no case-folding, no trimming-before-comparison,
+// no prefix match and no numeric-index acceptance either.
 // ---------------------------------------------------------------------------------
 
 #[test]
-fn ac34_startup_module_source_contains_no_default_fallback_for_either_precondition() {
+fn ac34_startup_module_source_contains_no_default_fallback_for_any_precondition() {
     let startup_rs = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("src")
@@ -449,11 +678,21 @@ fn ac34_startup_module_source_contains_no_default_fallback_for_either_preconditi
         "unwrap_or_else(|| std::env::current_dir",
         "unwrap_or(\".\")",
         ".ok().unwrap_or_default()",
+        // REQ-17/AC-19 (build-order step six): the selector's own
+        // resolution must carry none of these either.
+        "to_lowercase()",
+        "to_ascii_lowercase()",
+        "to_uppercase()",
+        "to_ascii_uppercase()",
+        "starts_with(",
+        "parse::<usize>",
+        "parse::<u32>",
     ] {
         assert!(
             !startup_rs.contains(forbidden),
-            "AC-34/EC-16/REQ-27: startup.rs must never fall back to a default value for a \
-             failing precondition; found a pattern resembling {forbidden:?}"
+            "AC-34/AC-19/EC-16/REQ-17/REQ-27: startup.rs must never fall back to a \
+             default, fuzzy or case-folded value for any failing precondition; found a \
+             pattern resembling {forbidden:?}"
         );
     }
 }

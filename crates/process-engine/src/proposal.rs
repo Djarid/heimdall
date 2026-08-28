@@ -24,7 +24,7 @@ pub(crate) fn build_proposal(
     himinbjorg::Proposal {
         action_name: task.action_name.clone(),
         target: task.target.clone(),
-        sink: cognition_output.sink.clone(),
+        sink: task.sink.clone(),
         parameters: cognition_output.parameters.clone(),
         declared_cost: task.declared_cost,
     }

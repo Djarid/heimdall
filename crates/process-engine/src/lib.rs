@@ -73,6 +73,28 @@
 //! evidence-backed explanation: it is needed for constructing real
 //! `himinbjorg::ProposalParameter` values only, never for calling
 //! Gjöll's gate or naming `actuator-git` at all.
+//!
+//! **The sink moved from cognition's output to the task
+//! (build-order step six, ST6-1, REQ-1 to REQ-5).** Before this step
+//! [`CognitionOutput`] carried the one hardcoded sink every proposal
+//! declared, `sink:git.commit`, regardless of the task's own action.
+//! A push proposal built from that output therefore reached the gate
+//! declaring the commit sink rather than its own, so consequentiality
+//! was derived from `sink:git.commit`'s own `EffectPrimitive::RunOrChangeCode`
+//! rather than from `sink:git.push`'s own
+//! `EffectPrimitive::BindingCommitment`. This was a gap in the
+//! **evidence**, not a hole in the **safety**: the proposal still
+//! reached `Decision::Allow` and the push still executed under either
+//! primitive, because the stub's one parameter is `Inert` and
+//! `Canonical`, so no rule arm fires under either. Carrying it forward
+//! would have made the resulting claim read "a push was gated" when the
+//! sink declared to the gate was the commit sink -- exactly the
+//! evidence-fidelity gap EC-24 of
+//! `.opencode/plans/build-order-step-six-spec.md` names. `sink` now
+//! lives on [`EngineTask`] instead, alongside `action_name`, for the
+//! same differ-by-task-alone reason that field already lives there, and
+//! [`proposal::build_proposal`] reads it from the task. This step closes
+//! the gap; it does not merely narrow it.
 
 mod cognition;
 mod outcome;

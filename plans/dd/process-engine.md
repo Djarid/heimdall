@@ -147,18 +147,21 @@ reading Himinbjörg's own gating constants.
 ## 5. The binary's startup contract
 
 `crates/process-engine/src/main.rs` is the crate's one binary target. Its only
-job is to call `startup::run()` to resolve both environment-named preconditions,
-call the library's one entry point once, and map the outcome to a documented
-exit code. It contains no step logic, no proposal shaping, no cognition and no
-outcome interpretation beyond that mapping. It parses no arguments and reads no
-configuration file: its one hardcoded task comes from named constants carrying
-their own compile-time non-emptiness assertions, on the cognition seam's own
-no-configuration-surface reasoning applied to the binary's own input.
+job is to call `startup::run()` to resolve three environment-named
+preconditions, call the library's one entry point once on the task the third
+precondition selects, and map the outcome to a documented exit code. It
+contains no step logic, no proposal shaping, no cognition and no outcome
+interpretation beyond that mapping. It parses no arguments and reads no
+configuration file: the five task constant-sets it selects among (build-order
+step six, D114) come from named constants carrying their own compile-time
+non-emptiness assertions and a compile-time length assertion fixing the array
+at five members, on the cognition seam's own no-configuration-surface
+reasoning applied to the binary's own input.
 
 `startup.rs` is the one module in the crate that reads the environment; every
-other module, including `main.rs` itself, reads none. It resolves two
-preconditions independently, always attempting both so a caller sees which
-failed, or both, never only the first:
+other module, including `main.rs` itself, reads none. It resolves three
+preconditions independently, always attempting all three so a caller sees
+which one failed, or which two, or all three, never only the first:
 
 - **The cohort precondition**, from `HEIMDALL_COHORT_SECRET_FILE`: loads a
   `hierarchy_vor::TrustedAuthoriserSet` via
@@ -172,12 +175,56 @@ failed, or both, never only the first:
   `HEIMDALL_ACTUATOR_GIT_WORKING_REPO`: checks only that the named path exists
   and is a directory, deliberately not duplicating the actuator's own five,
   deeper refusal conditions.
+- **The task-selector precondition, added at build-order step six**, from
+  `TASK_SELECTOR_ENV_VAR = "HEIMDALL_ENGINE_TASK"`: resolves the supplied value
+  against a closed, compile-time set of five accepted selector names, one per
+  member of the fixed task array `main.rs` carries, and yields an index into
+  that array only. Absent, empty, whitespace-only or a value outside the closed
+  set refuses fail closed, naming the variable, with no default, no fallback,
+  no case folding, no whitespace trimming, no prefix or substring match and no
+  numeric-index acceptance. The selector supplies no action name, no target, no
+  sink, no declared cost and no task identifier: its only product is which of
+  five already-compiled proposals is submitted for adjudication, never how any
+  of them is adjudicated.
 
-Both refuse fail closed and never default: an absent or empty variable, an
-unverifiable secret, or an unusable working-repository path all refuse, naming
-the failing environment variable and the refusal class, never a secret byte, a
-digest or any portion of key material. Where a path is printed it is the path
-only. No step of the sequence runs until both preconditions resolve.
+All three refuse fail closed and never default: an absent or empty variable,
+an unverifiable secret, an unusable working-repository path, or an unresolved
+selector all refuse, naming the failing environment variable and the refusal
+class, never a secret byte, a digest or any portion of key material. Where a
+path is printed it is the path only. No step of the sequence runs until all
+three preconditions resolve.
+
+**The REQ-21 amendment to REQ-31, stated here rather than left to the decision
+row alone.** REQ-31 (this document's own numbering) bars the binary from
+parsing arguments or reading a configuration file, on the ground that the
+binary should carry no configuration surface at all. Three things are true
+together about the task-selector precondition just added, and none of them
+may be read in isolation from the other two:
+
+1. REQ-31's two literal prohibitions both remain intact. The binary parses no
+   arguments and reads no configuration file; `HEIMDALL_ENGINE_TASK` is an
+   environment variable, exactly like the two preconditions that already
+   existed, never a flag and never a file path naming a document to load.
+2. REQ-31's underlying concern, that the binary should carry no configuration
+   surface, is **amended**, not honoured by a technicality: a variable that
+   selects which of several compiled behaviours runs is a configuration
+   surface by any honest reading of the word, and this document says so rather
+   than describing the selector as compliant with the original no-surface
+   reading.
+3. The load-bearing property REQ-31 exists to protect is nonetheless preserved
+   and mechanically checked: the selector cannot widen what is authorised,
+   because every member of the five-item array is a compile-time constant in
+   the engine's own source, the selector chooses an index only, and every
+   member passes through the identical five-step sequence, the identical six
+   checks, the identical witness match and the identical actuator allowlist.
+   This is the same argument section 4 already makes for why `cognition.rs`'s
+   substitutable trait does not repeat D112's rejection of a trait at the
+   actuator invocation: a seam that decides nothing about authorisation cannot
+   widen authorisation, whether that seam is a trait implementation or an
+   environment-selected array index.
+
+This amendment is also recorded as a new row in section 11's decisions table
+(PE-11) and in `DECISIONS.md` D114.
 
 ## 6. Fail-closed behaviour
 
@@ -187,23 +234,34 @@ with a degraded or default value:
 - a task that is not structurally well formed (empty or whitespace-only task
   identifier): the engine's own `RefusedBeforeCognition` outcome, documented as
   a structural well-formedness refusal and never an authorisation decision;
-- either environment-named startup precondition unresolved (section 5);
+- any of the three environment-named startup preconditions unresolved (section 5);
 - `validate_proposal`'s decision not being `Allow`: the gate-blocked outcome,
   carrying all six `CheckRecord`s verbatim;
 - any `broker_authorised_action` refusal: carried through verbatim, including
   the `ActuationRefusal` variant recoverable from an `ActuatorRefused` payload.
 
-A commit proposal that passes all six checks reaches the actuator and refuses
-with `ActuationRefusal::ExitStatus`, because nothing in this crate or the
-workspace can stage a change (`argv.rs`'s fixed `["commit", "-m", <message>]`
-shape forbids `add`, and step four's own EC-4 already records that "nothing
-staged" is a non-zero exit). **This is the designed outcome of PE-3, stated
-here for the third of the three required places, not a defect.** The engine
-writes no file on any path, and no staging call is added anywhere to make this
-refusal disappear; doing so would breach REQ-8 (no filesystem write) and would
-put a second `std::process` site in the workspace, reopening D112's one-crate
-ruling. Staging is handed forward to build-order step six as a written
-obligation, not silently assumed.
+Before build-order step six (D114), a commit proposal that passed all six
+checks reached the actuator and refused with `ActuationRefusal::ExitStatus`,
+because nothing in this crate or the workspace could stage a change (`argv.rs`'s
+fixed `["commit", "-m", <message>]` shape forbids `add`, and step four's own
+EC-4 already records that "nothing staged" is a non-zero exit). **That refusal
+is no longer the terminal state of the positive path.** Build-order step six
+stages content out of band: `ontology/tools/run_target_loop.py`, a standalone
+Python driver living outside `crates/`, performs the one `git add` the commit
+needs, in a throwaway clone, before the engine binary is ever invoked, never by
+the engine itself. Against that out-of-band staged content the commit path now
+succeeds, and the push that follows it makes the commit reachable in a real
+remote's history (`TARGET_LOOP_EVIDENCE.md`). This is EC-1's stated boundary,
+discharged exactly that far and no further: the commit succeeds because the
+operator staged the change outside the pipeline, not because anything inside
+`crates/process-engine/` or the workspace learned to stage one. The engine
+still writes no file on any path, and no staging call is added anywhere to
+make the old refusal disappear; doing so would still breach REQ-8 (no
+filesystem write) and would still put a second `std::process` site in the
+workspace, reopening D112's one-crate ruling. Governed staging, a real
+`GitOperation::Stage` variant reached through a gated action rather than an
+ungoverned fixture step, is deferred to build-order step seven as a named
+obligation (section 12).
 
 ## 7. Data owned
 
@@ -217,15 +275,22 @@ record. What it owns is entirely in-memory and compiled in:
   `himinbjorg::broker`'s own permitted-scope allowlist, never a derivation from
   it (that allowlist is `pub(crate)` to `himinbjorg` and this crate cannot see
   it at all).
-- `main.rs`'s hardcoded task constants and named exit-code constants.
+- `main.rs`'s five task constant-sets (build-order step six, D114), its
+  compile-time-length-asserted array of them, and its named exit-code
+  constants.
+- `startup.rs`'s `TASK_SELECTOR_ENV_VAR` and the closed, compile-time set of
+  five accepted selector names it resolves against (build-order step six).
 
 The decision record HB-6 requires is owned by `himinbjorg`, not by this crate:
 the engine supplies a fresh `himinbjorg::MinimalDecisionRecorder` per run and
-nothing else. `startup.rs`'s two environment variable **names** are its own
-named constants, restated rather than imported, because
-`hierarchy_vor::SECRET_PATH_ENV_VAR` is not exposed to this crate at the same
-visibility and `actuator_git::repo::WORKING_REPO_ENV_VAR` is `pub(crate)` to
-that crate alone and this crate does not depend on `actuator-git` in any case.
+nothing else. `startup.rs`'s three environment variable **names**
+(`HEIMDALL_COHORT_SECRET_FILE`, `HEIMDALL_ACTUATOR_GIT_WORKING_REPO` and, since
+build-order step six, `TASK_SELECTOR_ENV_VAR`) are its own named constants,
+restated rather than imported, because `hierarchy_vor::SECRET_PATH_ENV_VAR` is
+not exposed to this crate at the same visibility and
+`actuator_git::repo::WORKING_REPO_ENV_VAR` is `pub(crate)` to that crate alone
+and this crate does not depend on `actuator-git` in any case; the third name is
+this crate's own, never restated from elsewhere.
 
 ## 8. Dependencies
 
@@ -323,9 +388,11 @@ tested by its failure mode, not only its happy path):
   it sets.
 - **The binary's startup contract, tested by refusal.**
   `unit_tests/startup_failclosed.rs`: the secret path unset, set to an
-  unverifiable path, and the working-repository path unset or unusable, each
-  refusing fail closed and naming the failing variable; both conditions failing
-  together naming both; no secret byte appearing in any refusal description.
+  unverifiable path; the working-repository path unset or unusable; and,
+  since build-order step six, the task selector unset, empty, whitespace-only
+  or unrecognised; each refusing fail closed and naming the failing variable;
+  all three conditions failing together naming all three; no secret byte
+  appearing in any refusal description across any of the three.
 - **The public surface and both directions of PE-9, gated on a provisioned
   secret where a cohort is genuinely needed.** `tests/public_surface.rs`,
   compiled as an external crate: a task naming a permitted action reaching
@@ -375,6 +442,7 @@ outcome.
 | PE-8 | EC-12 (witness replay) and EC-13 (a lying recorder) | EC-12 narrowed at the engine, not closed; EC-13 untouched | Closing EC-12 properly by changing `broker_authorised_action`'s signature; re-deferring both without narrowing either |
 | PE-9 | Which directions the engine's own suite exercises | Both: a task naming a permitted action and one naming a disallowed action, the block attributable to a named `CheckRecord` | The allowed path only |
 | PE-10 | The cognition seam's shape | A narrow one-method trait with one stub implementation | A concrete stub function replaced wholesale at step seven |
+| PE-11 | How `HEIMDALL_ENGINE_TASK` is amended into REQ-31's no-configuration-surface concern (build-order step six, D114) | A third fail-closed startup precondition selecting an index into a compile-time-closed, length-asserted five-member array; REQ-31's two literal prohibitions stay intact and the load-bearing property (the selector cannot widen what is authorised) is mechanically checked | A single-process outer loop over all five members, which would amend REQ-25 in plain words (no longer at most once per process) and break REQ-30's one-outcome-to-one-exit-code contract |
 
 ## 12. Deferred, named, not built
 
@@ -383,26 +451,32 @@ inherits these as written obligations rather than rediscovering them.
 
 | # | Item | Where it goes |
 |---|---|---|
-| 1 | Staging a real change so the commit path can succeed end to end | Build-order step six (D108's own definition of done: a real commit reachable in the git remote's history) |
+| 1 | Staging a real change so the commit path can succeed end to end | **Discharged out of band at build-order step six (D114), not delivered by a governed path.** `ontology/tools/run_target_loop.py`, a standalone Python driver living outside `crates/`, performs the one `git add` the commit needs, before the engine binary is ever invoked. No gate adjudicated what was staged, so this is not marked simply delivered: item 12 below is the still-open, governed form this deferral becomes at build-order step seven |
 | 2 | The human-question gate | Needs Gjallarhorn's protected channel and an operator-answer path, neither built. Named and typed (`EngineOutcome`'s unconstructible variant), not delivered |
 | 3 | The loop cap | Needs a general transition table with more than one path to cap, which this step deliberately does not have (Gleipnir's code-enforced loop caps, D108). Named and typed (a constructorless type), not delivered |
-| 4 | EC-12's open half: `broker_authorised_action` is not single use | Needs the witness taken by value, or a nonce in the audit record, both changes to `crates/himinbjorg/`, out of this step's scope. Narrowed at the engine only: unreachable **through** the engine, still reachable by any other caller holding a witness |
+| 4 | EC-12's open half: `broker_authorised_action` is not single use | Needs the witness taken by value, or a nonce in the audit record, both changes to `crates/himinbjorg/`, out of this step's scope. **Confirmed still narrowed at the engine only after build-order step six (D114):** each of the five separate processes that step six runs obtains at most one witness and passes it exactly once, so replay stays unreachable **through** the engine; still reachable by any other caller holding a witness |
 | 5 | EC-13: a recorder reporting success while retaining nothing defeats the audit obligation | Untouched. The same class of limit as D103's limit two and D100's in-process label rewrite; nothing built here or in any prior step detects it |
-| 6 | `cohort::COMMITTED_ATTESTATION`'s development-time placeholder secret (D110) | Unchanged by this step. The engine becoming the first non-test caller of `load_verified_cohort` does not upgrade that trust root |
-| 7 | Concurrency safety across processes (EC-16) | Out of scope. The engine sequences within one process; it does not make two concurrent engine processes against the same working repository safe. The actuator holds no lock and `MinimalDecisionRecorder` is not concurrency hardened |
-| 8 | `ActuationRefusal::PartialEffect` becoming reachable | Still unreachable after this step: the engine executes exactly one operation per validated proposal and nothing stages a change (item 1 above), so no run ever holds both a commit outcome and a push outcome to combine. Stays with whichever later step first chains two operations behind one witness |
+| 6 | `cohort::COMMITTED_ATTESTATION`'s development-time placeholder secret (D110) | **Unchanged in kind at build-order step six (D114).** The secret was regenerated under a fresh development-time placeholder matching D110's own pattern (REQ-31 to REQ-33 of that step's spec), and the engine producing a real commit and a real push against a real remote does not upgrade that trust root. Still open |
+| 7 | Concurrency safety across processes (EC-16) | **Still unaddressed at build-order step six (D114).** The out-of-band driver's five invocations run strictly sequentially, a property of the driver, not the engine, so it demonstrates nothing about safety under concurrency. The actuator still holds no lock and `MinimalDecisionRecorder` is still not concurrency hardened |
+| 8 | `ActuationRefusal::PartialEffect` becoming reachable | **Still unreachable after build-order step six (D114).** Five separate processes, one operation each, so no run ever holds both a commit outcome and a push outcome to combine. Stays with whichever later step first chains two operations behind one witness |
 | 9 | The credential broker's general form, the Harness Boundary Interface binding, the canary wrap for a Fenrir task | Unchanged from D111 and D112 |
 | 10 | The trust-ceiling ordering and clamp (D97's open question) | Unchanged. This step adds no ranking, parsing or clamping of `trust_ceiling` anywhere |
 | 11 | Flow-to-sink transitive reachability for `action_critical` | Unchanged. `gate_bridge::action_critical_for` stays the D24 agent-scoped membership test |
+| 12 | Staging becomes a governed action, most likely `GitOperation::Stage { path }` with `action:git.stage` and `sink:git.stage` | Build-order step seven, triggered the moment cognition genuinely authors file content, because at that point what to stage is a consequential choice about the scope of a change rather than a fixture the operator provided. Approach B of `.opencode/plans/build-order-step-six-brainstorm.md` is the design to reach for, and merge becomes the fourth `GitOperation` variant rather than the third |
 
 Also carried forward, stated so a reviewer can check it directly rather than
-infer it: this step advances invariant 3.6 only in the narrow sense the live
-detectors measure, the authorisation path gaining its first non-test caller.
-That is not observed end-to-end containment, which stays delegated externally
-(D91, D92), and it is not a claim that the target loop has run: D108's own
-definition of done needs a real commit reachable in the git remote's history
-and a deliberately disallowed action blocked, both of which remain build-order
-step six.
+infer it: build-order step six (D114) advances invariant 3.6 only in the
+narrow sense `NEUROSYMBOLIC_FILTER_INVARIANTS.md` invariant 3.6 now states,
+DEMONSTRATED once, on one fixture, never PROVEN. That is not observed
+end-to-end containment, which stays delegated externally (D91, D92). D108's
+own definition of done is now satisfied on that one fixture run
+(`TARGET_LOOP_EVIDENCE.md`): a real commit was made reachable in the git
+remote's history by a real push, and three deliberately disallowed actions
+were blocked by the same pipeline at three structurally distinct depths.
+Staging that made the commit possible was discharged out of band, by an
+ungoverned fixture step outside `crates/` (item 1 above), never by this crate
+or by anything the actuator gates; governed staging is item 12's own
+obligation, owed to build-order step seven.
 
 ---
 

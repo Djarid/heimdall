@@ -76,6 +76,15 @@ fn permitted_task(action_name: &str) -> process_engine::EngineTask {
         task_id: "fixture-task".to_string(),
         action_name: action_name.to_string(),
         target: "fixture-target".to_string(),
+        // REQ-1/REQ-54 (build-order step six): EngineTask's fifth field.
+        // This helper's own callers use only action_name to select between
+        // the commit and push directions of PE-9, so the sink is fixed to
+        // the commit sink here; a caller that genuinely needs the push
+        // sink asserted end to end constructs its own task literal instead
+        // (this file's own scope, REQ-54, does not require adding one:
+        // `unit_tests/cognition_and_proposal.rs`'s own AC-5 case already
+        // covers the sink-differs-by-task property).
+        sink: "sink:git.commit".to_string(),
         declared_cost: 0,
     }
 }

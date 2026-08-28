@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D113)
+## 0. Resume here (handoff, last updated after D114)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -437,6 +437,48 @@ Himinbjörg" and "hosts process-engine" language is corrected by this same row: 
 arrow runs engine to Himinbjörg, never the reverse (PE-1). See D113 in `DECISIONS.md` and
 `plans/dd/process-engine.md` for the full breakdown.
 
+**D114 then completes build-order step six: the target loop has run end to end, once, on a
+fixture, satisfying both halves of D108's definition of done.** `EngineTask` gains a fifth
+field, `sink: String` (closing a sink-fidelity gap, not a safety hole: before this step every
+proposal declared the one hardcoded `sink:git.commit` regardless of the task's own action).
+`crates/process-engine/src/main.rs` now carries five hardcoded task constant-sets in one
+compile-time-length-asserted array, two allowed (a commit, then a push) and three disallowed at
+three structurally distinct depths (a merge blocked at the permitted-action check, a push to
+`main` blocked two checks later at the target-scope check, and a push to an out-of-scope target
+passing all six checks, minting a witness and clearing the audit write before the actuator's own
+allowlist refuses it), selected by a third fail-closed startup precondition,
+`HEIMDALL_ENGINE_TASK`, that yields an index into that array and nothing else. **This is
+recorded as an amendment to REQ-31, not as compliance:** a selector variable is a configuration
+surface, said plainly rather than argued around, while the property REQ-31 protects (nothing can
+widen what is authorised) stays mechanically checked, because every member is a compile-time
+constant and every member passes through the identical pipeline. An out-of-band Python driver,
+`ontology/tools/run_target_loop.py`, staged one fixture file, checked out
+`fixture-integration-branch` and invoked the compiled binary five times; a real commit was made
+reachable in a real, throwaway remote's history by a real push, both read independently from the
+bare origin after the run, and three deliberately disallowed actions were blocked by the
+identical governed path. `TARGET_LOOP_EVIDENCE.md` carries the full transcript and the honest
+statement this step does not claim Heimdall authored a change: the content and its staging were
+the operator's own, outside the governed path, and that claim belongs to build-order step seven.
+Invariant 3.6's own entry in `NEUROSYMBOLIC_FILTER_INVARIANTS.md` is amended to state five things
+together: what changed, DEMONSTRATED once on this fixture (never PROVEN, never upgraded by
+implication from D113), what is not claimed (Gjöll's own Python gate still has zero non-test
+callers), what stays delegated (observed end-to-end containment stays external, D91, D92) and
+what stays absent (no flow-to-sink transitive reachability). Named residuals carried forward, all
+unclosed: EC-1's boundary (staging discharged out of band, not by a governed path), EC-7
+(unchanged, still a placeholder), EC-12 (still narrowed at the engine only), EC-13 (untouched) and
+EC-16 (untouched, the driver's five invocations ran strictly sequentially, which demonstrates
+nothing about safety under concurrency). Governed staging is now a named obligation in
+`plans/dd/process-engine.md` section 12, triggered the moment cognition genuinely authors file
+content, which is build-order step seven. **A genuine finding, named rather than smoothed over:**
+provisioning a real secret for the first time in this repository's history surfaced three
+pre-existing test defects in `crates/himinbjorg`, invisible under every prior D109 to D113
+verification claim because the tests they lived in had always silently skipped; all three are
+unrelated to the step-six secret change and all three are now fixed. `cargo test --workspace` now
+passes 180 tests (174 pre-existing plus 6 new), zero failures; `python3 -m ontology.tests.harness`
+stays at exactly 22 critical findings, all false-inert, with the new obligation
+(`run_rust_target_loop`) passing. See D114 in `DECISIONS.md` and `TARGET_LOOP_EVIDENCE.md` for the
+full transcript and breakdown.
+
 **Run this first, to see the state for yourself:**
 
 ```
@@ -549,28 +591,30 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Run the target loop end to end: build-order step six (D108).** Steps one to five (D109
-   Gjöll re-expressed in Rust, D110 Vör's minimal single-cohort form, D111 Himinbjörg's minimal
-   four-interface slice, D112 the git actuator filling `broker_action`'s one slot, D113 the
-   process engine sequencing task in to result out) are all now complete: `crates/process-engine/`
-   is the first genuine non-test caller of `himinbjorg::validate_proposal`,
-   `broker_authorised_action`, Himinbjörg's other three interfaces and
-   `hierarchy_vor::load_verified_cohort`, so the authorisation path from a proposal to a git
-   process is now genuinely called, not merely built. That is not yet the target loop, though,
-   and step six is load bearing for the reason D108's own definition of done states: a commit
-   proposal that passes all six checks still refuses at the actuator with
-   `ActuationRefusal::ExitStatus`, because nothing in the workspace can stage a change (PE-3 of
-   the step-five build), so no commit has yet landed in the git remote's history. Step six's job,
-   per `plans/synthesis-bootstrap.md` section 6, is to close that gap and complete D108's
-   definition of done in full: stage a real, low-stakes change so the commit path can succeed,
-   run the engine's binary against a real working repository and a real remote, and show a real
-   commit reachable in the remote's history AND a deliberately disallowed action, for example a
-   push to a protected branch, blocked by the same pipeline rather than a special case. Step
-   seven, after that, is replacing the cognition stub with a real model call. See
-   `plans/synthesis-bootstrap.md` sections 6 and 7 for the full build order and the target loop's
-   definition, and `plans/dd/process-engine.md` sections 6 and 12 for the staging obligation and
-   the other residuals (EC-12's open half, EC-13, EC-16) step five left this step to carry
-   forward.
+1. **Build-order step seven: replace the cognition stub with a real model call.** Steps one to
+   six (D109 Gjöll re-expressed in Rust, D110 Vör's minimal single-cohort form, D111 Himinbjörg's
+   minimal four-interface slice, D112 the git actuator filling `broker_action`'s one slot, D113
+   the process engine sequencing task in to result out, D114 the target loop run end to end) are
+   all now complete: the target loop has run, once, on a fixture, with a real commit made
+   reachable in a real remote's history by a real push, and three deliberately disallowed actions
+   blocked by the same governed path at three structurally distinct depths, satisfying both
+   halves of D108's own definition of done (`TARGET_LOOP_EVIDENCE.md`). Step six does not claim
+   that Heimdall authored a change, though: the content of the change and its staging (an
+   out-of-band `git add`, `ontology/tools/run_target_loop.py`) were the operator's own, outside
+   the governed pipeline, and cognition itself is still the hardcoded stub D113 built. Step seven
+   is now the load-bearing piece for exactly that reason: replacing the cognition stub with a real
+   model call is what would let Heimdall genuinely propose the change it commits, rather than
+   gate a change the operator already wrote. **Step seven inherits one written obligation from
+   step six: governed staging.** `plans/dd/process-engine.md` section 12 names it explicitly,
+   triggered the moment cognition genuinely authors file content, because at that point what to
+   stage becomes a consequential choice about the scope of a change rather than a fixture the
+   operator provided; most likely a new `GitOperation::Stage { path }` variant with
+   `action:git.stage` and `sink:git.stage`, on Approach B of
+   `.opencode/plans/build-order-step-six-brainstorm.md`. See `plans/synthesis-bootstrap.md`
+   sections 6 and 7 for the full build order, `TARGET_LOOP_EVIDENCE.md` for step six's own
+   transcript, and `plans/dd/process-engine.md` sections 6 and 12 for the staging obligation and
+   the other residuals (EC-1's boundary, EC-7, EC-12, EC-13, EC-16) step six carries forward to
+   step seven.
 2. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
    is running this exact false-inert attack vector against models independently, with no
    exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
@@ -819,6 +863,31 @@ lines over (about 37 percent); its integration tests, at 271 lines against a rou
 budget, are the first component in this build order to land under its own advisory figure; see
 D113 in `DECISIONS.md` and `plans/dd/process-engine.md` for the full breakdown.
 
+D114 then completed build-order step six: the target loop ran end to end, once, on a fixture,
+satisfying both halves of D108's definition of done. Five hardcoded task constant-sets, in one
+compile-time-length-asserted array, gave the engine two allowed proposals (a commit, then a push)
+and three disallowed at three structurally distinct depths (a merge blocked at the
+permitted-action check, a push to `main` blocked at the target-scope check, a push to an
+out-of-scope target passing all six checks before the actuator's own allowlist refused it),
+selected by a third fail-closed startup precondition, `HEIMDALL_ENGINE_TASK`, an amendment to
+REQ-31 stated as an amendment rather than compliance. An out-of-band Python driver staged one
+fixture file and invoked the binary five times; a real commit was made reachable in a real
+remote's history by a real push, read independently from the bare origin, and the three
+disallowed actions were blocked by the same governed path, with no branch anywhere under
+`crates/` distinguishing the negative cases from the positive ones. Invariant 3.6 is amended to
+DEMONSTRATED, once, on this fixture, never PROVEN: observed end-to-end containment stays external
+(D91, D92), Gjöll's own Python gate still has zero non-test callers, and no flow-to-sink
+transitive reachability was added. This step does not claim Heimdall authored a change: the
+content and its staging were the operator's own, outside the governed pipeline, and governed
+staging is now a named obligation for build-order step seven. Named residuals carried forward,
+all unclosed: EC-1's boundary (staging discharged out of band, not governed), EC-7 (unchanged),
+EC-12 (still narrowed at the engine only), EC-13 (untouched) and EC-16 (untouched). A genuine
+finding is named rather than smoothed over: provisioning a real secret for the first time in this
+repository's history surfaced three pre-existing test defects in `crates/himinbjorg`, invisible
+under every prior verification claim because the tests had always silently skipped; all three are
+unrelated to the secret change and all three are now fixed. See D114 in `DECISIONS.md` and
+`TARGET_LOOP_EVIDENCE.md` for the full transcript and breakdown.
+
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
 into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
@@ -896,6 +965,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `README.md` | Orientation, with audience-specific reading paths |
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
+| `TARGET_LOOP_EVIDENCE.md` | The committed record of build-order step six's one real run: a real commit made reachable in a real remote's history by a real push, and three deliberately disallowed actions blocked by the same governed path, with the honest statement of what the run does and does not claim (D114) |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
 | `DECISIONS.md` | The decision log: 112 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot) plus the still-open D67-fix layer-one break, with consistency checks |
@@ -1133,6 +1203,36 @@ named remaining refinement, contained by Gjoll at action time, not here.
   engine only), EC-13 (untouched) and EC-16 (unchanged). The code licence is OPEN (section 5).
   See `plans/dd/process-engine.md` for the full design and `DECISIONS.md` D113 for the
   line-budget breakdown.
+- **Build-order step six (D114): the target loop has run end to end, once, on a fixture.**
+  `EngineTask` gains a fifth field, `sink: String`, and `CognitionOutput` loses its own, closing
+  a sink-fidelity gap rather than a safety hole (before this step every proposal declared the
+  one hardcoded `sink:git.commit`, regardless of the task's own action). `main.rs` now carries
+  five hardcoded task constant-sets in one compile-time-length-asserted array, two allowed (a
+  commit, then a push) and three disallowed at three structurally distinct depths, selected by a
+  third fail-closed startup precondition, `HEIMDALL_ENGINE_TASK`, that yields an index into the
+  array and nothing else. This is recorded as an amendment to REQ-31, not as compliance: a
+  selector variable is a configuration surface, and the load-bearing property REQ-31 protects
+  stays mechanically checked because every member is a compile-time constant passing through the
+  identical pipeline. An out-of-band Python driver, `ontology/tools/run_target_loop.py`, staged
+  one fixture file and invoked the compiled binary five times, once per selector: a real commit
+  was made reachable in a real, throwaway remote's history by a real push, both read
+  independently from the bare origin, and three deliberately disallowed actions (a merge, a push
+  to `main`, a push to an out-of-scope target) were blocked by the identical governed path at
+  three structurally distinct depths, with no branch anywhere under `crates/` distinguishing the
+  negative cases from the positive ones. `TARGET_LOOP_EVIDENCE.md` carries the full transcript
+  and the honest statement that this step does not claim Heimdall authored a change: the content
+  and its staging were the operator's own, outside the governed pipeline. Invariant 3.6's own
+  entry is amended to DEMONSTRATED, once, on this fixture, never PROVEN: observed end-to-end
+  containment stays external (D91, D92), Gjöll's own Python gate still has zero non-test callers,
+  and no flow-to-sink transitive reachability was added. Named residuals carried forward, all
+  unclosed: EC-1's boundary (staging discharged out of band, not governed), EC-7 (unchanged),
+  EC-12 (still narrowed at the engine only), EC-13 (untouched) and EC-16 (untouched). Governed
+  staging is a new named obligation for build-order step seven. A genuine finding is named rather
+  than smoothed over: provisioning a real secret for the first time in this repository's history
+  surfaced three pre-existing test defects in `crates/himinbjorg`, invisible under every prior
+  verification claim because the tests had always silently skipped; all three are unrelated to
+  the secret change and all three are now fixed. The code licence is still OPEN (section 5). See
+  `TARGET_LOOP_EVIDENCE.md` and `DECISIONS.md` D114 for the full transcript and breakdown.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -1155,7 +1255,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
-| **D109/D110/D111/D112/D113: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml` or `crates/process-engine/Cargo.toml` carries a `license` field | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks a fifth crate, not only the first four. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
+| **D109/D110/D111/D112/D113/D114: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml` or `crates/process-engine/Cargo.toml` carries a `license` field. Build-order step six (D114) added no sixth crate, only `ontology/tools/run_target_loop.py` (a standalone Python tool) and edits inside the existing five, so the named `Cargo.toml` list is unchanged and the blocker is unaffected, not resolved | OPEN (blocker) | Must be settled before any code in this repository is published, and still blocks all five crates. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -1308,10 +1408,10 @@ corpus the author never saw.
    remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
    new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
    OPEN, unresolved by this build.
-7. **Done: build-order steps one to five of `plans/synthesis-bootstrap.md` (D108), re-expressing
+7. **Done: build-order steps one to six of `plans/synthesis-bootstrap.md` (D108), re-expressing
    Gjöll's gate (D109), Vör's minimal single-cohort form (D110), Himinbjörg's minimal
-   four-interface slice (D111), the git actuator (D112) and the process engine (D113) in Rust.**
-   `crates/boundary-gjoll/`
+   four-interface slice (D111), the git actuator (D112), the process engine (D113) in Rust and
+   then running the target loop end to end (D114).** `crates/boundary-gjoll/`
    carries a pure total rule core behind a registry-mandatory consequentiality shell, checked
    against 22 golden vectors (six with a layer-two section) exported from the three existing
    Python harnesses, with a source-digest drift detector folded into the main suite. It designs
@@ -1350,11 +1450,27 @@ corpus the author never saw.
    `crates/actuator-git/src/` and about 62 percent over on `crates/himinbjorg/src/`'s own
    additions; D113 about 37 percent over on `crates/process-engine/src/`, about 163 percent over
    on its `unit_tests/`, and, for the first time in this build order, **79 lines under** its own
-   advisory figure on its `tests/`), not absorbed silently. **This is now the load-bearing item:
-   build-order step six, running the target loop end to end, depends on step five having landed
-   and is promoted to priority item one above.** Step seven (replacing the cognition stub with a
-   real model call) follows it. The code licence (section 5) blocks publication of all five
-   crates and should be settled before a sixth one is added.
+   advisory figure on its `tests/`), not absorbed silently. **D114 then completed build-order
+   step six:** a third fail-closed startup precondition, `HEIMDALL_ENGINE_TASK`, selects among
+   five hardcoded task constant-sets in one compile-time-length-asserted array, an amendment to
+   REQ-31 stated as an amendment rather than compliance; an out-of-band Python driver,
+   `ontology/tools/run_target_loop.py`, stages one fixture file and invokes the compiled binary
+   five times, and a real commit was made reachable in a real remote's history by a real push
+   while three deliberately disallowed actions were blocked by the identical governed path at
+   three structurally distinct depths, satisfying both halves of D108's own definition of done
+   (`TARGET_LOOP_EVIDENCE.md`). This does not claim Heimdall authored a change: the content and
+   its staging were the operator's own, outside the governed pipeline. Invariant 3.6 is amended
+   to DEMONSTRATED, once, on this fixture, never PROVEN, and EC-1's boundary, EC-7, EC-12, EC-13
+   and EC-16 are each carried forward unclosed. Provisioning a real secret for the first time in
+   this repository's history surfaced three pre-existing test defects in `crates/himinbjorg`,
+   invisible under every prior verification claim, all unrelated to the secret change and all
+   now fixed, named rather than smoothed over. **This is now the load-bearing item: build-order
+   step seven, replacing the cognition stub with a real model call, and is promoted to priority
+   item one above.** Step seven inherits governed staging as a written obligation from step six
+   (`plans/dd/process-engine.md` section 12): staging becomes a governed action the moment
+   cognition genuinely authors file content, rather than an ungoverned fixture step. The code
+   licence (section 5) blocks publication of all five crates, unaffected by step six since it
+   added no sixth crate, and should be settled before one is added.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
