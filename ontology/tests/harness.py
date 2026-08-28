@@ -130,6 +130,11 @@ class Report:
         # behaviour.
         self.rust_actuator_failures = 0
         self.actuator_invocation_failures = 0
+        # REQ-52 (`.opencode/plans/process-engine-step-five-spec.md`): the
+        # process engine's posture detector, folded in following the
+        # run_rust_actuator pattern above, exactly, and additively: no
+        # existing counter or obligation above changes behaviour.
+        self.rust_process_engine_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -1070,16 +1075,72 @@ def run_rust_actuator(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_process_engine(rep: Report) -> None:
+    """REQ-52 (`.opencode/plans/process-engine-step-five-spec.md`): the
+    process engine's posture detector at `crates/process-engine/` proves
+    dependency posture (importing `rust_gate_harness.check_dependency_posture`
+    with a two-name allowlist, never copying it, and never changing that
+    function's own empty default so `boundary-gjoll` and `hierarchy-vor` keep
+    their strict behaviour byte for byte), test and code isolation including
+    `main.rs`, `#![forbid(unsafe_code)]` present at file scope in both crate
+    roots with no `unsafe` keyword anywhere, exactly one binary target, the
+    absence of `std::process` and `std::net` anywhere in the crate, the step
+    enum's exactly-five variants and the sequence array's length assertion,
+    the absence of `boundary-gjoll` and `actuator-git` from the dependency
+    table, and the Rust suite; it does NOT advance invariant 3.6's
+    live-invocation status, which `run_actuator_invocation_boundary` above
+    already governs for `broker_authorised_action`. Wired in following the
+    `run_rust_actuator` precedent: this standalone sub-harness's own `main()`
+    already returns a real pass/fail code (0 clean, 1 on failure), so a
+    failure here is folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python -m
+    ontology.tests.rust_process_engine_harness`)."""
+    import contextlib
+    import io
+    from . import rust_process_engine_harness
+
+    rep.line("=== REQ-52 Process engine posture: dependency posture, test and code "
+              "isolation including main.rs, mechanical surface properties, the step "
+              "enum and sequence length assertion, and the Rust suite, not invariant "
+              "3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_process_engine_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/process-engine/ carries the disclosed dependency "
+                  "posture, keeps every test construct out of src/ (including "
+                  "main.rs), carries #![forbid(unsafe_code)] with no unsafe keyword "
+                  "anywhere in its source, declares exactly one binary target, carries "
+                  "no std::process or std::net beyond the one disclosed exception, "
+                  "declares its step enum as exactly five variants with a "
+                  "compile-time sequence-length assertion, excludes boundary-gjoll and "
+                  "actuator-git from its dependency table narrowed by the disclosed "
+                  "exception, and passes its own Rust suite (or loudly skips that one "
+                  "step alone, if no toolchain is present). This proves mechanical "
+                  "posture, not invariant 3.6's live-invocation status (run the module "
+                  "directly for detail)")
+    else:
+        rep.rust_process_engine_failures += 1
+        rep.line("  [CRITICAL] Process engine posture detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_actuator_invocation_boundary(rep: Report) -> None:
     """D112 (`.opencode/plans/git-actuator-step-four.md` REQ-44): the live
     invocation-boundary detector for `actuator-git::execute` and
     Himinbjörg's own witness-carrying entry point, `broker_authorised_action`,
     on `himinbjorg_invocation_harness`'s precedent (D96, D110, D111). Reads
     exactly one non-test call site of `actuator_git::execute` (the
-    allowlisted one, inside `crates/himinbjorg/src/broker.rs`) and zero
-    non-test call sites of `broker_authorised_action` today; it does NOT
-    advance invariant 3.6 (REQ-40: the process engine that will call
-    `broker_authorised_action` is build-order step five, not yet built).
+    allowlisted one, inside `crates/himinbjorg/src/broker.rs`) and, as of
+    this step, exactly one non-test call site of `broker_authorised_action`
+    (the allowlisted one, inside `crates/process-engine/src/sequence.rs`);
+    it does NOT advance invariant 3.6 on its own (REQ-40: before build-order
+    step five, an actuator that can execute, inside a crate whose one
+    witness-carrying entry point nothing calls, was not "the gate is invoked
+    live against a real action"; step five's engine is now that caller,
+    allowlisted above by exactly one reviewed entry, because the process
+    engine that this reading previously described as "build-order step
+    five, not yet built" has now landed; a second, unreviewed caller stays
+    fatal).
     Wired in following the `run_himinbjorg_invocation_boundary` precedent:
     this standalone sub-harness's own `main()` already returns a real
     pass/fail code (0 clean, 1 on failure), so a failure here is folded into
@@ -1568,6 +1629,7 @@ def main() -> int:
     run_himinbjorg_invocation_boundary(rep)
     run_rust_actuator(rep)
     run_actuator_invocation_boundary(rep)
+    run_rust_process_engine(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1590,7 +1652,8 @@ def main() -> int:
              + rep.rust_gateway_failures
              + rep.himinbjorg_invocation_failures
              + rep.rust_actuator_failures
-             + rep.actuator_invocation_failures)
+             + rep.actuator_invocation_failures
+             + rep.rust_process_engine_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
