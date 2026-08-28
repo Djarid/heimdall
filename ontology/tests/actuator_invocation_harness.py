@@ -49,10 +49,17 @@ Two symbol groups tracked, each answering a different question:
      a bare `execute(...)` counts only when this file's own scope bound that
      name from a `use actuator_git::execute [as alias];` import, because
      `execute` alone is far too common a bare name to scan for unresolved.
-  2. `broker_authorised_action`, scanned across the WHOLE repo. Expected ZERO
-     non-test call sites (REQ-40): no allowlist mechanism exists for this
-     symbol, following `vor_invocation_harness.py`'s own no-allowlist
-     precedent for Vor's cohort entry point. This crate's own test suite
+  2. `broker_authorised_action`, scanned across the WHOLE repo. Expected
+     EXACTLY ONE non-test call site, inside
+     `crates/process-engine/src/sequence.rs` (`.opencode/plans/process-engine-step-five-spec.md`
+     REQ-38, AC-42). This is an EXPLICIT ALLOWLISTED COUNT CHECK
+     (`BAA_CALL_ALLOWLIST`), on `ACTUATOR_CALL_ALLOWLIST`'s own exactly-one-required
+     polarity: the named entry disappearing and an unlisted entry appearing are
+     equally fatal (EC-10, EC-11). Before build-order step five this symbol carried
+     no allowlist mechanism at all and every non-test call site was unconditionally
+     fatal; step five's engine crate is the first genuine non-test caller, so the
+     mechanism this docstring describes is the widening PE-6 requires, not a new
+     design. This crate's own test suite
      (`crates/himinbjorg/unit_tests/witness_and_audit.rs` and
      `crates/himinbjorg/tests/public_surface.rs`) is expected to call it
      directly; those are TEST call sites, reported but never fatal.
@@ -79,7 +86,9 @@ scan scope and arms nothing.
 from __future__ import annotations
 
 import re
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -124,6 +133,33 @@ for _entry in ACTUATOR_CALL_ALLOWLIST:
     if not (_entry.justification and _entry.decision_ref):
         raise ValueError(
             "an ACTUATOR_CALL_ALLOWLIST entry must carry both a justification and a "
+            "decision reference; see NonTestAllowlistEntry's docstring")
+
+
+# The `broker_authorised_action` allowlist (REQ-38, AC-42,
+# `.opencode/plans/process-engine-step-five-spec.md`), on `ACTUATOR_CALL_ALLOWLIST`'s
+# own exactly-one-required shape. Widening this tuple to a second entry is how a
+# future session (for example build-order step six's coordinator, EC-11) would
+# record a genuinely new call site as a reviewed decision, never as a change that
+# happens to make this obligation pass by accident.
+BAA_CALL_ALLOWLIST: tuple[NonTestAllowlistEntry, ...] = (
+    NonTestAllowlistEntry(
+        path="crates/process-engine/src/sequence.rs",
+        justification=(
+            "the process engine's own execute step (REQ-22, REQ-23 of the "
+            "process-engine step-five spec): the crate's one, deliberately singular, "
+            "non-test call site of himinbjorg's witness-carrying entry point, "
+            "reached only after a Decision::Allow and its Authorisation witness are "
+            "already held"
+        ),
+        decision_ref="D113",
+    ),
+)
+
+for _entry in BAA_CALL_ALLOWLIST:
+    if not (_entry.justification and _entry.decision_ref):
+        raise ValueError(
+            "a BAA_CALL_ALLOWLIST entry must carry both a justification and a "
             "decision reference; see NonTestAllowlistEntry's docstring")
 
 
@@ -500,31 +536,164 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
               "the allowlisted one.")
     print()
 
-    # Group 2: broker_authorised_action, no allowlist (REQ-40).
+    # Group 2: broker_authorised_action, with its own explicit
+    # allowlisted-count check (REQ-38, AC-42), on group one's exact shape.
     test_files_b, non_test_files_b = classify(result.baa_sites)
+    total_non_test_baa_sites = sum(len(result.baa_sites[f]) for f in non_test_files_b)
+    allowed_paths_b = {e.path for e in BAA_CALL_ALLOWLIST}
+    unallowlisted_b = [f for f in non_test_files_b if f not in allowed_paths_b]
     print(f"ACTUATOR INVOCATION BOUNDARY -- broker_authorised_action: {len(test_files_b)} "
-          f"test call site(s), {len(non_test_files_b)} non-test call site(s) (expected "
-          f"zero: this step does not advance invariant 3.6, REQ-40; the process engine "
-          f"that will call this is build-order step five, not yet built).")
+          f"test call site(s), {total_non_test_baa_sites} non-test call site(s) total, "
+          f"expected EXACTLY ONE (REQ-38, EC-10, EC-11).")
     for f in test_files_b:
         print(f"  + test call site: {f}")
-    if non_test_files_b:
+    for f in non_test_files_b:
+        if f in allowed_paths_b:
+            entry = next(e for e in BAA_CALL_ALLOWLIST if e.path == f)
+            print(f"  + allowlisted non-test call site: {f} ({entry.decision_ref}: "
+                  f"{entry.justification})")
+    if unallowlisted_b:
         ok = False
-        for f in non_test_files_b:
-            print(f"  [CRITICAL] non-test call site (no allowlist exists for this symbol): {f}")
-    else:
-        print("  [PASS] zero non-test call sites of broker_authorised_action.")
+        for f in unallowlisted_b:
+            print(f"  [CRITICAL] unallowlisted non-test call site: {f}")
+    if total_non_test_baa_sites != 1:
+        ok = False
+        print(f"  [CRITICAL] expected exactly one non-test call site of "
+              f"broker_authorised_action, found {total_non_test_baa_sites} (EC-10, EC-11).")
+    elif not unallowlisted_b:
+        print("  [PASS] exactly one non-test call site of broker_authorised_action, and "
+              "it is the allowlisted one.")
     print()
-    print("  STATED PLAINLY (REQ-40, section 13 item one of the spec): an actuator that can")
-    print("  execute, inside a crate whose one witness-carrying entry point nothing calls,")
-    print("  is not \"the gate is invoked live against a real action\". A caller of the")
-    print("  caller does not exist yet.")
+    print("  STATED PLAINLY (REQ-38, section 13 item one of the spec): before build-order")
+    print("  step five, an actuator that can execute, inside a crate whose one witness-")
+    print("  carrying entry point nothing calls, was not \"the gate is invoked live")
+    print("  against a real action\". Step five's engine is that caller, allowlisted")
+    print("  above by exactly one reviewed entry; a second caller (EC-11) stays fatal")
+    print("  until it earns its own reviewed entry.")
 
     return ok
 
 
+# ---------------------------------------------------------------------------------
+# REQ-43/AC-47 (build-order step five, process-engine-step-five-spec.md): a
+# negative-control extension proving the widened detector still bites in both
+# directions, for BOTH allowlisted symbol groups, against SYNTHETIC temporary
+# trees (never this repository's own working tree):
+#
+#   1. A synthetic UNLISTED non-test call site appearing alongside the
+#      genuine allowlisted one must still be reported as critical.
+#   2. The allowlisted call site synthetically DISAPPEARING (the count
+#      falling to zero) must still be reported as critical.
+#
+# Group 1 (`actuator_git::execute`) was already allowlisted before this
+# widening; group 2 (`broker_authorised_action`) gained its own allowlist by
+# this same widening (REQ-38, BAA_CALL_ALLOWLIST). Both are proven here on
+# the identical two-direction shape, so the widening did not leave either
+# group unable to fail.
+# ---------------------------------------------------------------------------------
+
+
+def _write_synthetic_tree(files: dict[str, str]) -> Path:
+    """Builds a temporary directory tree from a `{relative_path: source}`
+    mapping and returns its root. Caller must remove it (see
+    `shutil.rmtree`); never touches this repository's own working tree."""
+    root = Path(tempfile.mkdtemp(prefix="actuator-invocation-boundary-synthetic-"))
+    for rel, src in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src, encoding="utf-8")
+    return root
+
+
+def synthetic_widening_control() -> list[str]:
+    failures: list[str] = []
+
+    allowlisted_broker_rs = (
+        "pub fn broker_authorised_action() {\n"
+        "    let _ = actuator_git::execute(&op);\n"
+        "}\n"
+    )
+
+    # Direction 1: an extra, UNLISTED non-test call site of
+    # actuator_git::execute alongside the genuine allowlisted one.
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/broker.rs": allowlisted_broker_rs,
+        "crates/process-engine/src/sequence.rs": (
+            "fn run() {\n    let _ = actuator_git::execute(&op2);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "actuator_git::execute alongside the allowlisted one was not reported "
+                "as critical (this is the exactly-one-required polarity REQ-38/AC-47 "
+                "depend on staying fatal after PE-6 widens this detector)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Direction 2: the allowlisted call site DISAPPEARS (the file exists but
+    # no longer calls execute at all; the count falls to zero).
+    root = _write_synthetic_tree({
+        "crates/himinbjorg/src/broker.rs": "pub fn broker_authorised_action() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: the allowlisted call site of "
+                "actuator_git::execute vanishing (count falls to zero) was not reported "
+                "as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    allowlisted_sequence_rs = (
+        "fn run() {\n"
+        "    let _ = himinbjorg::broker_authorised_action(&c, &a, &s, &w, &mut r);\n"
+        "}\n"
+    )
+
+    # broker_authorised_action, direction 1: an extra, UNLISTED non-test call
+    # site alongside the genuine allowlisted one (REQ-38's own
+    # exactly-one-required polarity, proven post-widening).
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": allowlisted_sequence_rs,
+        "crates/process-engine/src/other_module.rs": (
+            "fn g() {\n"
+            "    let _ = himinbjorg::broker_authorised_action(&c2, &a2, &s2, &w2, &mut r2);\n"
+            "}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "broker_authorised_action alongside the allowlisted one was not "
+                "reported as critical (REQ-38's own exactly-one-required polarity, "
+                "post-widening)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # broker_authorised_action, direction 2: the allowlisted call site
+    # DISAPPEARS (the file exists but no longer calls it; the count falls to
+    # zero, EC-10).
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": "fn run() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: the allowlisted call site of "
+                "broker_authorised_action vanishing (count falls to zero) was not "
+                "reported as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    return failures
+
+
 def main() -> int:
     control_failures = control_check()
+    control_failures += synthetic_widening_control()
     if control_failures:
         print("ACTUATOR INVOCATION BOUNDARY negative control FAILED:")
         for cf in control_failures:

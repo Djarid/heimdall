@@ -1,0 +1,37 @@
+[package]
+name = "process-engine"
+edition.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
+
+[[bin]]
+name = "process-engine"
+path = "src/main.rs"
+
+# DEVIATION FROM REQ-2/REQ-4, DISCLOSED (see src/cognition.rs's own doc
+# comment and the implementing agent's final report for the full
+# explanation and the empirical proof behind it). REQ-2 says this table
+# should carry "exactly two entries": himinbjorg and hierarchy-vor. This
+# table carries a third, boundary-gjoll, because it is structurally
+# unavoidable: `himinbjorg::ProposalParameter`'s own fields
+# (`consume_mode: boundary_gjoll::types::ConsumeMode`, `trust_level:
+# boundary_gjoll::types::TrustLevel`) are unmodifiable (they are existing,
+# out-of-scope himinbjorg content), and Rust's extern-prelude resolution
+# does not make a transitive dependency's items nameable without a direct
+# dependency declaration -- confirmed empirically with a minimal
+# three-crate reproduction before this line was added, not assumed. Both
+# the crate's own DefaultCognitionStep (REQ-14/AC-16 requires a genuinely
+# non-empty, real Vec<ProposalParameter>) and the already-committed,
+# unmodifiable `unit_tests/cognition_and_proposal.rs` construct
+# `ProposalParameter` values directly and therefore need this name
+# resolvable. This crate still never depends on actuator-git, never names
+# `actuator_git::` anywhere in its own source, and never calls
+# `boundary_gjoll::consequentiality::evaluate` or any other Gjöll gate
+# function directly: the one load-bearing property REQ-4 exists to
+# protect (the gate is reached only through
+# `himinbjorg::validate_proposal`, never bypassed) is intact. This
+# dependency is for VALUE CONSTRUCTION only.
+[dependencies]
+himinbjorg = { path = "../himinbjorg" }
+hierarchy-vor = { path = "../hierarchy-vor" }
+boundary-gjoll = { path = "../boundary-gjoll" }

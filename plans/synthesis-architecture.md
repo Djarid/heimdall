@@ -27,7 +27,7 @@ Four Heimdall components are already specified at Detailed Design depth, and thi
 
 None of the following exist yet as Detailed Design documents. Each is named and scoped here at architecture depth only.
 
-**The process engine.** A Rust re-expression of Gleipnir's G-5 mechanism: a data-driven transition table, code-enforced loop caps, and a human-question state with no outgoing edge until answered. Resident inside Himinbjörg. Sequences a cohort instance's steps; calls into the output plane (Nornir, Fenrir, Gjöll) for each step's adjudication rather than adjudicating output itself. Does not decide whether an action is safe; decides only whether this step is permitted to happen now.
+**The process engine.** A Rust re-expression of Gleipnir's G-5 mechanism: a data-driven transition table, code-enforced loop caps, and a human-question state with no outgoing edge until answered. **Corrected by build-order step five (D113): the dependency arrow runs engine to Himinbjörg, not the reverse this section originally sketched.** `crates/process-engine/` is its own fifth crate, outside Himinbjörg's own crate boundary, depending on `himinbjorg` rather than being resident inside it (PE-1 of that step's own rulings); Himinbjörg's own `[dependencies]` table gains no entry for it and knows nothing about sequencing. It calls into the output plane only through Himinbjörg's own existing interfaces (`validate_proposal`'s check five reaches Gjöll; nothing in the engine names Gjöll or the actuator directly), so the boundary claim in section 2 above, that Himinbjörg owns the entire control channel and nothing executes without passing through it, still holds: the engine is a caller of that channel, not a second owner of it. Sequences a cohort instance's steps; calls into the output plane (Nornir, Fenrir, Gjöll) for each step's adjudication rather than adjudicating output itself. Does not decide whether an action is safe; decides only whether this step is permitted to happen now. The minimal fidelity actually built (`plans/dd/process-engine.md`) is a fixed five-step sequence with no loop cap and no human-question state reachable yet, both named and typed rather than delivered, not the general transition table this paragraph's first sentence describes as the eventual form.
 
 **The resident coordinator and its supporting cohort.** The privileged, always-present tier named in D105 section five. Not one entry in the cohort catalogue among equals; a structure Axiom Two applies to hardest of all, because its configuration, code and evidence must sit at a strictly lower, agent-unreachable enforcement surface than anything it coordinates. Its job is decomposing a durable objective into goals, selecting which predefined cohorts to instantiate from the catalogue and in what order, and holding continuity across them. Resident inside Himinbjörg's boundary, gated by the same `validate_proposal` pipeline as any other proposal it originates.
 
@@ -66,14 +66,18 @@ heimdall/
     boundary-nornir/        output plane: the symbolic classifier and Yggdrasil ontology
     boundary-fenrir/        output plane: the tainted-content sandbox, external runtime for execution
     boundary-gjoll/         output plane: the action-time gate and flow-to-sink reachability
-    process-engine/         process plane: the Gleipnir-derived state machine, resident in himinbjorg
+    process-engine/         process plane: the Gleipnir-derived state machine. BUILT (D113) as its own
+                             crate, depending on himinbjorg rather than being resident inside it; see the
+                             correction in section three above
     hierarchy-registry/     hierarchy plane: the predefined agent registry
     hierarchy-catalogue/    hierarchy plane: the predefined cohort catalogue
     hierarchy-coordinator/  hierarchy plane: the privileged resident coordinator, resident in himinbjorg
     hierarchy-trust/        hierarchy plane: the policy/user-reviewed/retrieved/temporary lattice from section four
     himinbjorg/             the gateway process itself: context construction, control-surface enforcement,
-                             proposal validation, credential brokering; hosts process-engine and
-                             hierarchy-coordinator; the only crate every proposal must pass through
+                             proposal validation, credential brokering; the only crate every proposal must
+                             pass through. Does NOT host process-engine (corrected by D113: that crate
+                             depends on this one, never the reverse); may still host hierarchy-coordinator,
+                             not yet built
     mimisbrunnr/             the world-model store and its existing taint lattice, unchanged in scope
     hlidskjalf/              the signed, append-only decision log, unchanged in scope
     cognition-client/        cognition plane: the Rust client to an external large language model

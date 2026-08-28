@@ -47,19 +47,36 @@ scan scope and arms nothing.
 
 What it reports and what is fatal. The COUNT of test call sites (a path under
 `unit_tests/` or `tests/`, matching REQ-38's own directory split) is reporting-only,
-never a failure. A NON-TEST call site is fatal, full stop: unlike
-`gjoll_invocation_harness.py`'s `NON_TEST_ALLOWLIST` (D96, following the
-`ALLOWED_IMPORT_ROOTS`/D71 polarity for Gjoll's gate specifically), REQ-45 carries no
-allowlist mechanism for Vor. It reads zero non-test call sites on the day this lands
-(REQ-45's own closing sentence) and stops reporting a clean boundary the moment a real
-caller (step five) is wired in; widening this module with an allowlist, if one is ever
-needed, is that future session's own reviewed decision to make, not this one's to
-anticipate.
+never a failure. A NON-TEST call site is fatal unless it matches
+`VOR_CALL_ALLOWLIST` below.
+
+**Build-order step five widening
+(`.opencode/plans/process-engine-step-five-spec.md` REQ-40, AC-44).** Before this
+step, REQ-45 carried no allowlist mechanism for Vor at all and every non-test call
+site was unconditionally fatal, following `gjoll_invocation_harness.py`'s
+`NON_TEST_ALLOWLIST`/`ALLOWED_IMPORT_ROOTS` polarity only in spirit, not in
+mechanism. Step five's engine crate is the first genuine non-test caller of
+`load_verified_cohort`, so this module now carries `VOR_CALL_ALLOWLIST`, an
+exactly-one-required allowlist on `himinbjorg_invocation_harness.GATE_CALL_ALLOWLIST`'s
+and `actuator_invocation_harness.ACTUATOR_CALL_ALLOWLIST`'s own shape: the named entry
+disappearing and an unlisted entry appearing are equally fatal.
+
+**A correction against the spec's own literal text, recorded here rather than
+silently reconciled.** REQ-40's own wording names
+`crates/process-engine/src/main.rs` as the permitted call site. Reading the built
+crate live shows this is not where the call happens: `crates/process-engine/src/main.rs`
+never mentions `load_verified_cohort` at all; the real call is in
+`crates/process-engine/src/startup.rs`, the delegate module REQ-26 has `main.rs`
+hand every environment read to (`main.rs` calls `process_engine::startup::run()`,
+which calls `hierarchy_vor::load_trusted_set_from_path` and then
+`hierarchy_vor::load_verified_cohort`). `VOR_CALL_ALLOWLIST` below names the file
+verified live, `startup.rs`, not the path the spec's own prose assumed.
 """
 
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -88,6 +105,56 @@ _VOR_DEFINITION_DIR: tuple[str, ...] = ("crates", "hierarchy-vor", "src")
 
 def _is_definition_file(rel_parts: tuple[str, ...]) -> bool:
     return rel_parts[: len(_VOR_DEFINITION_DIR)] == _VOR_DEFINITION_DIR
+
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class NonTestAllowlistEntry:
+    """A designated non-test call site of one of `COHORT_SYMBOLS` permitted to
+    exist, on `himinbjorg_invocation_harness.NonTestAllowlistEntry`'s and
+    `actuator_invocation_harness.NonTestAllowlistEntry`'s own shape.
+    `VOR_CALL_ALLOWLIST` below requires EXACTLY the one entry it names
+    (REQ-40): the check this module runs fails if the live count of non-test
+    call sites is anything other than one, whether that is because a second,
+    unlisted site appeared, or because the one allowlisted site vanished."""
+
+    path: str
+    justification: str
+    decision_ref: str
+
+
+# THE ALLOWLIST (REQ-40, AC-44, `.opencode/plans/process-engine-step-five-spec.md`):
+# exactly one entry, naming the real, empirically-verified non-test call site of
+# `hierarchy_vor::load_verified_cohort`, `crates/process-engine/src/startup.rs`
+# (not `src/main.rs`, which REQ-40's own literal text assumed -- see the module
+# docstring's correction). Widening this tuple to a second entry is how a future
+# session would record a genuinely new call site as a reviewed decision, never
+# as a change that happens to make this obligation pass by accident.
+VOR_CALL_ALLOWLIST: tuple[NonTestAllowlistEntry, ...] = (
+    NonTestAllowlistEntry(
+        path="crates/process-engine/src/startup.rs",
+        justification=(
+            "the binary's fail-closed startup contract (REQ-26, REQ-27 of the "
+            "process-engine step-five spec): the one module in the crate that reads "
+            "the environment, resolving the cohort precondition by loading the "
+            "trusted authoriser set and then calling load_verified_cohort exactly "
+            "once, before any step of the sequence runs"
+        ),
+        decision_ref="D113",
+    ),
+)
+
+for _entry in VOR_CALL_ALLOWLIST:
+    # A real `raise`, not a bare `assert` (following
+    # gjoll_invocation_harness.py's own Minor-4 fix): this is meant to be an
+    # enforced control on a reviewed trust-boundary decision, not a debug-only
+    # check.
+    if not (_entry.justification and _entry.decision_ref):
+        raise ValueError(
+            "a VOR_CALL_ALLOWLIST entry must carry both a justification and a "
+            "decision reference; see NonTestAllowlistEntry's docstring")
 
 
 def _default_repo_root() -> Path:
@@ -365,39 +432,149 @@ def control_check() -> list[str]:
 
 
 def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
-    """Print the Vor invocation-boundary banner and return True unless a non-test
-    call site or an unscanned file exists.
+    """Print the Vor invocation-boundary banner and return True unless an
+    unallowlisted non-test call site, a miscounted allowlist or an unscanned
+    file exists.
 
     On the same pattern `gjoll_invocation_harness.print_invocation_banner`
     established for the Gjoll gate: this states the count live so a future
-    session does not have to remember, in prose, that nothing outside a test
-    calls the cohort entry point or the secret loaders, and it stops stating a
-    clean boundary the moment that changes."""
+    session does not have to remember, in prose, who calls the cohort entry
+    point or the secret loaders, and it stops stating a clean boundary the
+    moment that changes without a reviewed allowlist entry to explain it
+    (REQ-40, EC-10, EC-11)."""
     status = classify_call_sites(repo_root)
     n_test = len(status["test_files"])
-    n_non_test = len(status["non_test_files"])
+    non_test_files = status["non_test_files"]
+    # Counted by FILE, not by line: `COHORT_SYMBOLS` merges three related
+    # symbols (the entry point and its two secret loaders) into one detector,
+    # and a single legitimate call site (startup.rs's own precondition
+    # resolution, REQ-27) genuinely calls more than one of them from the same
+    # file. "Exactly one non-test call site" therefore means exactly one
+    # non-test FILE, on REQ-40's own plain-language reading of "the one
+    # permitted non-test call site", not exactly one textual hit.
+    total_non_test_sites = len(non_test_files)
     n_unscanned = len(status["unscanned_files"])
+    ok = True
+
+    allowed_paths = {e.path for e in VOR_CALL_ALLOWLIST}
+    unallowlisted = [f for f in non_test_files if f not in allowed_paths]
 
     print(f"VOR INVOCATION BOUNDARY (detected live by a TOKEN scan, weaker than an "
           f"AST scan -- see the module docstring for what that can miss): {n_test} "
-          f"test call site(s), {n_non_test} non-test call site(s).")
+          f"test call site(s) (file(s)), {total_non_test_sites} non-test call "
+          f"site(s) (file(s)) total, expected EXACTLY ONE (REQ-40, EC-10, EC-11).")
     for f in status["test_files"]:
         print(f"  + test call site: {f}")
-    if n_non_test:
-        for f in status["non_test_files"]:
-            print(f"  [CRITICAL] non-test call site (no allowlist exists for this "
-                  f"detector): {f}")
+    for f in non_test_files:
+        if f in allowed_paths:
+            entry = next(e for e in VOR_CALL_ALLOWLIST if e.path == f)
+            print(f"  + allowlisted non-test call site: {f} ({entry.decision_ref}: "
+                  f"{entry.justification})")
+    if unallowlisted:
+        ok = False
+        for f in unallowlisted:
+            print(f"  [CRITICAL] unallowlisted non-test call site: {f}")
+    if total_non_test_sites != 1:
+        ok = False
+        print(f"  [CRITICAL] expected exactly one non-test call site (file) of a "
+              f"cohort symbol, found {total_non_test_sites} (EC-10, EC-11).")
+    elif not unallowlisted:
+        print("  [PASS] exactly one non-test call site of a cohort symbol, and it "
+              "is the allowlisted one.")
     if n_unscanned:
+        ok = False
         for f in status["unscanned_files"]:
             print(f"  [CRITICAL] could not tokenise cleanly (fail-closed, not "
                   f"silently skipped): {f}")
-    if n_non_test or n_unscanned:
-        return False
-    return True
+    return ok
+
+
+# ---------------------------------------------------------------------------------
+# REQ-43/AC-47 (build-order step five, process-engine-step-five-spec.md): a
+# negative-control extension proving the widened detector still bites in both
+# directions, against SYNTHETIC temporary trees (never this repository's own
+# working tree):
+#
+#   1. A synthetic UNLISTED non-test call site appearing alongside the genuine
+#      allowlisted one must still be reported as critical.
+#   2. The allowlisted call site synthetically DISAPPEARING (the count falling
+#      to zero) must still be reported as critical.
+# ---------------------------------------------------------------------------------
+
+
+def _write_synthetic_tree(files: dict[str, str]) -> Path:
+    """Builds a temporary directory tree from a `{relative_path: source}`
+    mapping and returns its root. Caller must remove it; never touches this
+    repository's own working tree."""
+    root = Path(tempfile.mkdtemp(prefix="vor-invocation-boundary-synthetic-"))
+    for rel, src in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(src, encoding="utf-8")
+    return root
+
+
+def synthetic_widening_control() -> list[str]:
+    failures: list[str] = []
+
+    allowlisted_startup_rs = (
+        "fn run() {\n    let c = hierarchy_vor::load_verified_cohort(&t);\n}\n"
+    )
+
+    # Direction 1: an extra, UNLISTED non-test call site alongside the
+    # genuine allowlisted one.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/startup.rs": allowlisted_startup_rs,
+        "crates/process-engine/src/other_module.rs": (
+            "fn f() {\n    let c2 = hierarchy_vor::load_verified_cohort(&t2);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "load_verified_cohort alongside the allowlisted one was not reported "
+                "as critical (REQ-40's own exactly-one-required polarity, EC-10, "
+                "EC-11)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Direction 2: the allowlisted call site DISAPPEARS (the file exists but
+    # no longer calls a cohort symbol at all; the count falls to zero, EC-10).
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/startup.rs": "fn run() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: the allowlisted call site of "
+                "load_verified_cohort vanishing (count falls to zero) was not "
+                "reported as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Sanity companion: a synthetic tree with no cohort mention at all must
+    # still be reported as fatal (zero is not one), never silently accepted
+    # as a clean boundary.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/startup.rs": "fn run() {}\n",
+        "crates/process-engine/src/main.rs": "fn main() {}\n",
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a synthetic tree with zero cohort call "
+                "sites at all was wrongly reported as satisfying the "
+                "exactly-one-required allowlist check")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    return failures
 
 
 def main() -> int:
     control_failures = control_check()
+    control_failures += synthetic_widening_control()
     if control_failures:
         print("VOR INVOCATION BOUNDARY negative control FAILED:")
         for cf in control_failures:

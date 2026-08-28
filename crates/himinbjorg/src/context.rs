@@ -67,7 +67,32 @@ pub(crate) const HARDCODED_AGENT_ID: &str = hierarchy_vor::cohort::COHORT_ID;
 /// input, a later phase of this issue). An empty scope means nothing is in
 /// scope, never everything (HB3-4, EC-9); this module's own compile-time
 /// assertion below guarantees the master constant itself is never empty.
-const TARGET_SCOPE: &[&str] = &["fixture-target"];
+///
+/// **`"fixture-integration-branch"` was added additively by build-order
+/// step five** (`.opencode/plans/process-engine-step-five-spec.md`
+/// REQ-17, REQ-18, PE-4), keeping `"fixture-target"` unchanged so the
+/// existing `ac57` case in `crates/himinbjorg/unit_tests/witness_and_audit.rs`
+/// keeps passing unmodified: it depends on `"fixture-target"` staying in
+/// scope here while failing at `actuator_git::targets::PERMITTED_TARGETS`'s
+/// own allowlist, to obtain a refusal distinct from the push path's own.
+/// `"fixture-integration-branch"` is also a member of that same actuator
+/// allowlist (the `origin`/`fixture-integration-branch` pair), so a push
+/// proposal naming it can now pass both this check and the actuator's own
+/// gate.
+///
+/// **This is an agreement between two independently owned lists, never a
+/// derivation, on `sinks.rs`'s own EC-7 precedent.** This module does not
+/// read, import or otherwise reach `actuator_git::targets::PERMITTED_TARGETS`
+/// at all (this crate's own `Cargo.toml` names `actuator-git` as a
+/// dependency, but this module in particular never names that constant),
+/// and no code anywhere builds, checks, generates or validates this
+/// constant against that one, or the reverse (step four's EC-17
+/// never-reconcile rule, restated here rather than relaxed). The two lists
+/// answer different questions -- this one says what Himinbjörg's own
+/// check two treats as in scope, the actuator's says what its own git
+/// allowlist will actually let a push touch -- and their sharing one
+/// string is that agreement holding, not a mechanism connecting them.
+const TARGET_SCOPE: &[&str] = &["fixture-target", "fixture-integration-branch"];
 
 /// Himinbjörg's own hardcoded, non-empty set of standing constraints
 /// (REQ-13, check three's input, a later phase of this issue): at least one
