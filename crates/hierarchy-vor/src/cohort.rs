@@ -78,7 +78,7 @@ pub const AUTHORISER_ID: &str = "heimdall-dev-authoriser";
 /// is relying on a development-time value, and that fact must not be
 /// smoothed over in any report that quotes this constant.
 pub const COMMITTED_ATTESTATION: &str =
-    "2a94f94136c933d35779021df04f5120499b381f3e8e478f99fec50e6ab5424b";
+    "8002847c14111adc70e1d707e5cf38a68b05663cff9b5ecab5a0e296046b9214";
 
 /// Returns `true` when `s` contains none of the three characters the
 /// comma-join encoding treats specially (REQ-10): a comma, a newline, or an
