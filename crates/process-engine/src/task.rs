@@ -33,6 +33,17 @@ pub struct EngineTask {
     pub action_name: String,
     /// The target this task names.
     pub target: String,
+    /// The sink this task declares (build-order step six, ST6-1, REQ-1).
+    /// Lives here rather than on cognition's output for the same reason
+    /// `action_name` lives here rather than there: a push task must be
+    /// able to declare `sink:git.push` and a commit task
+    /// `sink:git.commit`, and the two directions cannot differ by task
+    /// alone unless the sink lives on the task, while the cognition
+    /// stub's own output stays fixed and hardcoded. Before this field
+    /// existed, every proposal declared the one sink `cognition.rs`
+    /// hardcoded regardless of the task, which is the evidence-fidelity
+    /// gap EC-24 names and REQ-5 closes.
+    pub sink: String,
     /// The cost this task declares.
     pub declared_cost: u32,
 }

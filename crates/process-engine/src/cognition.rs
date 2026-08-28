@@ -51,24 +51,18 @@ pub trait CognitionStep {
 /// The advisory content one call to [`CognitionStep::propose`]
 /// contributes (REQ-13). Deliberately excludes `action_name` and
 /// `target`, both of which live on [`crate::EngineTask`] instead (see
-/// that type's own doc comment for why), and `declared_cost`, which also
+/// that type's own doc comment for why), `declared_cost`, which also
 /// comes from the task, mirroring [`himinbjorg::TaskContext`]'s own
-/// `declared_cost` field.
+/// `declared_cost` field, and, as of build-order step six (ST6-1,
+/// REQ-2), `sink`, which moved to [`crate::EngineTask`] for the same
+/// differ-by-task-alone reason `action_name` already lives there:
+/// cognition's own output stays fixed and hardcoded, so a field that
+/// must differ between a commit task and a push task cannot live on it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CognitionOutput {
-    /// The sink the proposed action would declare.
-    pub sink: String,
     /// The parameters the proposed action would declare it consumes.
     pub parameters: Vec<himinbjorg::ProposalParameter>,
 }
-
-/// The one hardcoded sink [`DefaultCognitionStep`] ever proposes (REQ-14).
-/// Answers a different question from any of Himinbjörg's own gating
-/// constants: this names what cognition PROPOSES, never what is
-/// PERMITTED. Deriving this from Himinbjörg's own sink registry would
-/// hand the engine an authorisation rule it must not hold (REQ-12) and
-/// would make the block direction of PE-9 unreachable.
-const DEFAULT_PROPOSED_SINK: &str = "sink:git.commit";
 
 /// The one hardcoded parameter identifier [`DefaultCognitionStep`] ever
 /// proposes (REQ-14).
@@ -84,10 +78,6 @@ const DEFAULT_PROPOSED_PARAMETER_TYPE_NAME: &str = "comms:informational";
 // own precedent, and the actuator's own permitted-target allowlist's
 // precedent for the same construct: a future edit that empties one of
 // these hardcoded constants fails the BUILD, not a later test run.
-const _: () = assert!(
-    !DEFAULT_PROPOSED_SINK.is_empty(),
-    "DEFAULT_PROPOSED_SINK must be non-empty (REQ-14)"
-);
 const _: () = assert!(
     !DEFAULT_PROPOSED_PARAMETER_ID.is_empty(),
     "DEFAULT_PROPOSED_PARAMETER_ID must be non-empty (REQ-14)"
@@ -118,7 +108,6 @@ impl DefaultCognitionStep {
     /// copies.
     fn propose_output(&self, _task: &EngineTask) -> CognitionOutput {
         CognitionOutput {
-            sink: DEFAULT_PROPOSED_SINK.to_string(),
             parameters: vec![himinbjorg::ProposalParameter {
                 id: DEFAULT_PROPOSED_PARAMETER_ID.to_string(),
                 consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
