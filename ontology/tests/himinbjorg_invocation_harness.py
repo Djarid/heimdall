@@ -30,8 +30,26 @@ Three symbol groups tracked, each answering a different question:
   1. Himinbjörg's own public entry points (`build_context`, `enforce_definition`,
      `validate_proposal`, `broker_action`, and, added by
      `.opencode/plans/git-actuator-step-four.md` REQ-40/AC-47, `broker_authorised_action`),
-     scanned across the WHOLE repo. Expected zero non-test call sites on the day this
-     lands: nothing outside this crate's own tests calls any of them yet.
+     scanned across the WHOLE repo.
+
+     **Build-order step five widening
+     (`.opencode/plans/process-engine-step-five-spec.md` REQ-39, AC-43).** Before this
+     step, every one of these five symbols carried zero non-test call sites and no
+     allowlist mechanism existed for this group at all. Step five's engine crate
+     (`crates/process-engine/src/sequence.rs`) is now the first genuine non-test caller
+     of FOUR of the five: `build_context` and `enforce_definition` (the accept-task
+     step resolves both before cognition ever runs), `validate_proposal` (the gate
+     step) and `broker_authorised_action` (the execute step). `INTERFACE_CALL_ALLOWLIST`
+     below admits exactly those four, each on the SAME exactly-one-required polarity the
+     other two detectors use, but keyed by **symbol and path together**, never by path
+     alone: an allowlist entry permitting `validate_proposal` from a given file says
+     nothing about `broker_action` or any other symbol from that same file, so a call to
+     an unwidened symbol from an already-allowlisted file is still reported as critical,
+     never silently absorbed. `broker_action` alone stays wholly unwidened (REQ-22: the
+     engine never calls it and cannot, by construction, widen what is authorised through
+     it): it keeps the original zero-non-test-callers reading and no allowlist entry
+     exists for it, reported on its own line so its zero reading is never blended into
+     the four widened symbols' report.
 
      A real collision risk exists and is handled explicitly: `boundary-gjoll` declares
      its OWN, unrelated `declaration::validate_proposal` (the D81 five-condition
@@ -177,6 +195,88 @@ for _entry in GATE_CALL_ALLOWLIST:
         raise ValueError(
             "a GATE_CALL_ALLOWLIST entry must carry both a justification and a "
             "decision reference; see NonTestAllowlistEntry's docstring")
+
+
+@dataclass(frozen=True)
+class InterfaceCallAllowlistEntry:
+    """A designated non-test call site of one of `INTERFACE_SYMBOLS` permitted to
+    exist, keyed by **symbol and path together** (REQ-39): an entry permitting
+    `validate_proposal` from a given file says nothing about `broker_action` or any
+    other symbol from that same file. `INTERFACE_CALL_ALLOWLIST` below requires
+    EXACTLY one entry per widened symbol, on `GATE_CALL_ALLOWLIST`'s own polarity: the
+    named entry disappearing and an unlisted entry (of that same symbol) appearing are
+    equally fatal. A symbol with no entry in this tuple keeps its original
+    zero-non-test-callers reading, unconditionally."""
+
+    symbol: str           # one of INTERFACE_SYMBOLS, e.g. "validate_proposal"
+    path: str             # repo-relative path, e.g. "crates/process-engine/src/sequence.rs"
+    justification: str    # why this call site is a deliberate, reviewed wiring
+    decision_ref: str     # the DECISIONS.md row that approved it, e.g. "D113"
+
+
+# THE ALLOWLIST (REQ-39, AC-43, `.opencode/plans/process-engine-step-five-spec.md`):
+# exactly one entry per widened symbol, all naming the engine's own sequence module as
+# the real, empirically-verified call site. `broker_action` alone has NO entry here and
+# keeps its original zero-non-test-callers reading, unconditionally (REQ-39's own
+# closing sentence: its zero reading is reported separately, never blended into the
+# widened symbols').
+INTERFACE_CALL_ALLOWLIST: tuple[InterfaceCallAllowlistEntry, ...] = (
+    InterfaceCallAllowlistEntry(
+        symbol="build_context",
+        path="crates/process-engine/src/sequence.rs",
+        justification=(
+            "the process engine's own accept-task step (REQ-27 of the process-engine "
+            "step-five spec): resolves himinbjorg::AgentContext for the task before "
+            "cognition ever runs, mirroring build_context's own zero-loading posture "
+            "(the engine takes an already-verified cohort by reference and never "
+            "loads one itself)"
+        ),
+        decision_ref="D113",
+    ),
+    InterfaceCallAllowlistEntry(
+        symbol="enforce_definition",
+        path="crates/process-engine/src/sequence.rs",
+        justification=(
+            "the process engine's own accept-task step (REQ-27 of the process-engine "
+            "step-five spec): resolves the himinbjorg::EffectiveSurface for the task "
+            "before cognition ever runs, alongside build_context above"
+        ),
+        decision_ref="D113",
+    ),
+    InterfaceCallAllowlistEntry(
+        symbol="validate_proposal",
+        path="crates/process-engine/src/sequence.rs",
+        justification=(
+            "the process engine's own gate step (REQ-20 of the process-engine "
+            "step-five spec): the crate's one, deliberately singular, non-test call "
+            "site of the gate, genuinely called, never bypassed and never "
+            "re-implemented locally"
+        ),
+        decision_ref="D113",
+    ),
+    InterfaceCallAllowlistEntry(
+        symbol="broker_authorised_action",
+        path="crates/process-engine/src/sequence.rs",
+        justification=(
+            "the process engine's own execute step (REQ-22, REQ-23 of the "
+            "process-engine step-five spec): the crate's one, deliberately singular, "
+            "non-test call site of himinbjorg's witness-carrying entry point, "
+            "reached only after a Decision::Allow and its Authorisation witness are "
+            "already held"
+        ),
+        decision_ref="D113",
+    ),
+)
+
+for _entry in INTERFACE_CALL_ALLOWLIST:
+    if not (_entry.justification and _entry.decision_ref):
+        raise ValueError(
+            "an INTERFACE_CALL_ALLOWLIST entry must carry both a justification and "
+            "a decision reference; see InterfaceCallAllowlistEntry's docstring")
+    if _entry.symbol not in INTERFACE_SYMBOLS:
+        raise ValueError(
+            f"an INTERFACE_CALL_ALLOWLIST entry names symbol {_entry.symbol!r}, "
+            f"which is not one of INTERFACE_SYMBOLS")
 
 
 def _default_repo_root() -> Path:
@@ -354,23 +454,60 @@ def _himinbjorg_bound_names(cleaned: str) -> set[str]:
     return bound
 
 
-def _interface_call_sites(cleaned: str, rel_path: str) -> list[int]:
-    """Line numbers of every call to one of Himinbjörg's four public interfaces in
-    this already-comment-and-string-stripped file. See the module docstring for
-    why `boundary-gjoll`'s own, unrelated `declaration::validate_proposal` is never
-    misattributed here: only a `himinbjorg::`-qualified call, a `crate::`-qualified
-    call from genuinely within `crates/himinbjorg/`, or a bare call whose name this
-    file's own `use himinbjorg::...` import bound, ever counts."""
-    hits: set[int] = set()
+def _himinbjorg_bound_name_to_symbol(cleaned: str) -> dict[str, str]:
+    """Like `_himinbjorg_bound_names`, but keeps the symbol each bound local name
+    resolves to (REQ-39: entries are keyed by symbol and path together, so knowing
+    only THAT a name was bound is not enough; knowing WHICH symbol it was bound to
+    is required)."""
+    bound: dict[str, str] = {}
+    for name, alias in _USE_HIMINBJORG_SINGLE_RE.findall(cleaned):
+        if name in INTERFACE_SYMBOLS:
+            bound[alias or name] = name
+    for group_body in _USE_HIMINBJORG_GROUP_RE.findall(cleaned):
+        for item in group_body.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            parts = [p.strip() for p in item.split(" as ")]
+            name = parts[0]
+            alias = parts[1] if len(parts) > 1 else None
+            if name in INTERFACE_SYMBOLS:
+                bound[alias or name] = name
+    return bound
+
+
+def _interface_call_sites_by_symbol(cleaned: str, rel_path: str) -> dict[str, list[int]]:
+    """Line numbers of every call to one of Himinbjörg's public interfaces in this
+    already-comment-and-string-stripped file, keyed by WHICH symbol was called
+    (REQ-39). See the module docstring for why `boundary-gjoll`'s own, unrelated
+    `declaration::validate_proposal` is never misattributed here: only a
+    `himinbjorg::`-qualified call, a `crate::`-qualified call from genuinely within
+    `crates/himinbjorg/`, or a bare call whose name this file's own
+    `use himinbjorg::...` import bound, ever counts."""
+    hits: dict[str, set[int]] = {}
     for m in _QUALIFIED_INTERFACE_CALL_RE.finditer(cleaned):
-        hits.add(cleaned.count("\n", 0, m.start()) + 1)
+        symbol = m.group(1)
+        hits.setdefault(symbol, set()).add(cleaned.count("\n", 0, m.start()) + 1)
     if _is_within_himinbjorg_crate(rel_path):
         for m in _CRATE_INTERFACE_CALL_RE.finditer(cleaned):
-            hits.add(cleaned.count("\n", 0, m.start()) + 1)
-    for bound_name in _himinbjorg_bound_names(cleaned):
+            symbol = m.group(1)
+            hits.setdefault(symbol, set()).add(cleaned.count("\n", 0, m.start()) + 1)
+    for bound_name, symbol in _himinbjorg_bound_name_to_symbol(cleaned).items():
         for m in re.finditer(rf"(?<!::){re.escape(bound_name)}\s*\(", cleaned):
-            hits.add(cleaned.count("\n", 0, m.start()) + 1)
-    return sorted(hits)
+            hits.setdefault(symbol, set()).add(cleaned.count("\n", 0, m.start()) + 1)
+    return {symbol: sorted(lines) for symbol, lines in hits.items()}
+
+
+def _interface_call_sites(cleaned: str, rel_path: str) -> list[int]:
+    """Line numbers of every call to one of Himinbjörg's public interfaces in this
+    already-comment-and-string-stripped file, merged across all symbols (used by
+    the negative controls below, which only need to know THAT a call was caught,
+    not which symbol). See `_interface_call_sites_by_symbol` for the per-symbol
+    breakdown REQ-39's allowlist actually keys on."""
+    merged: set[int] = set()
+    for lines in _interface_call_sites_by_symbol(cleaned, rel_path).values():
+        merged.update(lines)
+    return sorted(merged)
 
 
 # ---------------------------------------------------------------------------------
@@ -448,6 +585,7 @@ def _load_verified_cohort_call_sites(cleaned: str) -> list[int]:
 @dataclass
 class ScanResult:
     interface_sites: dict[str, list[int]] = field(default_factory=dict)
+    interface_sites_by_symbol: dict[str, dict[str, list[int]]] = field(default_factory=dict)
     evaluate_sites: dict[str, list[int]] = field(default_factory=dict)
     cohort_sites: dict[str, list[int]] = field(default_factory=dict)
     unscanned_files: list[str] = field(default_factory=list)
@@ -469,9 +607,13 @@ def scan_repo(repo_root: "Path | None" = None) -> ScanResult:
         if unscannable:
             result.unscanned_files.append(rel)
             continue
-        interface_hits = _interface_call_sites(cleaned, rel)
-        if interface_hits:
-            result.interface_sites[rel] = interface_hits
+        by_symbol = _interface_call_sites_by_symbol(cleaned, rel)
+        if by_symbol:
+            result.interface_sites_by_symbol[rel] = by_symbol
+            merged: set[int] = set()
+            for lines in by_symbol.values():
+                merged.update(lines)
+            result.interface_sites[rel] = sorted(merged)
         evaluate_hits = _evaluate_call_sites(cleaned)
         if evaluate_hits:
             result.evaluate_sites[rel] = evaluate_hits
@@ -481,6 +623,18 @@ def scan_repo(repo_root: "Path | None" = None) -> ScanResult:
                 result.cohort_sites[rel] = cohort_hits
     result.unscanned_files.sort()
     return result
+
+
+def _sites_for_symbol(result: ScanResult, symbol: str) -> dict[str, list[int]]:
+    """Projects `result.interface_sites_by_symbol` down to one symbol, in the same
+    `{path: [line, ...]}` shape `classify()` expects, so the per-symbol allowlist
+    check (REQ-39) can reuse `classify()` unchanged."""
+    out: dict[str, list[int]] = {}
+    for path, by_symbol in result.interface_sites_by_symbol.items():
+        lines = by_symbol.get(symbol)
+        if lines:
+            out[path] = lines
+    return out
 
 
 def classify(sites: dict[str, list[int]]) -> tuple[list[str], list[str]]:
@@ -632,20 +786,64 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
         for f in result.unscanned_files:
             print(f"  [CRITICAL] could not tokenise cleanly: {f}")
 
-    # Group 1: the public entry points (widened by AC-47 to include
-    # broker_authorised_action).
-    test_files, non_test_files = classify(result.interface_sites)
+    # Group 1: the public entry points, one line per symbol (REQ-39, AC-43): a
+    # widened symbol (validate_proposal, broker_authorised_action) is checked
+    # against its own (symbol, path) allowlist entries on the exactly-one-required
+    # polarity; an unwidened symbol (build_context, enforce_definition,
+    # broker_action) keeps its original zero-non-test-callers reading,
+    # unconditionally, and is reported on its own line so it is never blended
+    # into a widened symbol's report.
+    widened_symbols = {e.symbol for e in INTERFACE_CALL_ALLOWLIST}
     print(f"HIMINBJORG INVOCATION BOUNDARY -- the public entry points "
-          f"({', '.join(sorted(INTERFACE_SYMBOLS))}): {len(test_files)} test call "
-          f"site(s), {len(non_test_files)} non-test call site(s) (expected zero: the "
-          f"process engine that would call these is step five, not yet built).")
-    for f in test_files:
-        print(f"  + test call site: {f}")
-    if non_test_files:
-        ok = False
-        for f in non_test_files:
-            print(f"  [CRITICAL] non-test call site (no allowlist exists for this "
-                  f"symbol group): {f}")
+          f"({', '.join(sorted(INTERFACE_SYMBOLS))}), reported per symbol (REQ-39: "
+          f"allowlist entries are keyed by symbol AND path together, never by path "
+          f"alone):")
+    for symbol in sorted(INTERFACE_SYMBOLS):
+        sites_for_symbol = _sites_for_symbol(result, symbol)
+        test_files_s, non_test_files_s = classify(sites_for_symbol)
+        if symbol in widened_symbols:
+            total_non_test_s = sum(len(sites_for_symbol[f]) for f in non_test_files_s)
+            allowed_paths_s = {
+                e.path for e in INTERFACE_CALL_ALLOWLIST if e.symbol == symbol
+            }
+            unallowlisted_s = [f for f in non_test_files_s if f not in allowed_paths_s]
+            print(f"  {symbol}: {len(test_files_s)} test call site(s), "
+                  f"{total_non_test_s} non-test call site(s) total, expected "
+                  f"EXACTLY ONE (widened by REQ-39, EC-10, EC-11).")
+            for f in test_files_s:
+                print(f"    + test call site: {f}")
+            for f in non_test_files_s:
+                if f in allowed_paths_s:
+                    entry = next(
+                        e for e in INTERFACE_CALL_ALLOWLIST
+                        if e.symbol == symbol and e.path == f
+                    )
+                    print(f"    + allowlisted non-test call site: {f} "
+                          f"({entry.decision_ref}: {entry.justification})")
+            if unallowlisted_s:
+                ok = False
+                for f in unallowlisted_s:
+                    print(f"    [CRITICAL] unallowlisted non-test call site: {f}")
+            if total_non_test_s != 1:
+                ok = False
+                print(f"    [CRITICAL] expected exactly one non-test call site of "
+                      f"{symbol}, found {total_non_test_s} (EC-10, EC-11).")
+            elif not unallowlisted_s:
+                print(f"    [PASS] exactly one non-test call site of {symbol}, and "
+                      f"it is the allowlisted one.")
+        else:
+            print(f"  {symbol}: {len(test_files_s)} test call site(s), "
+                  f"{len(non_test_files_s)} non-test call site(s) (expected zero, "
+                  f"no allowlist exists for this symbol).")
+            for f in test_files_s:
+                print(f"    + test call site: {f}")
+            if non_test_files_s:
+                ok = False
+                for f in non_test_files_s:
+                    print(f"    [CRITICAL] non-test call site (no allowlist exists "
+                          f"for this symbol): {f}")
+            else:
+                print(f"    [PASS] zero non-test call sites of {symbol}.")
 
     # Group 2: the gate call, with the explicit allowlisted-count check.
     test_files_e, non_test_files_e = classify(result.evaluate_sites)
@@ -775,23 +973,72 @@ def synthetic_widening_control() -> list[str]:
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
-    # Group 1: the public interfaces, no allowlist mechanism yet (REQ-28,
-    # widened later by REQ-39/PE-6). Any non-test call site is
-    # unconditionally fatal today; proves that on a synthetic tree.
+    # Group 1, widened symbols (validate_proposal, broker_authorised_action),
+    # direction 1: an extra, UNLISTED non-test call site of a widened symbol
+    # alongside the genuine allowlisted ones (REQ-39's exactly-one-required
+    # polarity, post-widening).
+    allowlisted_sequence_rs = (
+        "fn run() {\n"
+        "    let _ = himinbjorg::validate_proposal(&c, &s, &p);\n"
+        "    let _ = himinbjorg::broker_authorised_action(&c, &a, &sc, &w, &mut r);\n"
+        "}\n"
+    )
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": allowlisted_sequence_rs,
+        "crates/process-engine/src/other_module.rs": (
+            "fn g() {\n    let _ = himinbjorg::validate_proposal(&c2, &s2, &p2);\n}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED: a second, unlisted non-test call site of "
+                "validate_proposal alongside the allowlisted one was not reported as "
+                "critical (REQ-39's own exactly-one-required polarity, post-widening)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # Group 1, widened symbols, direction 2: one allowlisted call site
+    # DISAPPEARS (validate_proposal's count falls to zero) while the other
+    # (broker_authorised_action) stays genuinely allowlisted.
     root = _write_synthetic_tree({
         "crates/process-engine/src/sequence.rs": (
             "fn run() {\n"
-            "    let _ = himinbjorg::validate_proposal(&c, &s, &p);\n"
+            "    let _ = himinbjorg::broker_authorised_action(&c, &a, &sc, &w, &mut r);\n"
             "}\n"
         ),
     })
     try:
         if print_invocation_banner(root):
             failures.append(
-                "synthetic control FAILED: a non-test call site of one of Himinbjörg's "
-                "own public interfaces on a synthetic tree was not reported as critical "
-                "(group one carries no allowlist mechanism today, REQ-39 widens this "
-                "deliberately)")
+                "synthetic control FAILED: the allowlisted call site of "
+                "validate_proposal vanishing (count falls to zero) was not reported "
+                "as critical (EC-10's own disappearance-is-fatal polarity)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # AC-43's own specific proof: an entry permitting validate_proposal (and
+    # broker_authorised_action) from sequence.rs must NOT silently permit a
+    # broker_action call from that SAME file (REQ-39's symbol-AND-path keying).
+    # broker_action has no allowlist entry anywhere, so this must still be
+    # critical, absorbed by neither widened entry.
+    root = _write_synthetic_tree({
+        "crates/process-engine/src/sequence.rs": (
+            "fn run() {\n"
+            "    let _ = himinbjorg::validate_proposal(&c, &s, &p);\n"
+            "    let _ = himinbjorg::broker_authorised_action(&c, &a, &sc, &w, &mut r);\n"
+            "    let _ = himinbjorg::broker_action(&c, &a, &sc);\n"
+            "}\n"
+        ),
+    })
+    try:
+        if print_invocation_banner(root):
+            failures.append(
+                "synthetic control FAILED (AC-43): a synthetic broker_action call "
+                "added to the SAME file already carrying allowlisted "
+                "validate_proposal/broker_authorised_action entries was absorbed "
+                "rather than reported as critical (the allowlist must be keyed by "
+                "symbol AND path together, REQ-39)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
