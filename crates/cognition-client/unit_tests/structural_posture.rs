@@ -144,11 +144,40 @@ fn crate_root_begins_with_forbid_unsafe_code() {
     );
 }
 
+/// Word-boundary-safe check for the bare `unsafe` keyword, mirroring the
+/// `\bunsafe\b` regex used by
+/// `ontology/tests/rust_cognition_client_harness.py`'s
+/// `check_forbid_unsafe_and_no_bin`. A plain substring check on `"unsafe"`
+/// would also match inside `unsafe_code`, which is mandated by REQ-8's own
+/// `#![forbid(unsafe_code)]` attribute, so it can never pass alongside a
+/// correct implementation; this scans for `"unsafe"` and rejects a match
+/// only when it is not immediately flanked by an identifier character
+/// (alphanumeric or `_`) on either side.
+fn contains_unsafe_keyword(src: &str) -> bool {
+    let bytes = src.as_bytes();
+    let is_ident_byte = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+    let mut start = 0;
+    while let Some(rel) = src[start..].find("unsafe") {
+        let idx = start + rel;
+        let before_ok = idx == 0 || !is_ident_byte(bytes[idx - 1]);
+        let after_idx = idx + "unsafe".len();
+        let after_ok = after_idx >= bytes.len() || !is_ident_byte(bytes[after_idx]);
+        if before_ok && after_ok {
+            return true;
+        }
+        start = idx + "unsafe".len();
+        if start >= src.len() {
+            break;
+        }
+    }
+    false
+}
+
 #[test]
 fn unsafe_keyword_appears_nowhere_in_the_crate() {
     let cleaned = cleaned_whole_crate_src();
     assert!(
-        !cleaned.contains("unsafe"),
+        !contains_unsafe_keyword(&cleaned),
         "AC-10/REQ-8: the `unsafe` keyword must appear nowhere in this crate's src/"
     );
 }

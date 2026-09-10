@@ -1,36 +1,43 @@
 #![forbid(unsafe_code)]
 //! `cognition-client` crate root: the workspace's sixth Rust crate
 //! (build-order step seven, `.opencode/plans/build-order-step-seven-spec.md`,
-//! REQ-6 to REQ-13). **NOT YET IMPLEMENTED.** This file is scaffolding only,
-//! added by the test-writing agent so the crate can exist as a workspace
-//! member (REQ-6) and so `unit_tests/` and `tests/public_surface.rs` have a
-//! crate root to wire into (REQ-9's own module-split convention: a types
-//! module, a validation module, an invocation module and this crate root).
+//! REQ-6 to REQ-13). Spawns the Python MLX sidecar (`cognition.sidecar`,
+//! REQ-15) with a fixed argv and no shell, and returns either a validated
+//! commit message or a refusal (REQ-10). It knows nothing of proposals,
+//! parameters, trust levels or consume modes (ST7-7): those declarations
+//! live in `crates/process-engine/src/cognition.rs`, which depends on this
+//! crate rather than the other way round.
 //!
-//! The public surface this crate must eventually carry (REQ-10, fixed for
-//! the tests below to compile against once implemented): exactly one
-//! function, one value type and one refusal type. None of the three exists
-//! yet. Every test in `unit_tests/` and `tests/public_surface.rs` that
-//! names `crate::` or `cognition_client::` items beyond this doc comment is
-//! therefore expected to fail to compile until `@aetos-code` adds:
+//! **The module split (REQ-9):** [`types`] carries the value shapes with no
+//! logic; [`validation`] carries the single positive-match validator;
+//! [`invocation`] is the only module in this crate -- and the second module
+//! in the whole workspace -- permitted to touch `std::process`, and the
+//! only module that reads the process environment; this crate root carries
+//! the `forbid` attribute above and the public surface below.
 //!
-//!   - a types module carrying the validated-message value type (no public
-//!     constructor, no public `From`) and the refusal type (REQ-10, REQ-25);
-//!   - a validation module carrying the one positive-match validator and
-//!     this crate's own maximum-length constant (REQ-23, REQ-24);
-//!   - an invocation module, the only module besides this crate root
-//!     permitted to touch `std::process`, carrying the two path-shaped
-//!     environment-variable constants, the fixed-argv spawn, the bounded
-//!     wait and the fail-closed refusal set (REQ-11 to REQ-13, REQ-31 to
-//!     REQ-34);
-//!   - this crate root's own public re-exports of the one function, the one
-//!     value type and the one refusal type.
-//!
-//! This is the correct RED state for this build-order step: the tests
-//! below are written against the specification alone, not against an
-//! implementation, and they are expected to fail to compile (missing
-//! modules, missing types, missing functions) until that implementation
-//! exists.
+//! **The public surface is exactly one function, one value type and one
+//! refusal type (REQ-10):** [`obtain_message`], [`CognitionMessage`] and
+//! [`SidecarRefusal`]. `CognitionMessage` has no public constructor and no
+//! public `From` conversion anywhere in this crate, so a caller cannot mint
+//! one without going through [`obtain_message`] and therefore through
+//! [`validation::validate_received_message`], on
+//! `boundary_gjoll::rule::ConsequentialityVerdict`'s own containment
+//! precedent.
+
+mod invocation;
+mod types;
+mod validation;
+
+pub use invocation::obtain_message;
+pub use types::{CognitionMessage, SidecarRefusal};
+
+#[allow(unused_imports)]
+use invocation::{
+    COGNITION_PACKAGE_ROOT_ENV_VAR, PYTHON_INTERPRETER_ENV_VAR, SIDECAR_TIMEOUT_SECS,
+    resolve_sidecar_invocation,
+};
+#[allow(unused_imports)]
+use validation::{MAX_RECEIVED_VALUE_LEN, validate_received_message};
 
 // The only test-related construct permitted anywhere under src/, on
 // crates/process-engine/src/lib.rs's own precedent (REQ-9's module-split

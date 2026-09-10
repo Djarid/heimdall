@@ -15,6 +15,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cognition-client"
+version = "0.1.0"
+
+[[package]]
 name = "hierarchy-vor"
 version = "0.1.0"
 dependencies = [
