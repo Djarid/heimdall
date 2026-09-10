@@ -315,7 +315,7 @@ const _: () = {
 /// The one hardcoded parameter identifier [`RealCognitionStep`] ever
 /// proposes (REQ-36), an agreement with no other list, following
 /// [`DEFAULT_PROPOSED_PARAMETER_ID`]'s own precedent.
-const REAL_PROPOSED_PARAMETER_ID: &str = "model-commit-message";
+const REAL_PROPOSED_PARAMETER_ID: &str = "v";
 
 /// The one hardcoded parameter type name [`RealCognitionStep`] ever
 /// proposes (REQ-36). Reporting content only: it plays no role in any of
