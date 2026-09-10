@@ -6,6 +6,7 @@ members = [
     "crates/himinbjorg",
     "crates/actuator-git",
     "crates/process-engine",
+    "crates/cognition-client",
 ]
 
 [workspace.package]

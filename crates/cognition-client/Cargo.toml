@@ -1,0 +1,24 @@
+[package]
+name = "cognition-client"
+edition.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
+
+# REQ-7 (build-order step seven spec, section 4.2): this crate's
+# [dependencies] table is empty, and so is [dev-dependencies]. It names no
+# in-workspace crate and no external crate. Checked by
+# ontology/tests/rust_gate_harness.check_dependency_posture's strict empty
+# default, reused by import and never copied, with no allowlist argument
+# passed (AC-9).
+#
+# THIS CRATE'S src/ DOES NOT YET EXIST. This Cargo.toml is scaffolding only,
+# added by the test-writing agent so the workspace can name this crate as a
+# member (REQ-6) and so crates/cognition-client/unit_tests/ and
+# crates/cognition-client/tests/public_surface.rs have a package to attach
+# to once @aetos-code adds src/lib.rs, the types module, the validation
+# module and the invocation module (section 7 rows 3 to 9 of the spec).
+# Until then, `cargo test --workspace` fails to compile this crate, which is
+# the expected RED state this build-order step's tests are written against.
+[dependencies]
+
+[dev-dependencies]

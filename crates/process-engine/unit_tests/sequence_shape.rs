@@ -2,6 +2,18 @@
 //! REQ-24, REQ-34 to REQ-37): AC-9, AC-11 to AC-14, AC-19, AC-23, AC-27,
 //! AC-38 to AC-41 of `.opencode/plans/process-engine-step-five-spec.md`.
 //!
+//! **Build-order step seven addendum
+//! (`.opencode/plans/build-order-step-seven-spec.md` ST7-8, ST7-9, REQ-28,
+//! REQ-29, REQ-40, REQ-41; AC-32, AC-42, AC-43).** `EngineOutcome` gains a
+//! sixth variant, `CognitionRefused`, and a sixth exit-code constant,
+//! `EXIT_COGNITION_REFUSAL = 5` (REQ-29): every existing match over the
+//! six-variant enum in this file is exhaustive with no wildcard arm
+//! (EC-14), so this file's own `AC-9`/`AC-27` tests below are updated to
+//! remain valid over the widened enum without changing their own intent. A
+//! new closed public enum, `CognitionBinding`, with exactly two variants,
+//! is added as `run_sequence`'s third parameter (REQ-40); this file's
+//! header below assumes its exact shape.
+//!
 //! THIS FILE WILL FAIL TO COMPILE until `crates/process-engine/src/` carries
 //! real content: no `sequence.rs`, no `task.rs`, no `outcome.rs`, no
 //! crate-root re-exports. That is expected and correct at this stage, on
@@ -266,8 +278,71 @@ fn ac13_exactly_one_public_entry_point_runs_the_sequence() {
     // A weaker, but still meaningful, in-crate structural check: the entry
     // point itself exists and is nameable at the crate root. The stronger
     // "no other way in" half is the hand-confirmed diagnostic above.
-    let _entry_point_exists: fn(&hierarchy_vor::VerifiedCohort, &crate::EngineTask) -> crate::EngineOutcome =
-        crate::run_sequence;
+    //
+    // Build-order step seven (REQ-40, AC-42): run_sequence gains a third
+    // parameter, crate::CognitionBinding, and stays the crate's ONE public
+    // library entry point. This signature is updated accordingly.
+    let _entry_point_exists: fn(
+        &hierarchy_vor::VerifiedCohort,
+        &crate::EngineTask,
+        crate::CognitionBinding,
+    ) -> crate::EngineOutcome = crate::run_sequence;
+}
+
+// ---------------------------------------------------------------------------------
+// AC-42 (REQ-40): CognitionBinding is a closed public enum with exactly
+// two variants, and run_sequence_with_cognition stays pub(crate) with its
+// existing &impl CognitionStep signature unchanged.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac42_cognition_binding_is_a_closed_enum_with_exactly_two_variants() {
+    let sequence_rs = cleaned_source("sequence.rs");
+    let cognition_rs = cleaned_source("cognition.rs");
+    let combined = format!("{sequence_rs}\n{cognition_rs}");
+    assert!(
+        combined.contains("enum CognitionBinding"),
+        "AC-42/REQ-40: a closed public enum CognitionBinding must be declared, naming \
+         the two CognitionStep implementations"
+    );
+    // Exhaustive match over the two variants: this compiles only if
+    // CognitionBinding really has exactly the two variants this test
+    // names, which is the mechanical proof this test pins (mirroring
+    // ac40_loop_cap_is_uninhabited's own zero-arms-for-uninhabited
+    // technique, inverted for a two-variant enum).
+    fn _match_is_exhaustive_over_exactly_two_variants(binding: crate::CognitionBinding) -> u8 {
+        match binding {
+            crate::CognitionBinding::Stub => 0,
+            crate::CognitionBinding::Real => 1,
+        }
+    }
+    let _ = _match_is_exhaustive_over_exactly_two_variants;
+}
+
+#[test]
+fn ac42_run_sequence_with_cognition_stays_pub_crate_with_its_existing_signature() {
+    // run_sequence_with_cognition's signature must remain exactly
+    // (&VerifiedCohort, &EngineTask, &impl CognitionStep) -> EngineOutcome
+    // (unchanged from step five/six): calling it here, from this in-crate
+    // module, with a concrete CognitionStep implementor and no
+    // CognitionBinding argument, is itself the proof its signature was
+    // not widened to take a binding too.
+    struct _AC42ProbeCognition;
+    impl crate::CognitionStep for _AC42ProbeCognition {
+        fn propose(
+            &self,
+            _task: &crate::EngineTask,
+        ) -> Result<crate::CognitionOutput, crate::CognitionRefusal> {
+            Ok(crate::CognitionOutput { parameters: vec![] })
+        }
+    }
+    fn _signature_is_unchanged(
+        cohort: &hierarchy_vor::VerifiedCohort,
+        task: &crate::EngineTask,
+    ) -> crate::EngineOutcome {
+        crate::run_sequence_with_cognition(cohort, task, &_AC42ProbeCognition)
+    }
+    let _ = _signature_is_unchanged;
 }
 
 // ---------------------------------------------------------------------------------
@@ -649,5 +724,127 @@ fn ac41_crate_level_doc_comment_names_both_deferral_forms() {
         lower.contains("gleipnir"),
         "AC-41/REQ-37: the crate-level doc comment must name the loop cap's own deferral \
          (Gleipnir's code-enforced loop caps over a general transition table)"
+    );
+}
+
+// ===================================================================================
+// Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`),
+// section 4.5: the sixth EngineOutcome variant and exit code (REQ-29,
+// REQ-30, ST7-8; AC-32, AC-33).
+// ===================================================================================
+
+// ---------------------------------------------------------------------------------
+// AC-32 (REQ-29): EngineOutcome has six variants including CognitionRefused;
+// there are six exit-code constants including EXIT_COGNITION_REFUSAL = 5;
+// every existing constant keeps its name, meaning and value.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac32_engine_outcome_has_six_variants_including_cognition_refused() {
+    // Exhaustive match over six arms: this compiles only if EngineOutcome
+    // really has exactly six variants (EC-14's own no-wildcard-arm
+    // discipline applied here as a compile-time proof rather than a
+    // runtime one).
+    fn _match_is_exhaustive_over_six_variants(outcome: &crate::EngineOutcome) -> u8 {
+        match outcome {
+            crate::EngineOutcome::RefusedBeforeCognition { .. } => 0,
+            crate::EngineOutcome::CognitionRefused { .. } => 1,
+            crate::EngineOutcome::GateBlocked { .. } => 2,
+            crate::EngineOutcome::BrokerRefused { .. } => 3,
+            crate::EngineOutcome::Executed { .. } => 4,
+            crate::EngineOutcome::AwaitingHumanDecision => 5,
+        }
+    }
+    let _ = _match_is_exhaustive_over_six_variants;
+}
+
+#[test]
+fn ac32_exit_codes_are_six_distinct_named_constants_with_zero_still_reserved_for_executed() {
+    let codes = [
+        crate::EXIT_EXECUTED,
+        crate::EXIT_STARTUP_REFUSAL,
+        crate::EXIT_GATE_BLOCKED,
+        crate::EXIT_BROKER_REFUSED,
+        crate::EXIT_WELL_FORMEDNESS_REFUSAL,
+        crate::EXIT_COGNITION_REFUSAL,
+    ];
+    let mut unique = codes.to_vec();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(
+        unique.len(),
+        6,
+        "AC-32/REQ-29: the six exit-code constants must all be distinct; got {codes:?}"
+    );
+    assert_eq!(
+        crate::EXIT_EXECUTED,
+        0,
+        "AC-32/REQ-29: zero must still be reserved for the executed case only"
+    );
+    assert_eq!(
+        crate::EXIT_COGNITION_REFUSAL,
+        5,
+        "AC-32/REQ-29: EXIT_COGNITION_REFUSAL must be fixed at 5"
+    );
+    // Every EXISTING constant keeps its name and value from step five/six.
+    assert_eq!(crate::EXIT_STARTUP_REFUSAL, 1);
+    assert_eq!(crate::EXIT_GATE_BLOCKED, 2);
+    assert_eq!(crate::EXIT_BROKER_REFUSED, 3);
+    assert_eq!(crate::EXIT_WELL_FORMEDNESS_REFUSAL, 4);
+}
+
+#[test]
+fn ac32_exit_code_for_maps_cognition_refused_to_exit_cognition_refusal() {
+    let refusal = crate::EngineOutcome::CognitionRefused {
+        refusal: crate::CognitionRefusal {
+            diagnostic: "probe: the sidecar path variable was unset".to_string(),
+        },
+    };
+    assert_eq!(
+        crate::exit_code_for(&refusal),
+        crate::EXIT_COGNITION_REFUSAL,
+        "AC-32/REQ-29: CognitionRefused must map to EXIT_COGNITION_REFUSAL"
+    );
+}
+
+#[test]
+fn ac32_cognition_refused_is_never_described_as_an_authorisation_decision() {
+    let outcome_rs = std::fs::read_to_string(crate_src_dir().join("outcome.rs"))
+        .expect("expected crates/process-engine/src/outcome.rs to exist");
+    let lower = outcome_rs.to_lowercase();
+    // A positive statement is required (REQ-29's own wording), not merely
+    // the absence of a forbidden phrase: this test looks for the doc
+    // comment's own disclaiming language near the variant's declaration.
+    assert!(
+        lower.contains("cognitionrefused") && lower.contains("never") && lower.contains("authorisation"),
+        "AC-32/REQ-29: outcome.rs must state that EngineOutcome::CognitionRefused is a \
+         refusal originated by the cognition step and is never described as an \
+         authorisation decision"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-33 (REQ-30): the cognition refusal is distinct from
+// RefusedBeforeCognition -- a model-call failure and an empty task
+// identifier produce different EngineOutcome variants and different exit
+// codes.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac33_cognition_refused_and_refused_before_cognition_map_to_different_exit_codes() {
+    let cognition_refused = crate::EngineOutcome::CognitionRefused {
+        refusal: crate::CognitionRefusal {
+            diagnostic: "probe".to_string(),
+        },
+    };
+    let well_formedness = crate::EngineOutcome::RefusedBeforeCognition {
+        reason: "probe: empty task_id".to_string(),
+    };
+    assert_ne!(
+        crate::exit_code_for(&cognition_refused),
+        crate::exit_code_for(&well_formedness),
+        "AC-33/REQ-30: a model-call failure and an empty task identifier must produce \
+         different exit codes (5 and 4 respectively), so the transcript distinguishes a \
+         failed model call from a malformed task"
     );
 }

@@ -141,6 +141,12 @@ class Report:
         # existing counter, obligation, ordering or message above changes
         # behaviour.
         self.rust_target_loop_failures = 0
+        # REQ-64 (`.opencode/plans/build-order-step-seven-spec.md`): the
+        # cognition-client posture detector, folded in following the
+        # run_rust_target_loop pattern above, exactly, and additively: no
+        # existing counter, obligation, ordering or message above changes
+        # behaviour. This is the 25th counter summed into `fatal`.
+        self.rust_cognition_client_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -1190,6 +1196,64 @@ def run_rust_target_loop(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_cognition_client(rep: Report) -> None:
+    """REQ-64 (`.opencode/plans/build-order-step-seven-spec.md`): the
+    sixth crate's own posture detector at `crates/cognition-client/`
+    proves the empty dependency tables, forbid(unsafe_code) with no
+    unsafe keyword and no [[bin]] target, std::net absence and
+    std::process confinement to the one named invocation module, no
+    filesystem write entry point, the pinned trust-level and consume-mode
+    declaring constants in `crates/process-engine/src/cognition.rs`, no
+    fallback to the retained stub, no sanitising path in the validator, no
+    shell spawn, no unbounded wait or retry, the invariant 3.1 guard's own
+    unaffected reading plus its liveness probe against a planted
+    'cognition' import, no authorisation-path import of the new package,
+    and a digest pin over `COGNITION_EVIDENCE.md`. It does NOT run the
+    model, does NOT run the loop, and does NOT advance invariant 3.6 by
+    itself: proving that the committed structure and the committed
+    evidence are sound is not the same claim as a real model call having
+    been made, which stays a hand-confirmed claim outside this detector
+    (AC-1, AC-2 of the step-seven spec). Wired in following the
+    `run_rust_target_loop` pattern immediately above, exactly, and
+    additively: this standalone sub-harness's own `main()` already returns
+    a real pass/fail code (0 clean, 1 on failure), so a failure here is
+    folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python3 -m
+    ontology.tests.rust_cognition_client_harness`)."""
+    import contextlib
+    import io
+    from . import rust_cognition_client_harness
+
+    rep.line("=== REQ-64 Cognition-client posture detector: empty dependency tables, "
+              "forbid(unsafe_code)/no [[bin]], std::process/std::net confinement, no "
+              "filesystem write, the pinned trust/consume-mode constants, no fallback "
+              "to the stub, no sanitising path, no shell spawn, no unbounded "
+              "wait/retry, the invariant 3.1 guard's own unaffected reading plus its "
+              "liveness probe, no authorisation-path import of the new package, and a "
+              "digest pin over COGNITION_EVIDENCE.md -- not the model, not the loop, "
+              "and not invariant 3.6's live-invocation status by itself ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_cognition_client_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/cognition-client/ carries empty dependency tables, "
+                  "forbid(unsafe_code) with no unsafe keyword and no [[bin]] target, "
+                  "std::net absence and std::process confined to the one named "
+                  "invocation module, no filesystem write entry point, the pinned "
+                  "trust-level and consume-mode declaring constants in cognition.rs, "
+                  "no fallback to the retained stub, no sanitising path, no shell "
+                  "spawn, no unbounded wait or retry, the invariant 3.1 guard's own "
+                  "unaffected 34-file/13-root reading plus its own liveness probe, no "
+                  "authorisation-path import of the new package, and a digest pin over "
+                  "COGNITION_EVIDENCE.md (present or honestly reported absent). This "
+                  "proves committed structure and committed evidence, not that a real "
+                  "model call was ever made and not invariant 3.6's live-invocation "
+                  "status by itself (run the module directly for detail)")
+    else:
+        rep.rust_cognition_client_failures += 1
+        rep.line("  [CRITICAL] Cognition-client posture detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
 def run_actuator_invocation_boundary(rep: Report) -> None:
     """D112 (`.opencode/plans/git-actuator-step-four.md` REQ-44): the live
     invocation-boundary detector for `actuator-git::execute` and
@@ -1698,6 +1762,7 @@ def main() -> int:
     run_actuator_invocation_boundary(rep)
     run_rust_process_engine(rep)
     run_rust_target_loop(rep)
+    run_rust_cognition_client(rep)
     run_sink_attestation(rep)
     run_authorisation_record(rep)
     run_agentcontext_attestation(rep)
@@ -1722,7 +1787,8 @@ def main() -> int:
              + rep.rust_actuator_failures
              + rep.actuator_invocation_failures
              + rep.rust_process_engine_failures
-             + rep.rust_target_loop_failures)
+             + rep.rust_target_loop_failures
+             + rep.rust_cognition_client_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

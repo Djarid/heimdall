@@ -151,8 +151,19 @@ SEQUENCE_RS = SRC_DIR / "sequence.rs"
 # the real, disclosed and approved manifest carries three. This allowlist
 # reflects the REAL current dependency table, not REQ-51's original
 # assumption.
+#
+# WIDENED for build-order step seven
+# (`.opencode/plans/build-order-step-seven-spec.md` REQ-52, REQ-58; expected
+# `DECISIONS.md` row D115 or D117): a fourth name, `cognition-client`, is
+# added. `crates/process-engine/Cargo.toml` gains a fourth in-workspace path
+# dependency on the sixth crate, so this crate's own `CognitionStep` real
+# implementation can call `cognition-client`'s one public function and
+# construct the resulting `Tainted`/`Action` `ProposalParameter` (REQ-36).
+# This is a reviewed, disclosed widening, on `PE-6`'s own precedent for
+# extending an allowlist by a justified, keyed entry rather than by
+# silently raising a count.
 PERMITTED_DEPENDENCIES: frozenset[str] = frozenset(
-    {"himinbjorg", "hierarchy-vor", "boundary-gjoll"}
+    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client"}
 )
 
 FORBIDDEN_DEPENDENCIES: frozenset[str] = frozenset({"actuator-git"})
@@ -218,10 +229,14 @@ def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> Dependency
         detail=(
             f"{result.detail} NOTE (discrepancy A, disclosed): REQ-51's own text names a "
             f"two-name allowlist (himinbjorg, hierarchy-vor); this check uses the REAL, "
-            f"disclosed three-name allowlist {sorted(PERMITTED_DEPENDENCIES)} because "
+            f"disclosed FOUR-name allowlist {sorted(PERMITTED_DEPENDENCIES)} because "
             f"Cargo.toml's own comment and src/lib.rs's own doc comment both disclose an "
             f"approved, empirically-confirmed third path dependency on boundary-gjoll for "
-            f"ProposalParameter value construction only."
+            f"ProposalParameter value construction only, and build-order step seven "
+            f"(`.opencode/plans/build-order-step-seven-spec.md` REQ-52, REQ-58) adds a "
+            f"fourth, reviewed path dependency on cognition-client so the real "
+            f"CognitionStep implementation can call the sixth crate's one public "
+            f"function."
         ),
     )
 
@@ -609,6 +624,7 @@ def control_check() -> list[str]:
             'himinbjorg = { path = "../himinbjorg" }\n'
             'hierarchy-vor = { path = "../hierarchy-vor" }\n'
             'boundary-gjoll = { path = "../boundary-gjoll" }\n'
+            'cognition-client = { path = "../cognition-client" }\n'
         )
         clean_result = check_dependency_posture(clean_manifest)
         if not clean_result.ok:
@@ -743,8 +759,9 @@ def control_check() -> list[str]:
 
 
 def main() -> int:
-    print("Process-engine posture detector (REQ-51): dependency posture (against the")
-    print("REAL, disclosed three-name dependency table, discrepancy A), test and code")
+    print("Process-engine posture detector (REQ-51, widened by build-order step seven's")
+    print("REQ-52/REQ-58): dependency posture (against the REAL, disclosed four-name")
+    print("dependency table, discrepancy A), test and code")
     print("isolation including main.rs, mechanical surface properties (forbid(unsafe_code)")
     print("in both crate roots, one binary target, std::process/std::net absence with the")
     print("one disclosed std::process::exit exception, discrepancy B), EngineStep's five")
