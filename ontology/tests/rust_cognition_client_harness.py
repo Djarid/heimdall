@@ -156,13 +156,14 @@ _FORBIDDEN_SHELL_PATTERNS: tuple[str, ...] = (
 
 _FORBIDDEN_RETRY_PATTERNS: tuple[str, ...] = ("retry", "for _attempt")
 
-# REQ-62: a placeholder pin, deliberately chosen so it can never
-# accidentally match real content, on TARGET_LOOP_EVIDENCE.md's own
-# rust_target_loop_harness.py precedent for the identical situation before
-# its own evidence document existed. Updating it to the real digest, once
-# COGNITION_EVIDENCE.md is committed, is REQ-62's own later, deliberate,
-# reviewed edit -- not this module's.
-PINNED_EVIDENCE_SHA256 = "0" * 64
+# REQ-62: the real digest, pinned once COGNITION_EVIDENCE.md was committed
+# (build-order step seven's own run, section 6, 10 September 2026). This
+# replaces the placeholder "0" * 64 this constant held before that document
+# existed, on TARGET_LOOP_EVIDENCE.md's own rust_target_loop_harness.py
+# precedent for the identical situation. A later edit to
+# COGNITION_EVIDENCE.md that does not update this pin in the same commit
+# now fails this check, by design (REQ-62, REQ-63).
+PINNED_EVIDENCE_SHA256 = "006bef46b4297e1ea2b20919c7dcdbd9c551f93f507ba34684c8401f5d80a8f0"
 
 
 def _load_rust_files(src_dir: Path) -> dict[str, str]:
