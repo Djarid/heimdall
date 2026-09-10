@@ -32,6 +32,15 @@
 //! and reaped, no partial output is read or used, and the call refuses. No
 //! retry exists on any path.
 //!
+//! **The child is placed in its own process group before it is spawned
+//! (`#[cfg(unix)] .process_group(0)`), on `execute.rs`'s exact precedent.**
+//! A named residual, not a full fix: it exists purely so an orphaned
+//! descendant is not left in this crate's own process group. It does not,
+//! by itself, guarantee that every further descendant a timed-out Python
+//! interpreter may have spawned (for example, anything `mlx_lm` itself
+//! forks while loading the model) is reaped on timeout; see `execute.rs`'s
+//! own doc comment for the same residual stated against `git`'s hooks.
+//!
 //! **The child's own output is drained continuously while the parent
 //! waits (EC-46).** Both standard output and standard error are piped and
 //! read to completion on their own threads for the whole lifetime of the
@@ -205,6 +214,18 @@ fn spawn_and_collect(
     command.stdin(Stdio::piped());
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // A named residual, not a full fix: places the child in its own
+        // process group purely so an orphaned descendant is not left in
+        // this crate's own process group. See execute.rs's own doc comment
+        // (this module's own doc comment mirrors it) for why this does
+        // not, by itself, guarantee a timed-out interpreter's further
+        // descendants (for example, anything mlx_lm itself spawns) are
+        // reaped on timeout.
+        command.process_group(0);
+    }
 
     let mut child = command
         .spawn()

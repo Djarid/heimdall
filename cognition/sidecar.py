@@ -36,6 +36,31 @@ Reuse, not reimplementation (REQ-16, REQ-17):
     same shape (`apply_chat_template`, split at a placeholder, each half
     tokenised with special tokens intact because they are trusted control
     tokens) rather than a new discipline.
+
+  Disclosed gap, stated plainly rather than smoothed over (AGENTS.md,
+  "honesty over reassurance"): `poc/OUTCOME.md` and `poc/neural.py`'s own
+  doc comment describe TWO independent mitigations against a payload
+  forging a chat-template control-token role boundary -- `_encode_payload`'s
+  `split_special_tokens=True` (above) AND `poc/symbolic.py`'s
+  `neutralise_control_markers`, applied to the untrusted body as belt and
+  braces before it ever reaches the neural layer. Only the first transfers
+  to this boundary. The second does NOT, and is not imported here, because
+  `poc/symbolic.py` sits on the invariant 3.1 authorisation path
+  (`ontology/nornir/symbolic_guard.py`'s `_authorisation_files`) and this
+  package is required to stay off that path by design (REQ-19): "The
+  package is not importable from any file under `ontology/yggdrasil/`,
+  `ontology/nornir/` or `poc/symbolic.py`" is one-directional in the spec's
+  own wording, but the reverse direction is the one that matters here --
+  this package importing FROM `poc/symbolic.py` would create exactly the
+  dependency edge REQ-19's own design intends to keep off that path (see
+  section 9.3 of the build spec: "`cognition/` ... imports nothing from the
+  authorisation path"). So this boundary carries only the token-level
+  splitting mitigation, not the second, independent belt-and-braces
+  mitigation; the two are not equivalent, and presenting one as full parity
+  with the documented pair would be dishonest. If a future change moves
+  `neutralise_control_markers` off the authorisation path (or duplicates its
+  handful of lines into a location this package may import from), this gap
+  should close then, not before.
   - `phase2/grammar_slot_extraction.py`'s `GrammarState` is imported and
     parameterised with this module's own single-field schema
     (`FIELD_NAMES = ("message",)`). No second grammar or masking mechanism
