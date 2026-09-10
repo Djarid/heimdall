@@ -8,7 +8,7 @@
 //! control flow, and no adjudication of its own: the engine sequences,
 //! it does not decide.
 
-use crate::cognition::{CognitionStep, DefaultCognitionStep};
+use crate::cognition::{CognitionStep, DefaultCognitionStep, RealCognitionStep};
 use crate::outcome::EngineOutcome;
 use crate::proposal::build_proposal;
 use crate::task::{EngineTask, is_task_well_formed};
@@ -173,7 +173,16 @@ pub(crate) fn run_sequence_with_cognition(
 
     // Step two: Cognition. Advisory only (REQ-15): nothing below derives
     // a permission, a scope or a check outcome from its output.
-    let cognition_output = cognition.propose(task);
+    //
+    // Build-order step seven (REQ-28, REQ-29): `propose` now returns a
+    // `Result`. An `Err` here means the sequence never reaches the gate
+    // this run at all: it maps straight to `EngineOutcome::CognitionRefused`,
+    // distinct from every other refusal class this sequence can produce.
+    let propose_result = cognition.propose(task);
+    let cognition_output = match propose_result {
+        Ok(output) => output,
+        Err(refusal) => return EngineOutcome::CognitionRefused { refusal },
+    };
 
     // Step three: ProposeAction. The one Proposal construction site in
     // this crate is `crate::proposal::build_proposal` alone.
@@ -210,10 +219,50 @@ pub(crate) fn run_sequence_with_cognition(
     }
 }
 
+/// Which of the two [`CognitionStep`] implementations a task member runs
+/// (build-order step seven, ST7-9, REQ-40): a closed public enum with
+/// exactly two variants, carried as a compile-time field of each task
+/// member (never something the environment-read selector supplies,
+/// REQ-44). Naming the two implementations only: it decides nothing
+/// about authorisation, on the same argument `crate::cognition`'s own doc
+/// comment makes for why a substitutable cognition trait does not repeat
+/// D112's rejection of a trait at the actuator invocation, applied here
+/// to the choice of implementation rather than to the existence of the
+/// trait.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CognitionBinding {
+    /// [`DefaultCognitionStep`]'s own binding: the retained positive
+    /// control.
+    Stub,
+    /// [`RealCognitionStep`]'s own binding: the real, model-calling
+    /// implementation.
+    Real,
+}
+
 /// The crate's one public entry point (REQ-11): runs the fixed five-step
-/// sequence over `task`, using [`DefaultCognitionStep`]. `cohort` is an
-/// already-verified `&hierarchy_vor::VerifiedCohort`; this function never
-/// loads one itself (REQ-26).
-pub fn run_sequence(cohort: &hierarchy_vor::VerifiedCohort, task: &EngineTask) -> EngineOutcome {
-    run_sequence_with_cognition(cohort, task, &DefaultCognitionStep)
+/// sequence over `task`, using the [`CognitionStep`] implementation
+/// [`binding`](CognitionBinding) names. `cohort` is an already-verified
+/// `&hierarchy_vor::VerifiedCohort`; this function never loads one itself
+/// (REQ-26).
+///
+/// **Build-order step seven (REQ-40, REQ-41): the binding is matched
+/// exactly once, here, and this function makes exactly one call to
+/// [`run_sequence_with_cognition`].** No branch downstream of cognition
+/// anywhere in this crate reads the binding again (REQ-42): the five-step
+/// sequence, the single `validate_proposal` call, the witness
+/// pass-through, the single `broker_authorised_action` call and the
+/// verbatim refusal carry-through are byte for byte identical for both
+/// bindings. This stays the crate's **one** public library entry point;
+/// no second public entry point is added, and
+/// [`run_sequence_with_cognition`] stays `pub(crate)` with its existing
+/// `&impl CognitionStep` signature unchanged.
+pub fn run_sequence(
+    cohort: &hierarchy_vor::VerifiedCohort,
+    task: &EngineTask,
+    binding: CognitionBinding,
+) -> EngineOutcome {
+    match binding {
+        CognitionBinding::Stub => run_sequence_with_cognition(cohort, task, &DefaultCognitionStep),
+        CognitionBinding::Real => run_sequence_with_cognition(cohort, task, &RealCognitionStep),
+    }
 }

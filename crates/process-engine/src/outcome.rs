@@ -16,6 +16,10 @@
 /// over this enum anywhere in this crate is exhaustive and carries no
 /// wildcard arm (EC-14): a future variant forces every match site to be
 /// revisited rather than folding silently into a catch-all.
+///
+/// **Build-order step seven (REQ-29): a sixth variant,
+/// [`EngineOutcome::CognitionRefused`].** Every existing variant keeps
+/// its name, its meaning and its exit code unchanged.
 #[derive(Debug)]
 pub enum EngineOutcome {
     /// A structural well-formedness refusal, originated by this crate
@@ -30,6 +34,22 @@ pub enum EngineOutcome {
         /// The structural defect that produced this refusal, in plain
         /// prose. Never a permission, scope or budget rule.
         reason: String,
+    },
+    /// The cognition step's own refusal (build-order step seven,
+    /// REQ-29, REQ-30, ST7-8): the sequence never reached the gate this
+    /// run, because [`crate::CognitionStep::propose`] returned `Err`.
+    /// **Never** an authorisation decision: `CognitionRefused` is a
+    /// refusal originated by the cognition step alone, distinct from
+    /// [`EngineOutcome::RefusedBeforeCognition`] (a model-call failure
+    /// and an empty task identifier are different failure classes,
+    /// REQ-30) and distinct from [`EngineOutcome::GateBlocked`] (the
+    /// gate is never reached this run at all). The only authorisation
+    /// decision anywhere in this crate remains
+    /// [`himinbjorg::validate_proposal`]'s own return value.
+    CognitionRefused {
+        /// The refusal [`crate::CognitionStep::propose`] returned,
+        /// unmodified.
+        refusal: crate::cognition::CognitionRefusal,
     },
     /// The gate step's own block, carrying every one of the six
     /// [`himinbjorg::CheckRecord`]s [`himinbjorg::validate_proposal`]
@@ -122,6 +142,12 @@ pub const EXIT_BROKER_REFUSED: i32 = 3;
 /// outcomes' own dedicated codes.
 pub const EXIT_WELL_FORMEDNESS_REFUSAL: i32 = 4;
 
+/// [`EngineOutcome::CognitionRefused`]'s own exit code (build-order step
+/// seven, REQ-29, ST7-8): a sixth, distinct code, so a model-call failure
+/// is never confused with [`EXIT_WELL_FORMEDNESS_REFUSAL`] in a printed
+/// transcript or an exit-code comparison (REQ-30).
+pub const EXIT_COGNITION_REFUSAL: i32 = 5;
+
 /// Maps one [`EngineOutcome`] to its own documented exit code (REQ-30).
 /// Exhaustive, no wildcard arm (EC-14): a future variant forces this
 /// match to be revisited rather than folding silently into a catch-all.
@@ -132,5 +158,6 @@ pub fn exit_code_for(outcome: &EngineOutcome) -> i32 {
         EngineOutcome::BrokerRefused { .. } => EXIT_BROKER_REFUSED,
         EngineOutcome::RefusedBeforeCognition { .. } => EXIT_WELL_FORMEDNESS_REFUSAL,
         EngineOutcome::AwaitingHumanDecision => EXIT_WELL_FORMEDNESS_REFUSAL,
+        EngineOutcome::CognitionRefused { .. } => EXIT_COGNITION_REFUSAL,
     }
 }

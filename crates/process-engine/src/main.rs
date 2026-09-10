@@ -15,25 +15,35 @@
 //! sequence at most once per process: no loop, no daemon mode, no
 //! retry, no signal handler and no scheduler.
 //!
-//! **The five task constant-sets (build-order step six, ST6-2, REQ-6 to
-//! REQ-13).** This file carries exactly five task constant-sets,
-//! matching `.opencode/plans/build-order-step-six-spec.md` REQ-6's table
-//! verbatim, in one fixed, compile-time length-asserted array,
-//! [`TASK_MEMBERS`]. Every one of the five sink values, five action
-//! names and four target values is an **agreement** with an
-//! independently owned list (Himinbjörg's, Vör's or the actuator's own),
-//! never a derivation (REQ-4): nothing in this file reads any of those
-//! crates' own constants, and no test anywhere asserts that two
-//! independently owned lists agree. Exactly one member is selected per
-//! process, by the index `process_engine::startup::run()` resolves from
-//! `HEIMDALL_ENGINE_TASK`, the fail-closed startup selector REQ-14 to
-//! REQ-22 add to `startup.rs`; this file never reads the environment
-//! itself (REQ-15) and never names the selector's own environment
-//! variable or accepted-name set (REQ-39's own containment property).
-//! No branch anywhere in this file is keyed on which member is selected,
-//! and no expected-outcome value, table, enum or string literal exists
-//! anywhere in this crate (REQ-10): this file knows only what is
-//! proposed, never what is expected to happen to it.
+//! **The seven task constant-sets (build-order step six, ST6-2, REQ-6 to
+//! REQ-13; build-order step seven, REQ-46 to REQ-49).** This file carries
+//! the five task constant-sets step six added, matching
+//! `.opencode/plans/build-order-step-six-spec.md` REQ-6's table verbatim,
+//! plus two more, M1 and M2, `.opencode/plans/build-order-step-seven-spec.md`
+//! REQ-47's table adds, in one fixed, compile-time length-asserted array,
+//! [`TASK_MEMBERS`]. Every field of every member is an **agreement** with
+//! an independently owned list (Himinbjörg's, Vör's, the actuator's own,
+//! or, for M1 and M2's own `cognition_binding` field, this crate's own
+//! `CognitionBinding` enum), never a derivation (REQ-4): nothing in this
+//! file reads any of those crates' own constants, and no test anywhere
+//! asserts that two independently owned lists agree. Exactly one member
+//! is selected per process, by the index `process_engine::startup::run()`
+//! resolves from `HEIMDALL_ENGINE_TASK`, the fail-closed startup selector
+//! REQ-14 to REQ-22 add to `startup.rs`; this file never reads the
+//! environment itself (REQ-15) and never names the selector's own
+//! environment variable or accepted-name set (REQ-39's own containment
+//! property). No branch anywhere in this file is keyed on which member
+//! is selected, and no expected-outcome value, table, enum or string
+//! literal exists anywhere in this crate (REQ-10, REQ-42): this file
+//! knows only what is proposed, never what is expected to happen to it.
+//! The selected member's own `cognition_binding` field is read exactly
+//! once, to choose which `CognitionStep` implementation `run_sequence`
+//! runs (REQ-43's own amendment to step six's REQ-10: no member is
+//! *adjudicated* differently from another, because every member passes
+//! through the identical five steps, the identical six checks and the
+//! identical witness match; what changed is that one compile-time field
+//! of the selected member is now read, once, to choose between two
+//! implementations of a seam that decides nothing about authorisation).
 //!
 //! **A disclosed, narrowly-scoped exception to REQ-8's own wording.**
 //! REQ-8 says this crate references neither `std::process` nor
@@ -100,6 +110,13 @@ struct EngineTaskMember {
     sink: &'static str,
     /// This member's own declared cost. Zero for every member (REQ-8).
     declared_cost: u32,
+    /// Which of the two `CognitionStep` implementations this member runs
+    /// (build-order step seven, REQ-46): a compile-time constant of the
+    /// member, never something `HEIMDALL_ENGINE_TASK` supplies (REQ-44).
+    /// The five members step six added all bind
+    /// `process_engine::CognitionBinding::Stub`, unchanged; M1 and M2
+    /// bind `process_engine::CognitionBinding::Real` (REQ-47's table).
+    cognition_binding: process_engine::CognitionBinding,
 }
 
 // ---------------------------------------------------------------------------
@@ -195,12 +212,60 @@ const _: () = assert!(!N3_ACTION_NAME.is_empty(), "N3_ACTION_NAME must be non-em
 const _: () = assert!(!N3_TARGET.is_empty(), "N3_TARGET must be non-empty (REQ-8)");
 const _: () = assert!(!N3_SINK.is_empty(), "N3_SINK must be non-empty (REQ-8)");
 
-/// The fixed, closed array itself (REQ-6, REQ-9): exactly REQ-6's table's
-/// five members, in that order, and no other. The `const _: () =
-/// assert!(...)` immediately below fails the BUILD, not a later test run,
-/// the moment an edit adds or removes a member -- on
-/// `sequence::STEP_SEQUENCE`'s own precedent for the identical construct.
-const TASK_MEMBERS: [EngineTaskMember; 5] = [
+// ---------------------------------------------------------------------------
+// Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`
+// REQ-47's table): M1 and M2, the two new, model-bound task members. Every
+// value below is an agreement with an independently owned list, never a
+// derivation, on step six's REQ-4 precedent, exactly like every value in
+// the five members above.
+// ---------------------------------------------------------------------------
+
+/// M1: commit-model-fixture-target (REQ-47's table, row M1).
+/// REQ-48's amended selector-derivation rule: the action-name leaf
+/// (`"commit"`), a fixed cognition-binding token (`"model"`, present
+/// because this member binds the real implementation), and the target
+/// (`"fixture-target"`), joined by single hyphens.
+const M1_SELECTOR_NAME: &str = "commit-model-fixture-target";
+const M1_TASK_ID: &str = "cognition-model-commit-fixture-target";
+const M1_ACTION_NAME: &str = "action:git.commit";
+const M1_TARGET: &str = "fixture-target";
+const M1_SINK: &str = "sink:git.commit";
+const M1_DECLARED_COST: u32 = 0;
+
+const _: () = assert!(!M1_SELECTOR_NAME.is_empty(), "M1_SELECTOR_NAME must be non-empty (REQ-47)");
+const _: () = assert!(!M1_TASK_ID.is_empty(), "M1_TASK_ID must be non-empty (REQ-47)");
+const _: () = assert!(!M1_ACTION_NAME.is_empty(), "M1_ACTION_NAME must be non-empty (REQ-47)");
+const _: () = assert!(!M1_TARGET.is_empty(), "M1_TARGET must be non-empty (REQ-47)");
+const _: () = assert!(!M1_SINK.is_empty(), "M1_SINK must be non-empty (REQ-47)");
+
+/// M2: merge-model-fixture-target (REQ-47's table, row M2). Names
+/// `action:git.merge`, on N1's own precedent an action absent from the
+/// cohort's permitted-action surface today, so M2 blocks at BOTH check
+/// one and check five (REQ-50): the point of M2, not a defect, because
+/// `validate_proposal` and `rule::apply` never short-circuit (EC-10), so
+/// an out-of-surface action name and a tainted action-critical parameter
+/// each contribute independently.
+const M2_SELECTOR_NAME: &str = "merge-model-fixture-target";
+const M2_TASK_ID: &str = "cognition-model-merge-fixture-target";
+const M2_ACTION_NAME: &str = "action:git.merge";
+const M2_TARGET: &str = "fixture-target";
+const M2_SINK: &str = "sink:git.commit";
+const M2_DECLARED_COST: u32 = 0;
+
+const _: () = assert!(!M2_SELECTOR_NAME.is_empty(), "M2_SELECTOR_NAME must be non-empty (REQ-47)");
+const _: () = assert!(!M2_TASK_ID.is_empty(), "M2_TASK_ID must be non-empty (REQ-47)");
+const _: () = assert!(!M2_ACTION_NAME.is_empty(), "M2_ACTION_NAME must be non-empty (REQ-47)");
+const _: () = assert!(!M2_TARGET.is_empty(), "M2_TARGET must be non-empty (REQ-47)");
+const _: () = assert!(!M2_SINK.is_empty(), "M2_SINK must be non-empty (REQ-47)");
+
+/// The fixed, closed array itself (REQ-6, REQ-9; build-order step seven,
+/// REQ-46, REQ-47, REQ-49): the five members REQ-6's table added, plus
+/// the two, M1 and M2, REQ-47's table adds, in that order, and no other.
+/// The `const _: () = assert!(...)` immediately below fails the BUILD,
+/// not a later test run, the moment an edit adds or removes a member --
+/// on `sequence::STEP_SEQUENCE`'s own precedent for the identical
+/// construct.
+const TASK_MEMBERS: [EngineTaskMember; 7] = [
     EngineTaskMember {
         selector_name: P1_SELECTOR_NAME,
         task_id: P1_TASK_ID,
@@ -208,6 +273,7 @@ const TASK_MEMBERS: [EngineTaskMember; 5] = [
         target: P1_TARGET,
         sink: P1_SINK,
         declared_cost: P1_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Stub,
     },
     EngineTaskMember {
         selector_name: P2_SELECTOR_NAME,
@@ -216,6 +282,7 @@ const TASK_MEMBERS: [EngineTaskMember; 5] = [
         target: P2_TARGET,
         sink: P2_SINK,
         declared_cost: P2_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Stub,
     },
     EngineTaskMember {
         selector_name: N1_SELECTOR_NAME,
@@ -224,6 +291,7 @@ const TASK_MEMBERS: [EngineTaskMember; 5] = [
         target: N1_TARGET,
         sink: N1_SINK,
         declared_cost: N1_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Stub,
     },
     EngineTaskMember {
         selector_name: N2_SELECTOR_NAME,
@@ -232,6 +300,7 @@ const TASK_MEMBERS: [EngineTaskMember; 5] = [
         target: N2_TARGET,
         sink: N2_SINK,
         declared_cost: N2_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Stub,
     },
     EngineTaskMember {
         selector_name: N3_SELECTOR_NAME,
@@ -240,13 +309,32 @@ const TASK_MEMBERS: [EngineTaskMember; 5] = [
         target: N3_TARGET,
         sink: N3_SINK,
         declared_cost: N3_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Stub,
+    },
+    EngineTaskMember {
+        selector_name: M1_SELECTOR_NAME,
+        task_id: M1_TASK_ID,
+        action_name: M1_ACTION_NAME,
+        target: M1_TARGET,
+        sink: M1_SINK,
+        declared_cost: M1_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Real,
+    },
+    EngineTaskMember {
+        selector_name: M2_SELECTOR_NAME,
+        task_id: M2_TASK_ID,
+        action_name: M2_ACTION_NAME,
+        target: M2_TARGET,
+        sink: M2_SINK,
+        declared_cost: M2_DECLARED_COST,
+        cognition_binding: process_engine::CognitionBinding::Real,
     },
 ];
 
 const _: () = assert!(
-    TASK_MEMBERS.len() == 5,
-    "TASK_MEMBERS must carry exactly five task constant-sets (REQ-9, REQ-6's table): an \
-     edit that adds or removes a member must fail the build, not a later test run"
+    TASK_MEMBERS.len() == 7,
+    "TASK_MEMBERS must carry exactly seven task constant-sets (REQ-49, REQ-47's table): \
+     an edit that adds or removes a member must fail the build, not a later test run"
 );
 
 /// Byte-for-byte FNV-1a, `const fn` so it can run inside the compile-time
@@ -279,24 +367,38 @@ const P2_SELECTOR_HASH: u64 = fnv1a64(P2_SELECTOR_NAME.as_bytes());
 const N1_SELECTOR_HASH: u64 = fnv1a64(N1_SELECTOR_NAME.as_bytes());
 const N2_SELECTOR_HASH: u64 = fnv1a64(N2_SELECTOR_NAME.as_bytes());
 const N3_SELECTOR_HASH: u64 = fnv1a64(N3_SELECTOR_NAME.as_bytes());
+const M1_SELECTOR_HASH: u64 = fnv1a64(M1_SELECTOR_NAME.as_bytes());
+const M2_SELECTOR_HASH: u64 = fnv1a64(M2_SELECTOR_NAME.as_bytes());
 
-// The five selector names are pairwise distinct, asserted at compile time
-// (REQ-11): every one of the ten pairs among the five members compared,
-// never merely a chain covering some but not all pairs.
+// The seven selector names are pairwise distinct, asserted at compile
+// time (REQ-11, REQ-48): every one of the 21 pairs among the seven
+// members compared, never merely a chain covering some but not all
+// pairs.
 const _: () = assert!(
     P1_SELECTOR_HASH != P2_SELECTOR_HASH
         && P1_SELECTOR_HASH != N1_SELECTOR_HASH
         && P1_SELECTOR_HASH != N2_SELECTOR_HASH
         && P1_SELECTOR_HASH != N3_SELECTOR_HASH
+        && P1_SELECTOR_HASH != M1_SELECTOR_HASH
+        && P1_SELECTOR_HASH != M2_SELECTOR_HASH
         && P2_SELECTOR_HASH != N1_SELECTOR_HASH
         && P2_SELECTOR_HASH != N2_SELECTOR_HASH
         && P2_SELECTOR_HASH != N3_SELECTOR_HASH
+        && P2_SELECTOR_HASH != M1_SELECTOR_HASH
+        && P2_SELECTOR_HASH != M2_SELECTOR_HASH
         && N1_SELECTOR_HASH != N2_SELECTOR_HASH
         && N1_SELECTOR_HASH != N3_SELECTOR_HASH
-        && N2_SELECTOR_HASH != N3_SELECTOR_HASH,
-    "the five selector names of TASK_MEMBERS must be pairwise distinct (REQ-11): every \
-     pair of P1_SELECTOR_NAME, P2_SELECTOR_NAME, N1_SELECTOR_NAME, N2_SELECTOR_NAME and \
-     N3_SELECTOR_NAME must differ"
+        && N1_SELECTOR_HASH != M1_SELECTOR_HASH
+        && N1_SELECTOR_HASH != M2_SELECTOR_HASH
+        && N2_SELECTOR_HASH != N3_SELECTOR_HASH
+        && N2_SELECTOR_HASH != M1_SELECTOR_HASH
+        && N2_SELECTOR_HASH != M2_SELECTOR_HASH
+        && N3_SELECTOR_HASH != M1_SELECTOR_HASH
+        && N3_SELECTOR_HASH != M2_SELECTOR_HASH
+        && M1_SELECTOR_HASH != M2_SELECTOR_HASH,
+    "the seven selector names of TASK_MEMBERS must be pairwise distinct (REQ-11, \
+     REQ-48): every pair of P1_SELECTOR_NAME, P2_SELECTOR_NAME, N1_SELECTOR_NAME, \
+     N2_SELECTOR_NAME, N3_SELECTOR_NAME, M1_SELECTOR_NAME and M2_SELECTOR_NAME must differ"
 );
 
 fn main() {
@@ -340,7 +442,10 @@ fn main() {
     };
 
     // The one call to the library's one public entry point (REQ-25).
-    let outcome = process_engine::run_sequence(&cohort, &task);
+    // Build-order step seven (REQ-46): the selected member's own
+    // compile-time cognition-binding field is passed through unchanged;
+    // this is the one and only place that field is read.
+    let outcome = process_engine::run_sequence(&cohort, &task, member.cognition_binding);
     let code = process_engine::exit_code_for(&outcome);
     println!("process-engine: outcome: {outcome:?}");
     std::process::exit(code);

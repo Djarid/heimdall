@@ -72,21 +72,34 @@ pub const WORKING_REPO_ENV_VAR: &str = "HEIMDALL_ACTUATOR_GIT_WORKING_REPO";
 pub const TASK_SELECTOR_ENV_VAR: &str = "HEIMDALL_ENGINE_TASK";
 
 /// The closed, compile-time set of accepted selector names (REQ-17,
-/// REQ-39): the five values `main.rs`'s own `TASK_MEMBERS` array selects
-/// among, in the same P1, P2, N1, N2, N3 order that array uses, restated
-/// here as this module's own independent, hand-maintained agreement --
-/// never a derivation -- for the reason this module's own doc comment
-/// above explains (`main.rs` is a separate compilation unit this module
-/// cannot import from at all). A value's membership in this set is
-/// tested by exact byte equality alone (REQ-17): no case folding, no
-/// trimming before comparison, no prefix or substring match and no
-/// numeric-index acceptance.
-const ACCEPTED_SELECTOR_NAMES: [&str; 5] = [
+/// REQ-39; build-order step seven, REQ-49): the seven values `main.rs`'s
+/// own `TASK_MEMBERS` array selects among, in the same P1, P2, N1, N2,
+/// N3, M1, M2 order that array uses, restated here as this module's own
+/// independent, hand-maintained agreement -- never a derivation -- for
+/// the reason this module's own doc comment above explains (`main.rs` is
+/// a separate compilation unit this module cannot import from at all).
+/// A value's membership in this set is tested by exact byte equality
+/// alone (REQ-17): no case folding, no trimming before comparison, no
+/// prefix or substring match and no numeric-index acceptance.
+///
+/// **No new environment read here (build-order step seven, section 2.2
+/// finding four of `.opencode/plans/build-order-step-seven-spec.md`).**
+/// The two sidecar path variables `crates/cognition-client/` needs live
+/// entirely inside that crate, read at cognition time, never as a
+/// startup precondition: a fourth startup precondition here would refuse
+/// before any member is even selected, so on a machine without the venv
+/// or the model weights the binary could no longer run P1 or P2 either,
+/// and step six's own executed commit and push would stop being
+/// reproducible. This module still reads exactly three variables and
+/// [`StartupRefusal`] still carries exactly three fields.
+const ACCEPTED_SELECTOR_NAMES: [&str; 7] = [
     "commit-fixture-target",
     "push-fixture-integration-branch",
     "merge-fixture-target",
     "push-main",
     "push-fixture-target",
+    "commit-model-fixture-target",
+    "merge-model-fixture-target",
 ];
 
 /// One startup's own refusal (REQ-27, REQ-28; REQ-16): one field per
