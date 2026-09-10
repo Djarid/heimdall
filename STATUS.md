@@ -12,10 +12,72 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D114)
+## 0. Resume here (handoff, last updated after D115 to D117)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
+
+**Build-order step seven of `plans/synthesis-bootstrap.md` (D108) is complete, and it is the
+last of the seven steps that document names.** A genuine Qwen2.5-7B-Instruct-4bit call now
+sits on the process engine's own non-test cognition path, in a new sixth crate,
+`crates/cognition-client/`, that spawns a Python MLX sidecar with a fixed argv. The model's
+one authored value is declared honestly as `TrustLevel::Tainted`/`ConsumeMode::Action`, so the
+identical governed pipeline blocks the resulting consequential proposal at Gjöll's own check
+five for the first time in the live path: M1 (a commit) blocks with exactly one failing
+`CheckRecord` (check five, `ActionOnActionCriticalTainted`), M2 (a merge) blocks with exactly
+two (checks one and five), and P1 and P2, the two stub-bound members from step six, still
+execute live in the same build, so the positive control survives on a machine with no model at
+all. `DefaultCognitionStep` is retained, byte for byte unchanged in logic, as a named positive
+control with a stated expiry trigger (Gjöll's own promotion and re-validation gate landing),
+which is why D108's own word "replace" is amended (D116) rather than read as compliance: the
+stub is joined, not replaced. A genuine defect, found and fixed during the live run: the real
+implementation's parameter id did not initially match `sinks.rs`'s declared contract for
+`sink:git.commit`, producing `DeclarationInvalid` rather than the designed block; fixed by
+changing the id to `"v"` (see D115). A second decision, D117, reopens D112's one-crate
+`std::process` ruling for a second module, `crates/cognition-client/src/invocation.rs`, with its
+own narrower justification, stated explicitly rather than reusing D112's git-actuator reasoning,
+which does not transfer to a Python interpreter that loads a language model. `COGNITION_EVIDENCE.md`
+carries the full transcript, pinned by SHA-256 in the new `ontology/tests/rust_cognition_client_harness.py`.
+Two residuals are named, neither closed nor narrowed: `boundary_gjoll::rule::apply` tests
+untrusted-derivation by equality against `TrustLevel::Tainted` alone, not by a rank comparison
+against `TRUST_ORDER`, so a parameter declared `Vouched` would pass check five silently under
+both arms (a latent gap, not exercised because every parameter anywhere in `crates/` is
+`Canonical` before this step and `Tainted` after it); and no Rust test exercises
+`CognitionBinding::Real` end to end, which is a stated limit rather than an oversight, per the
+build spec's own instruction that no test is to be written that fakes a real model call.
+Invariant 3.6 does not advance beyond the narrow sense the live detectors already measured for
+steps three to six: no new containment is observed, no third-party corpus is run, and Gjöll's
+own Python gate functions still have zero non-test callers. The code licence stays OPEN, now
+named as covering **six** crates rather than five (section 5); the operator explicitly chose to
+proceed with the build and settle the licence question before merge, not before build. See
+D115 to D117 in `DECISIONS.md`, `plans/dd/cognition-client.md` for the sixth crate's own design,
+and `COGNITION_EVIDENCE.md` for the transcript.
+
+**This closes the seven-step build order `plans/synthesis-bootstrap.md` section 6 names.** That
+document does not itself name an eighth step: its own section 6 lists exactly seven, ending at
+"replace the cognition stub with a real model call", now step seven, complete. What the next
+piece of work is, in consequence, is not a guess this page makes on its own authority: it is
+read from the same source documents this repository already treats as authoritative. Two things
+are true together. First, `STATUS.md` section 6 item five (queued, not yet started) already
+names the next load-bearing mechanism-level gap inside the seven-step walking skeleton itself:
+Gjöll's own missing re-validation and promotion gate (`GatePolicy`, `GateResult`), without which
+invariant 3.6's own "has not passed the gate" clause stays vacuous, and without which
+`Vouched` and every higher trust level stay meaningless declarations no mechanism can honestly
+reach. Second, `plans/synthesis-resolutions.md` (D107) and `plans/synthesis-architecture.md`
+(D106) both describe further planes and components (notify, the resident coordinator's memory,
+the hierarchy plane's general cohort catalogue, the master-control tier) that were never folded
+into the seven-step walking-skeleton order at all, because that order was scoped deliberately
+narrowly to the single target loop (D108 section 5's own "explicitly out of scope for this
+phase" list). Neither source document names a "build-order step eight"; the walking-skeleton
+build order is now complete on its own terms, and this page's own honest reading is that the
+next piece of work is closing the promotion-gate gap the skeleton itself left open, queued
+since D96 and now promoted to priority item one (section 6) since the two reasons it was
+originally queued behind, an in-flight external test and an in-flight build order, have both
+resolved to the point that starting it is no longer blocked. A deliberately new phase of work
+scoped by a fresh planning pass over D106/D107's remaining items is the other honest
+candidate, and is not ruled out, but it is not a numbered continuation of D108's own seven
+steps either way. Section 6 below states this plainly rather than inventing a step eight
+neither source document defines.
 
 **State in one paragraph.** The pipeline contains every consequential case on the
 independent corpus: 33 of 33, defence in depth (D83, D84, D85). That is the headline, and it
@@ -591,30 +653,46 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Build-order step seven: replace the cognition stub with a real model call.** Steps one to
-   six (D109 Gjöll re-expressed in Rust, D110 Vör's minimal single-cohort form, D111 Himinbjörg's
-   minimal four-interface slice, D112 the git actuator filling `broker_action`'s one slot, D113
-   the process engine sequencing task in to result out, D114 the target loop run end to end) are
-   all now complete: the target loop has run, once, on a fixture, with a real commit made
-   reachable in a real remote's history by a real push, and three deliberately disallowed actions
-   blocked by the same governed path at three structurally distinct depths, satisfying both
-   halves of D108's own definition of done (`TARGET_LOOP_EVIDENCE.md`). Step six does not claim
-   that Heimdall authored a change, though: the content of the change and its staging (an
-   out-of-band `git add`, `ontology/tools/run_target_loop.py`) were the operator's own, outside
-   the governed pipeline, and cognition itself is still the hardcoded stub D113 built. Step seven
-   is now the load-bearing piece for exactly that reason: replacing the cognition stub with a real
-   model call is what would let Heimdall genuinely propose the change it commits, rather than
-   gate a change the operator already wrote. **Step seven inherits one written obligation from
-   step six: governed staging.** `plans/dd/process-engine.md` section 12 names it explicitly,
-   triggered the moment cognition genuinely authors file content, because at that point what to
-   stage becomes a consequential choice about the scope of a change rather than a fixture the
-   operator provided; most likely a new `GitOperation::Stage { path }` variant with
-   `action:git.stage` and `sink:git.stage`, on Approach B of
-   `.opencode/plans/build-order-step-six-brainstorm.md`. See `plans/synthesis-bootstrap.md`
-   sections 6 and 7 for the full build order, `TARGET_LOOP_EVIDENCE.md` for step six's own
-   transcript, and `plans/dd/process-engine.md` sections 6 and 12 for the staging obligation and
-   the other residuals (EC-1's boundary, EC-7, EC-12, EC-13, EC-16) step six carries forward to
-   step seven.
+1. **Build the promotion gate: Gjöll's own missing re-validation and promotion mechanism
+   (Approach E, D96), the mechanism-level gap the now-complete seven-step walking skeleton
+   itself leaves open, promoted to priority item one now that the skeleton is done.** All seven
+   steps of `plans/synthesis-bootstrap.md`'s build order (D109 Gjöll re-expressed in Rust, D110
+   Vör's minimal single-cohort form, D111 Himinbjörg's minimal four-interface slice, D112 the
+   git actuator filling `broker_action`'s one slot, D113 the process engine sequencing task in
+   to result out, D114 the target loop run end to end, D115 to D117 a genuine model call joined
+   behind the cognition seam) are now complete: the target loop has run, once, on a fixture, with
+   a real commit made reachable in a real remote's history by a real push, three deliberately
+   disallowed actions blocked by the same governed path at three structurally distinct depths
+   (step six), and a genuinely model-authored proposal blocked at a fourth structurally distinct
+   depth by the identical pipeline (step seven), satisfying both halves of D108's own definition
+   of done and then exercising the gate against real cognition for the first time. **This closes
+   the seven-step order that document names; it does not itself name an eighth step, and this
+   page does not invent one.** What the walking skeleton's own completion surfaces instead is the
+   gap it was always going to leave open: `GatePolicy`, `GateResult` and the promotion-requirement
+   gate (`plans/dd/gjoll.md` section 5.1, lines 86-90; section 8; section 10) still do not exist,
+   so invariant 3.6's "has not passed the gate" clause is still vacuous, and `Vouched` and every
+   higher trust level are still meaningless declarations no mechanism can honestly reach: step
+   seven's own trust declaration is `Tainted` precisely because nothing in this repository can
+   yet promote a value past it. Building this gate is no longer merely queued behind the external
+   test (item 2 below is delegated, not in flight in a way that blocks starting): it is the
+   concrete mechanism-level work the completed skeleton points at next. Item 6 below (the D97
+   follow-on) already extended the identical authoriser-plus-keyed-digest pattern to the control
+   surface; this gate is the corresponding extension to the ACTION-TIME determination itself.
+   Design question carried forward from item 5's original wording, still open: whether the gate
+   reuses `promotion_policy.py`'s corroboration logic or is a separate mechanism.
+
+   **Also inherited from step six and step seven, and still open:** governed staging.
+   `plans/dd/process-engine.md` section 12 names it explicitly, triggered the moment cognition
+   genuinely authors file content; step seven's own cognition authors a commit message only, so
+   the trigger is honestly not met yet, and the obligation (most likely a new
+   `GitOperation::Stage { path }` variant with `action:git.stage` and `sink:git.stage`, on
+   Approach B of `.opencode/plans/build-order-step-six-brainstorm.md`) carries forward unmet to
+   whichever step first has cognition author file content, not necessarily the promotion-gate
+   work above. See `plans/synthesis-bootstrap.md` sections 6 and 7 for the completed seven-step
+   build order, `TARGET_LOOP_EVIDENCE.md` and `COGNITION_EVIDENCE.md` for steps six and seven's
+   own transcripts, and `plans/dd/process-engine.md` sections 6 and 12 for the staging obligation
+   and the other residuals (EC-1's boundary, EC-7, EC-12, EC-13, EC-16, the equality-versus-rank
+   residual, the future argv-reachability note) both steps carry forward.
 2. **External end-to-end test: DELEGATED (D91), and STRONGER than a corpus (D92).** A colleague
    is running this exact false-inert attack vector against models independently, with no
    exposure to the rules. The key advantage (D92): he can put a VULNERABLE model in the agentic
@@ -888,6 +966,28 @@ under every prior verification claim because the tests had always silently skipp
 unrelated to the secret change and all three are now fixed. See D114 in `DECISIONS.md` and
 `TARGET_LOOP_EVIDENCE.md` for the full transcript and breakdown.
 
+D115 then completed build-order step seven, the last of the seven `plans/synthesis-bootstrap.md`
+names: a genuine Qwen2.5-7B-Instruct-4bit call now sits on the engine's own non-test cognition
+path, at a new sixth crate, `crates/cognition-client/`, spawning a Python MLX sidecar. The
+model's one authored value is declared `TrustLevel::Tainted`/`ConsumeMode::Action`, honestly,
+which is why every model-authored proposal blocks at Gjöll's check five (`ActionOnActionCriticalTainted`)
+by design: M1 (a commit) blocks with exactly one failing check, M2 (a merge) with exactly two,
+and the stub-bound positive control (P1, P2) still executes live in the same build. This does
+not advance invariant 3.6 beyond the narrow, harness-scoped sense the prior steps already
+established: no new containment is observed, no third-party corpus is run, and Gjöll's own
+Python gate functions still have zero non-test callers. D116 records D108's own word "replace"
+as amended rather than complied with: the stub is retained, joined by the real implementation
+rather than superseded by it, with a stated expiry trigger. D117 reopens D112's one-crate
+`std::process` ruling for a second module, with its own narrower justification that does not
+reuse D112's git-actuator reasoning, because that reasoning does not transfer to an interpreter
+that loads a language model. Two residuals are named plainly, neither closed nor narrowed: the
+gate's own `rule::apply` tests untrusted-derivation by equality against `Tainted` alone, not by
+rank, so a `Vouched` declaration would pass silently if anything ever made one (nothing does
+today); and no Rust test exercises `CognitionBinding::Real` end to end, a stated limit rather
+than an oversight, since the build spec forbids writing a test that fakes a real model call. The
+code licence is OPEN and now named as covering six crates (section 5). See D115 to D117 in
+`DECISIONS.md` and `COGNITION_EVIDENCE.md` for the full transcript and breakdown.
+
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
 into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
@@ -966,6 +1066,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `GLOSSARY.md` | Norse component names mapped to their architectural roles |
 | `NEUROSYMBOLIC_FILTER_INVARIANTS.md` | The invariants the live build must hold, each marked PROVEN, DEMONSTRATED or NOT YET TESTED |
 | `TARGET_LOOP_EVIDENCE.md` | The committed record of build-order step six's one real run: a real commit made reachable in a real remote's history by a real push, and three deliberately disallowed actions blocked by the same governed path, with the honest statement of what the run does and does not claim (D114) |
+| `COGNITION_EVIDENCE.md` | The committed record of build-order step seven's one real run: a real Qwen2.5-7B-Instruct-4bit call producing the advisory content on the engine's own non-test cognition path, blocked at Gjöll's own check five for the model-bound members, with the stub-bound positive control still executing live in the same build, and the honest statement of what the run does and does not claim (D115) |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
 | `DECISIONS.md` | The decision log: 112 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot) plus the still-open D67-fix layer-one break, with consistency checks |
@@ -1233,6 +1334,52 @@ named remaining refinement, contained by Gjoll at action time, not here.
   verification claim because the tests had always silently skipped; all three are unrelated to
   the secret change and all three are now fixed. The code licence is still OPEN (section 5). See
   `TARGET_LOOP_EVIDENCE.md` and `DECISIONS.md` D114 for the full transcript and breakdown.
+- **The repository's sixth Rust crate, and build-order step seven (D115 to D117): a genuine
+  model call now sits on the process engine's own non-test cognition path.**
+  `crates/cognition-client/` spawns a Python MLX sidecar (a new top-level `cognition/` Python
+  package, outside `crates/`, `ontology/`, `poc/` and `phase2/`) with a fixed argv and no shell,
+  waits under a named 300-second bound, and returns either a validated commit message or a
+  typed refusal, through a single positive-match validator (on `argv.rs`'s own precedent) and an
+  empty `[dependencies]` table. `crates/process-engine/src/cognition.rs` gains the trait's
+  `Result<CognitionOutput, CognitionRefusal>` contract (closing the sharpest fail-open path in
+  the whole design: an infallible signature would have forced a model-call failure to degrade
+  to an empty, authorising parameter list), a new `RealCognitionStep` that calls the sixth crate
+  and declares its one parameter `TrustLevel::Tainted`/`ConsumeMode::Action`, honestly, and
+  `DefaultCognitionStep` retained byte for byte as a named positive control with a stated expiry
+  trigger. `EngineOutcome` gains a sixth variant, `CognitionRefused`, and a sixth exit code,
+  `EXIT_COGNITION_REFUSAL = 5`; the task array widens from five to seven members (M1 a commit,
+  M2 a merge, both bound to the real implementation); `startup.rs`'s accepted selector set
+  widens to seven, still reading exactly three environment variables, because the two sidecar
+  path variables live inside the sixth crate's own invocation module. Real run for the record:
+  M1 blocks with exactly one failing `CheckRecord` (check five, `ActionOnActionCriticalTainted`,
+  naming M1's own parameter and `sink:git.commit`); M2 blocks with exactly two (checks one and
+  five); P1 and P2 still execute live in the same build. A genuine defect was found and fixed
+  during the live run: `RealCognitionStep`'s parameter id did not initially match `sinks.rs`'s
+  declared contract for `sink:git.commit`, producing `DeclarationInvalid` instead of the
+  designed block; fixed by changing the id to `"v"`. `COGNITION_EVIDENCE.md` carries the full
+  transcript, pinned by SHA-256 in the new `ontology/tests/rust_cognition_client_harness.py`.
+  D116 records D108's own word "replace" as an amendment, not compliance: the stub is joined, not
+  replaced. D117 reopens D112's one-crate `std::process` ruling for a second module, with its own
+  narrower justification rather than D112's reasoning reused verbatim, because that reasoning
+  (a compiled, deterministic, externally audited tool) does not transfer to an interpreter that
+  loads a language model. This does not advance invariant 3.6 beyond the narrow, harness-scoped
+  sense the prior steps already established: no new containment is observed, no third-party
+  corpus is run, and Gjöll's own Python gate functions still have zero non-test callers.
+  `crates/boundary-gjoll/`, `crates/hierarchy-vor/`, `crates/himinbjorg/` and
+  `crates/actuator-git/` are all unchanged, deliberately; so is `TARGET_LOOP_EVIDENCE.md` and its
+  own pinned digest. Two named residuals, neither closed nor narrowed: the equality-versus-rank
+  residual in `boundary_gjoll::rule::apply` (it tests `c.trust_level == TrustLevel::Tainted` by
+  equality against one variant of a four-level lattice, never a rank comparison against
+  `TRUST_ORDER`, so a parameter declared `Vouched` would pass check five silently under both
+  arms; nothing exercises this today because every parameter constructed anywhere in `crates/`
+  is `Canonical` before this step and `Tainted` after it, and no line of `crates/boundary-gjoll/`
+  changes to address it); and the stated test-coverage gap that no Rust test exercises
+  `CognitionBinding::Real` end to end, by design, per the spec's own instruction that no test is
+  to be written that fakes a real model call, named as a stated limit rather than an oversight.
+  The code licence is still OPEN, now covering **six** crates rather than five (section 5): the
+  operator explicitly chose to proceed with the build and settle the licence question before
+  merge, not before build. See `plans/dd/cognition-client.md` for the full design and
+  `DECISIONS.md` D115 to D117 for the line-budget breakdown.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -1255,7 +1402,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
-| **D109/D110/D111/D112/D113/D114: the code licence is OPEN and blocks publication.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml` or `crates/process-engine/Cargo.toml` carries a `license` field. Build-order step six (D114) added no sixth crate, only `ontology/tools/run_target_loop.py` (a standalone Python tool) and edits inside the existing five, so the named `Cargo.toml` list is unchanged and the blocker is unaffected, not resolved | OPEN (blocker) | Must be settled before any code in this repository is published, and still blocks all five crates. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
+| **D109/D110/D111/D112/D113/D114/D115: the code licence is OPEN and blocks publication, now covering SIX crates rather than five.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml`, `crates/process-engine/Cargo.toml` or `crates/cognition-client/Cargo.toml` carries a `license` field. Build-order step six (D114) added no sixth crate, only `ontology/tools/run_target_loop.py` (a standalone Python tool) and edits inside the existing five, so the blocker was unaffected by that step. Build-order step seven (D115) DID add a sixth crate, `crates/cognition-client/`, and also a new top-level Python package (`cognition/`), widening the set of unlicensed source this blocker covers rather than narrowing it; the operator was asked explicitly whether to settle the licence question before this sixth crate landed (per the build spec's own step 0, EC-52) and explicitly chose to proceed with the build and settle the licence question before merge, not before build, a decision recorded rather than made silently | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks all six crates plus the `cognition/` Python package. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -1375,18 +1522,17 @@ corpus the author never saw.
    cost first), or a fail-closed advisory model that only routes to review. "Accept a small
    residual" is ruled out (the layer-one rate is 48 percent, not small), and more keywords
    are barred (invariant 3.5).
-5. **Queued: build Gjöll's missing re-validation gate mechanism (Approach E, D96).** Not
-   started. `GatePolicy`, `GateResult` and the promotion-requirement gate (`plans/dd/gjoll.md`
-   section 5.1, lines 86-90; section 8; section 10) do not exist, so invariant 3.6's "has not
-   passed the gate" clause is currently vacuous: no branch of `evaluate` lets an
-   action-critical value pass, because there is no gate to pass. `gjoll.md` section 10 names
-   the promotion requirement as the one that "must be built", and section 8 lists gate
-   policies as data Gjöll itself owns, so this is inside Gjöll's own boundary and does not
-   pre-empt Himinbjörg's unfinalised design. It is queued rather than started because it
-   touches the authorisation path while the external test (item 1) is in flight, and because
-   starting it now would let a documentation/detector change (D96) drift into a Phase-3
-   component build. Design question left open for when it starts: whether the gate reuses
-   `promotion_policy.py`'s corroboration logic or is a separate mechanism.
+5. **Promoted to item one above (Approach E, D96), no longer queued behind the walking
+   skeleton.** `GatePolicy`, `GateResult` and the promotion-requirement gate
+   (`plans/dd/gjoll.md` section 5.1, lines 86-90; section 8; section 10) still do not exist,
+   so invariant 3.6's "has not passed the gate" clause is still vacuous. This item was
+   originally queued rather than started because it touches the authorisation path while the
+   external test (item 2 below) is in flight and while the seven-step build order (item 7
+   below, now complete) was still in progress; both those reasons for deferring the START have
+   now resolved (the skeleton is done; the external test remains delegated and out-of-band,
+   which is not the same as blocking an in-repo start), so this item is restated as item one
+   rather than left here duplicated. See item one for the full statement and the design
+   question it carries forward.
 6. **Built: the D97 follow-on on the control surface, `AgentContext` attestation, on its
    identity/integrity axis (D103).** D97 named two follow-ons; D100 built the first (the
    no-registry `agent_consequential_sinks` residual, narrowed rather than requiring
@@ -1408,10 +1554,12 @@ corpus the author never saw.
    remaining gap either. The invariant 3.1 guard's scanned-file count moves from 33 to 34 (one
    new module; `ALLOWED_IMPORT_ROOTS` unchanged at 13 roots). `trust_ceiling`'s scale stays
    OPEN, unresolved by this build.
-7. **Done: build-order steps one to six of `plans/synthesis-bootstrap.md` (D108), re-expressing
+7. **Done: all seven build-order steps of `plans/synthesis-bootstrap.md` (D108), re-expressing
    Gjöll's gate (D109), Vör's minimal single-cohort form (D110), Himinbjörg's minimal
-   four-interface slice (D111), the git actuator (D112), the process engine (D113) in Rust and
-   then running the target loop end to end (D114).** `crates/boundary-gjoll/`
+   four-interface slice (D111), the git actuator (D112), the process engine (D113) in Rust,
+   running the target loop end to end (D114), and joining a real model call behind the
+   cognition seam (D115 to D117), the seventh and last step that document names.**
+   `crates/boundary-gjoll/`
    carries a pure total rule core behind a registry-mandatory consequentiality shell, checked
    against 22 golden vectors (six with a layer-two section) exported from the three existing
    Python harnesses, with a source-digest drift detector folded into the main suite. It designs
@@ -1464,13 +1612,21 @@ corpus the author never saw.
    and EC-16 are each carried forward unclosed. Provisioning a real secret for the first time in
    this repository's history surfaced three pre-existing test defects in `crates/himinbjorg`,
    invisible under every prior verification claim, all unrelated to the secret change and all
-   now fixed, named rather than smoothed over. **This is now the load-bearing item: build-order
-   step seven, replacing the cognition stub with a real model call, and is promoted to priority
-   item one above.** Step seven inherits governed staging as a written obligation from step six
-   (`plans/dd/process-engine.md` section 12): staging becomes a governed action the moment
-   cognition genuinely authors file content, rather than an ungoverned fixture step. The code
-   licence (section 5) blocks publication of all five crates, unaffected by step six since it
-   added no sixth crate, and should be settled before one is added.
+   now fixed, named rather than smoothed over. **D115 to D117 then completed build-order step
+   seven, the seventh and last of the seven `plans/synthesis-bootstrap.md` names, joining a
+   real model call behind the cognition seam rather than replacing the stub (D116), reopening
+   D112's one-crate `std::process` ruling for a second module with its own narrower
+   justification (D117), and blocking the resulting model-authored proposal at Gjöll's check
+   five for the first time in the live path.** This closes the seven-step walking-skeleton
+   build order in full; it does not itself define an eighth step, and the load-bearing item
+   this page now names next (item one above) is read from the skeleton's own remaining gap
+   (the promotion gate, queued since D96) and from `plans/synthesis-resolutions.md`/`plans/synthesis-architecture.md`'s
+   own further-named work, not guessed. Governed staging stays a written obligation, inherited
+   from step six and carried forward unmet by step seven, whose own cognition authors a commit
+   message only (`plans/dd/process-engine.md` section 12). The code licence (section 5) now
+   blocks publication of all SIX crates plus the new `cognition/` Python package; the operator
+   was asked explicitly before this sixth crate landed and chose to proceed with the build and
+   settle the licence question before merge, not before build.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary
