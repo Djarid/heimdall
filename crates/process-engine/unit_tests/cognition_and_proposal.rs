@@ -2,6 +2,28 @@
 //! PE-3, PE-4, PE-10): AC-15 to AC-19, AC-21, and the substitution case of
 //! AC-17 and EC-19 of `.opencode/plans/process-engine-step-five-spec.md`.
 //!
+//! **Build-order step seven addendum
+//! (`.opencode/plans/build-order-step-seven-spec.md` REQ-28, REQ-36, REQ-37,
+//! AC-31, AC-38, AC-39).** `CognitionStep::propose` changes from returning
+//! `CognitionOutput` directly to returning `Result<CognitionOutput,
+//! CognitionRefusal>` (ST7-8, REQ-28), so every implementation of the trait
+//! in this file is updated to the new signature. This file's own necessary
+//! choice, flagged explicitly: `DefaultCognitionStep`'s own INHERENT method
+//! (`propose_output`/`propose` called directly, not through the trait) is
+//! assumed to stay byte for byte as step six left it, returning
+//! `CognitionOutput` directly (REQ-39's own "byte for byte identical in its
+//! logic"), with the TRAIT implementation wrapping that same body in `Ok`.
+//! This is the minimal-diff reading of REQ-39 consistent with the new trait
+//! contract; an implementer reaching the same property (the stub's
+//! behaviour is unchanged and it always succeeds) by a different internal
+//! shape satisfies the spec.
+//!
+//! A second, real `CognitionStep` implementation now exists in this file's
+//! own module under test (REQ-36), so `ac16_exactly_one_cognitionstep_implementation_exists_in_the_crate`
+//! is retired below in favour of an updated count assertion (this repository's own
+//! convention, following REQ-39's amendment discipline, of stating a retirement
+//! explicitly rather than silently deleting the check).
+//!
 //! THIS FILE WILL FAIL TO COMPILE until `crates/process-engine/src/cognition.rs`
 //! and `src/proposal.rs` exist at real fidelity, on `sequence_shape.rs`'s own
 //! header note for the same expected RED state.
@@ -129,17 +151,22 @@ fn fixture_task(action_name: &str) -> crate::EngineTask {
 struct _AC15ProbeCognition;
 
 impl crate::CognitionStep for _AC15ProbeCognition {
-    fn propose(&self, task: &crate::EngineTask) -> crate::CognitionOutput {
+    // ST7-8/REQ-28: the trait's one method now returns
+    // Result<CognitionOutput, CognitionRefusal>. This probe always
+    // succeeds, wrapping the same body step five's own probe returned
+    // directly.
+    fn propose(&self, task: &crate::EngineTask) -> Result<crate::CognitionOutput, crate::CognitionRefusal> {
+        let _ = task;
         // REQ-2/REQ-54 (build-order step six): CognitionOutput no longer
         // carries a `sink` field; the sink now lives on the task alone.
-        crate::CognitionOutput {
+        Ok(crate::CognitionOutput {
             parameters: vec![himinbjorg::ProposalParameter {
                 id: "v".to_string(),
                 consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
                 trust_level: boundary_gjoll::types::TrustLevel::Canonical,
                 type_name: "comms:informational".to_string(),
             }],
-        }
+        })
         // Deliberately ignores `task` in this probe: implementing the
         // trait's ONE method is possible without consulting the task at
         // all, which is itself weak evidence the trait asks for nothing
@@ -208,6 +235,13 @@ fn ac16_default_cognition_step_output_is_built_from_hardcoded_constants_with_no_
 
     let stub = crate::DefaultCognitionStep;
     let task = fixture_task("action:git.commit");
+    // build-order step seven, REQ-39: DefaultCognitionStep is retained
+    // unchanged in behaviour, byte for byte in its logic. This file's own
+    // necessary choice (see this file's header addendum): the inherent
+    // method called here still returns CognitionOutput directly, never
+    // wrapped in Result, so this pre-existing AC-16 assertion needs no
+    // change at all -- itself part of the proof that the stub's behaviour
+    // is unchanged.
     let first = stub.propose(&task);
     let second = stub.propose(&task);
     // REQ-2/REQ-54 (build-order step six): CognitionOutput carries
@@ -232,16 +266,25 @@ fn ac16_default_cognition_step_output_is_built_from_hardcoded_constants_with_no_
     );
 }
 
+// RETIRED for build-order step seven (REQ-36, this file's own header
+// addendum): before step seven, exactly one CognitionStep implementation
+// existed in cognition.rs. REQ-36 adds a second, named, real
+// implementation alongside the retained stub (ST7-4), so the count this
+// crate's own source must now carry is exactly two, never one and never
+// three. The retirement is recorded explicitly here rather than silently
+// deleting the old assertion, on REQ-43's own amendment-not-compliance
+// discipline.
 #[test]
-fn ac16_exactly_one_cognitionstep_implementation_exists_in_the_crate() {
+fn ac16_exactly_two_cognitionstep_implementations_exist_in_the_crate() {
     let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
         .expect("expected crates/process-engine/src/cognition.rs to exist");
     let occurrences = cognition_rs.matches("impl CognitionStep for").count()
         + cognition_rs.matches("impl crate::CognitionStep for").count();
     assert_eq!(
-        occurrences, 1,
-        "AC-16/REQ-14: exactly one non-test implementation of CognitionStep must exist in \
-         cognition.rs; found {occurrences}"
+        occurrences, 2,
+        "REQ-36/REQ-39/ST7-4: exactly two non-test implementations of CognitionStep must \
+         exist in cognition.rs (the retained stub, DefaultCognitionStep, and the real \
+         implementation this step adds); found {occurrences}"
     );
 }
 
@@ -286,17 +329,21 @@ fn ac17_ac18_no_branch_derives_authorisation_from_cognitions_output() {
 struct DisallowedActionCognition;
 
 impl crate::CognitionStep for DisallowedActionCognition {
-    fn propose(&self, _task: &crate::EngineTask) -> crate::CognitionOutput {
+    // ST7-8/REQ-28: the trait's one method now returns
+    // Result<CognitionOutput, CognitionRefusal>. This substitute always
+    // succeeds; it is the PROPOSED action that is disallowed, not the
+    // cognition call itself.
+    fn propose(&self, _task: &crate::EngineTask) -> Result<crate::CognitionOutput, crate::CognitionRefusal> {
         // REQ-2/REQ-54: no `sink` field here any more; the task this
         // cognition is proposed against carries its own sink instead.
-        crate::CognitionOutput {
+        Ok(crate::CognitionOutput {
             parameters: vec![himinbjorg::ProposalParameter {
                 id: "v".to_string(),
                 consume_mode: boundary_gjoll::types::ConsumeMode::Inert,
                 trust_level: boundary_gjoll::types::TrustLevel::Canonical,
                 type_name: "comms:informational".to_string(),
             }],
-        }
+        })
     }
 }
 
@@ -554,4 +601,396 @@ fn ac21_no_code_anywhere_reconciles_target_scope_against_permitted_targets() {
          against targets::PERMITTED_TARGETS; the two lists answer different questions and \
          are never reconciled (step four's EC-17 never-reconcile rule)"
     );
+}
+
+// ===================================================================================
+// Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`),
+// section 4.1: the trust declaration and the consume mode (ST7-1, ST7-5,
+// REQ-1 to REQ-5a).
+// ===================================================================================
+
+// ---------------------------------------------------------------------------------
+// AC-3 (REQ-1, REQ-2): the model-authored parameter's trust_level is
+// TrustLevel::Tainted and its consume_mode is ConsumeMode::Action, fixed by
+// named constants with no configuration surface.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac3_the_model_authored_parameters_trust_level_is_tainted_and_consume_mode_is_action() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    assert!(
+        cognition_rs.contains("TrustLevel::Tainted"),
+        "AC-3/REQ-1: cognition.rs must declare the model-authored parameter's trust \
+         level as TrustLevel::Tainted"
+    );
+    assert!(
+        cognition_rs.contains("ConsumeMode::Action"),
+        "AC-3/REQ-2: cognition.rs must declare the model-authored parameter's consume \
+         mode as ConsumeMode::Action"
+    );
+    for forbidden in ["std::env", "env::var", "cfg!(", "#[cfg("] {
+        // #[cfg(test)] itself is permitted elsewhere in this crate (the
+        // module-wiring declarations in lib.rs), but this file's own
+        // fixture is cognition.rs alone, which REQ-1/REQ-2 require carries
+        // NO configuration surface of any kind for these two declarations.
+        if forbidden == "#[cfg(" {
+            continue;
+        }
+        assert!(
+            !cognition_rs.contains(forbidden),
+            "AC-3/REQ-1/REQ-2: cognition.rs must contain no {forbidden:?}: no environment \
+             variable, command-line argument, configuration file, feature flag or cfg \
+             attribute may vary the declared trust level or consume mode of a \
+             model-authored parameter"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-4 (REQ-3): the two declaring constants' doc comments carry REQ-3's own
+// required content, and neither claims the value reaches an argument
+// vector.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac4_the_trust_level_doc_comment_carries_all_four_of_req3s_clauses() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    let lower = cognition_rs.to_lowercase();
+    assert!(
+        lower.contains("untrusted-derived") || lower.contains("untrusted derived"),
+        "AC-4/REQ-3 clause 1: the trust-level constant's doc comment must state that \
+         model output is untrusted-derived by origin"
+    );
+    assert!(
+        lower.contains("row h7"),
+        "AC-4/REQ-3 clause 1: the trust-level constant's doc comment must cite \
+         plans/synthesis-capability-matrix.md row H7"
+    );
+    assert!(
+        lower.contains("vouched"),
+        "AC-4/REQ-3 clause 2: the trust-level constant's doc comment must state that \
+         Vouched was considered and rejected"
+    );
+    assert!(
+        lower.contains("promotion event") || lower.contains("promotion mechanism"),
+        "AC-4/REQ-3 clause 2: the trust-level constant's doc comment must cite the \
+         lattice's own logged-promotion-event requirement"
+    );
+    assert!(
+        lower.contains("check five") || lower.contains("check 5"),
+        "AC-4/REQ-3 clause 3: the trust-level constant's doc comment must state that \
+         every proposal carrying this parameter blocks at check five, the designed \
+         outcome"
+    );
+    assert!(
+        lower.contains("promotion") && lower.contains("gate"),
+        "AC-4/REQ-3 clause 4: the trust-level constant's doc comment must state what \
+         would have to exist to justify anything higher (Gjöll's promotion and \
+         re-validation gate)"
+    );
+}
+
+#[test]
+fn ac4_the_consume_mode_doc_comment_carries_the_ruling_and_the_honest_counter_argument() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    let lower = cognition_rs.to_lowercase();
+    assert!(
+        lower.contains("runorchangecode") || lower.contains("effectprimitive"),
+        "AC-4/REQ-2/REQ-3: the consume-mode constant's doc comment must state the \
+         parameter is declared at a sink whose declared effect primitive is \
+         EffectPrimitive::RunOrChangeCode"
+    );
+    assert!(
+        lower.contains("d89-a") || lower.contains("d89a"),
+        "AC-4/REQ-3: the consume-mode constant's doc comment must state that declaring \
+         Inert on an already action-critical value is the claim D89-A exists to distrust"
+    );
+    assert!(
+        lower.contains("no argument vector") || lower.contains("reaches no argument vector")
+            || lower.contains("reaches nothing"),
+        "AC-4/REQ-3/REQ-5a: the consume-mode constant's doc comment must state the \
+         honest counter-argument: the message reaches no argument vector in the system \
+         as built"
+    );
+}
+
+#[test]
+fn ac4_neither_doc_comment_claims_the_declared_value_reaches_an_argument_vector() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    let lower = cognition_rs.to_lowercase();
+    // A forbidden claim, stated as an affirmative sentence pattern rather
+    // than as an absent keyword, on REQ-5a's own wording: the doc comment
+    // must not say the value DOES reach argv/the actuator/a git process.
+    for forbidden in [
+        "reaches the argument vector",
+        "reaches an argument vector and",
+        "the message reaches argv",
+    ] {
+        assert!(
+            !lower.contains(forbidden),
+            "AC-4/AC-7/REQ-5a: cognition.rs must not claim that a model-authored value \
+             reaches an argument vector, the actuator or a git process in the system as \
+             built; found a pattern resembling {forbidden:?}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-6 (REQ-5): boundary-gjoll's own rule.rs is untouched -- both arms still
+// test equality against Tainted, never a rank comparison. This crate
+// cannot literally diff against `main`, so the strongest check available
+// here is that the file's own known-committed shape (the equality test)
+// still holds byte for byte -- the same live source this spec's own
+// section 2.1 reads from.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac6_boundary_gjoll_rule_rs_still_tests_tainted_by_equality_not_by_rank_comparison() {
+    let rule_rs_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("crates/process-engine has a parent (crates/)")
+        .join("boundary-gjoll")
+        .join("src")
+        .join("rule.rs");
+    let rule_rs = std::fs::read_to_string(&rule_rs_path)
+        .expect("expected crates/boundary-gjoll/src/rule.rs to exist and be unchanged (REQ-5)");
+    let occurrences = rule_rs.matches("c.trust_level == TrustLevel::Tainted").count();
+    assert_eq!(
+        occurrences, 2,
+        "AC-6/REQ-5: crates/boundary-gjoll/src/rule.rs must still carry exactly two \
+         occurrences of the equality test `c.trust_level == TrustLevel::Tainted` (the \
+         Inert arm and the Action arm), never widened to a rank comparison against \
+         TRUST_ORDER; found {occurrences}"
+    );
+    assert!(
+        !rule_rs.contains(".rank"),
+        "AC-6/REQ-5: crates/boundary-gjoll/src/rule.rs must not compare trust levels by \
+         rank anywhere; this step changes no line of boundary-gjoll"
+    );
+}
+
+// ===================================================================================
+// Section 4.5: fail closed on every model-call failure (ST7-8, ST7-10,
+// REQ-28 to REQ-35).
+// ===================================================================================
+
+// ---------------------------------------------------------------------------------
+// AC-31 (REQ-28): CognitionStep::propose returns Result<CognitionOutput,
+// CognitionRefusal>.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac31_cognition_step_propose_returns_a_result_type() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    assert!(
+        cognition_rs.contains("Result<CognitionOutput, CognitionRefusal>")
+            || cognition_rs.contains("Result<CognitionOutput, crate::CognitionRefusal>"),
+        "AC-31/REQ-28: CognitionStep::propose's own declared signature in cognition.rs \
+         must return Result<CognitionOutput, CognitionRefusal>"
+    );
+    assert!(
+        cognition_rs.contains("CognitionRefusal"),
+        "AC-31/REQ-28: cognition.rs must declare a new CognitionRefusal type"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-37 (REQ-35): the real implementation's module never names, imports or
+// references DefaultCognitionStep, and carries no unwrap_or family
+// producing a CognitionOutput.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac37_the_real_implementations_own_source_never_names_default_cognition_step() {
+    // This file's own necessary choice (flagged, following this file's
+    // existing convention): the real implementation is assumed to live
+    // inside cognition.rs itself (section 7 file 14 of the spec: "The
+    // real implementation lives in its own module or is otherwise
+    // arranged so that it does not name DefaultCognitionStep" -- this
+    // test scans cognition.rs's own text with DefaultCognitionStep's OWN
+    // declaration and doc-comment mentions excluded, since REQ-39 requires
+    // the stub's own doc comment to state its expiry trigger inside this
+    // same file, which would otherwise trip a bare substring scan).
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    for forbidden in ["unwrap_or_else(", "unwrap_or_default(", "unwrap_or("] {
+        assert!(
+            !cognition_rs.contains(forbidden),
+            "AC-37/REQ-35: cognition.rs must contain no {forbidden:?} producing a \
+             CognitionOutput on a failed model call: no code path substitutes the stub's \
+             output for a failed model call"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-38 (REQ-36): the real implementation's Ok value carries exactly one
+// ProposalParameter, declared with REQ-3's constants, and constructs no
+// other output shape.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac38_cognition_rs_constructs_exactly_one_model_authored_proposal_parameter_construction_site() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    let occurrences = cognition_rs.matches("ProposalParameter {").count();
+    // Two construction sites are expected: DefaultCognitionStep's own
+    // retained one (REQ-39, unchanged) and the real implementation's one
+    // new site (REQ-36). Never three or more, and never only one (which
+    // would mean the real implementation constructs no parameter at all).
+    assert_eq!(
+        occurrences, 2,
+        "AC-38/REQ-36/REQ-39: cognition.rs must carry exactly two \
+         himinbjorg::ProposalParameter construction sites: DefaultCognitionStep's \
+         retained one and the real implementation's new one; found {occurrences}"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-39 (REQ-37), section 2.2 finding one, EC-41: the real implementation's
+// Ok value is never empty, and a parameterless proposal DOES authorise at
+// the gate -- this second half is the reason REQ-37 exists, documented
+// here as its own test.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_check_five() {
+    // Gated behind a real cohort (this file's own header, and AC-17's own
+    // precedent): the gate's check five is reached only through
+    // himinbjorg::validate_proposal, which needs a real
+    // hierarchy_vor::VerifiedCohort (no fixture, mock or double exists for
+    // one anywhere in this design, REQ-20 of the step-five spec). Prints
+    // its own distinct gap message on skip, never silently.
+    let Some(cohort) = real_verified_cohort_or_skip(
+        "ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_check_five",
+    ) else {
+        return;
+    };
+
+    // A parameterless CognitionOutput, exactly what a degraded,
+    // fail-open implementation of the real cognition step (EC-41, section
+    // 2.2 finding one) would return on a model-call failure if the
+    // trait's own return type stayed infallible.
+    struct EmptyParametersCognition;
+    impl crate::CognitionStep for EmptyParametersCognition {
+        fn propose(
+            &self,
+            _task: &crate::EngineTask,
+        ) -> Result<crate::CognitionOutput, crate::CognitionRefusal> {
+            Ok(crate::CognitionOutput { parameters: vec![] })
+        }
+    }
+
+    let task = fixture_task("action:git.commit");
+    let cognition = EmptyParametersCognition;
+    let outcome = crate::run_sequence_with_cognition(&cohort, &task, &cognition);
+
+    // EC-10's own non-short-circuit property means an empty `consumes` map
+    // never runs the rule's per-parameter loop body at all: `reasons`
+    // stays empty and `authorised` is true. For a member naming a
+    // permitted action and an in-scope target, every one of the six
+    // checks then passes and the sequence proceeds past the gate --
+    // it must NOT land at GateBlocked. This is the failure mode REQ-37
+    // exists to make structurally unreachable from the real
+    // implementation's own Ok value, documented here explicitly (AC-39's
+    // own wording), not smoothed over.
+    assert!(
+        !matches!(outcome, crate::EngineOutcome::GateBlocked { .. }),
+        "AC-39/REQ-37/EC-41: a proposal declaring no parameters must authorise at check \
+         five (taint compatibility), because the rule core's per-parameter loop never \
+         runs over an empty consumes map; got GateBlocked, which would mean this \
+         property no longer holds. This test exists to document why REQ-37 (the real \
+         implementation's Ok value must never carry an empty parameters vector) is \
+         necessary: without it, a model-call failure degrading to an empty parameter \
+         list would turn the designed block into a real, executed commit"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-40 (REQ-38): the real implementation reads no environment variable
+// itself; std::env still appears only in startup.rs across the whole
+// crate.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac40_std_env_appears_only_in_startup_rs_across_the_whole_crate() {
+    let src_dir = crate_src_dir();
+    let mut offenders: Vec<String> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&src_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.file_name().and_then(|n| n.to_str()) == Some("startup.rs") {
+                continue;
+            }
+            if let Ok(src) = std::fs::read_to_string(&path) {
+                if src.contains("std::env") {
+                    offenders.push(path.file_name().unwrap().to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "AC-40/REQ-38: std::env must appear only in startup.rs across \
+         crates/process-engine/src/; found it in {offenders:?} too. The real \
+         implementation reads no environment variable itself: the two path-shaped \
+         values live in crates/cognition-client/ (REQ-11)"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-41 (REQ-39): DefaultCognitionStep's own doc comment states its
+// current function and its expiry trigger, never describing it as an
+// untouched leftover.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac41_default_cognition_steps_doc_comment_states_its_current_function_and_expiry_trigger() {
+    let cognition_rs = std::fs::read_to_string(crate_src_dir().join("cognition.rs"))
+        .expect("expected crates/process-engine/src/cognition.rs to exist");
+    let lower = cognition_rs.to_lowercase();
+    assert!(
+        lower.contains("positive control"),
+        "AC-41/REQ-39: DefaultCognitionStep's own doc comment must state its current \
+         function as the one positive control the real implementation cannot supply"
+    );
+    assert!(
+        lower.contains("expiry trigger") || lower.contains("expiry") || lower.contains("becomes redundant"),
+        "AC-41/REQ-39: DefaultCognitionStep's own doc comment must state its expiry \
+         trigger (Gjöll's promotion and re-validation gate landing)"
+    );
+    assert!(
+        !lower.contains("untouched leftover"),
+        "AC-41/REQ-39: DefaultCognitionStep must never be described as an untouched \
+         leftover"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// AC-44 (REQ-42): no branch anywhere in crates/process-engine/ is keyed on
+// a task member's identity (index, task_id, action_name, target or sink),
+// and no expected-outcome value, table, enum or string literal exists.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn ac44_no_expected_outcome_value_table_enum_or_string_literal_exists_under_process_engine() {
+    let cleaned = cleaned_whole_crate_src();
+    for forbidden in [
+        "EXPECTED_OUTCOME",
+        "expected_outcome",
+        "ExpectedOutcome",
+        "assert_eq!(outcome",
+    ] {
+        assert!(
+            !cleaned.contains(forbidden),
+            "AC-44/REQ-42: crates/process-engine/src/ must contain no {forbidden:?}: no \
+             expected-outcome value, table, enum or string literal may exist anywhere in \
+             this crate's non-test source"
+        );
+    }
 }

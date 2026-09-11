@@ -2,6 +2,21 @@
 //! to AC-34, and edge cases EC-3 to EC-6 of
 //! `.opencode/plans/process-engine-step-five-spec.md`.
 //!
+//! **Build-order step seven addendum
+//! (`.opencode/plans/build-order-step-seven-spec.md` REQ-49; AC-51).**
+//! `ACCEPTED_SELECTOR_NAMES` widens from five names to seven in the same
+//! commit that adds M1 and M2 to `main.rs`'s own `TASK_MEMBERS`.
+//! `StartupRefusal` gains no new field for this step (the two sidecar path
+//! variables live in `crates/cognition-client/`, read at cognition time, on
+//! this spec's own ST7-1/finding-four ruling that a fourth startup
+//! precondition would kill step six's positive control, EC-43): this
+//! file's own existing three-field `StartupRefusal` assumption from step
+//! five/six is unchanged. This file's own tests below prove the two new
+//! selector names (`commit-model-fixture-target`,
+//! `merge-model-fixture-target`) are accepted and that near misses on them
+//! still refuse, extending `ac18_selector_value_unrecognised_refuses_fail_closed_with_no_fuzzy_match`'s
+//! own near-miss set to the two new names.
+//!
 //! THIS FILE WILL FAIL TO COMPILE until `crates/process-engine/src/startup.rs`
 //! exists at real fidelity, on `sequence_shape.rs`'s own header note for the
 //! same expected RED state.
@@ -694,5 +709,106 @@ fn ac34_startup_module_source_contains_no_default_fallback_for_any_precondition(
              default, fuzzy or case-folded value for any failing precondition; found a \
              pattern resembling {forbidden:?}"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`
+// REQ-49; AC-51): the two new selector names, M1's
+// "commit-model-fixture-target" and M2's "merge-model-fixture-target", are
+// accepted; near misses on them still refuse with no fuzzy match.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn m1_selector_name_commit_model_fixture_target_resolves() {
+    let repo_dir = valid_looking_working_repo_dir("m1-selector");
+
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some("commit-model-fixture-target"),
+    );
+
+    match result {
+        Err(refusal) => {
+            assert!(
+                refusal.selector.is_none(),
+                "REQ-49/AC-51: M1's own selector name, commit-model-fixture-target, must \
+                 resolve to a member of the widened, seven-name accepted set; got a \
+                 selector refusal: {:?}",
+                refusal.selector,
+            );
+        }
+        Ok(_) => {
+            // Also acceptable: resolving fully (secret and working-repo
+            // preconditions both happening to succeed too) is a stronger
+            // demonstration, not a weaker one.
+        }
+    }
+}
+
+#[test]
+fn m2_selector_name_merge_model_fixture_target_resolves() {
+    let repo_dir = valid_looking_working_repo_dir("m2-selector");
+
+    let result = crate::startup::resolve_startup_preconditions(
+        None,
+        Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+        Some("merge-model-fixture-target"),
+    );
+
+    match result {
+        Err(refusal) => {
+            assert!(
+                refusal.selector.is_none(),
+                "REQ-49/AC-51: M2's own selector name, merge-model-fixture-target, must \
+                 resolve to a member of the widened, seven-name accepted set; got a \
+                 selector refusal: {:?}",
+                refusal.selector,
+            );
+        }
+        Ok(_) => {}
+    }
+}
+
+#[test]
+fn near_misses_on_the_two_new_selector_names_refuse_with_no_fuzzy_match() {
+    let repo_dir = valid_looking_working_repo_dir("m1-m2-near-miss");
+
+    for bogus in [
+        "commit-model-fixture-targe",
+        "COMMIT-MODEL-FIXTURE-TARGET",
+        " commit-model-fixture-target ",
+        "merge-model-fixture-target-extra",
+        "MERGE-MODEL-FIXTURE-TARGET",
+        "commit-fixture-target-model",
+    ] {
+        let result = crate::startup::resolve_startup_preconditions(
+            None,
+            Some(repo_dir.to_str().expect("scratch path must be valid UTF-8")),
+            Some(bogus),
+        );
+
+        match result {
+            Err(refusal) => {
+                let selector_problem = refusal.selector.as_deref().unwrap_or_else(|| {
+                    panic!(
+                        "REQ-49/AC-51: selector value {bogus:?} must refuse, naming \
+                         HEIMDALL_ENGINE_TASK; got no selector refusal at all (refusal: \
+                         {refusal:?})"
+                    )
+                });
+                assert!(
+                    selector_problem.contains("HEIMDALL_ENGINE_TASK"),
+                    "REQ-49/AC-51: the refusal for {bogus:?} must name the failing \
+                     environment variable by name; got {selector_problem:?}"
+                );
+            }
+            Ok(_) => panic!(
+                "REQ-49/AC-51: selector value {bogus:?} is not a byte-exact member of the \
+                 widened, seven-name closed set and must never succeed by case-folding, \
+                 trimming, prefix or near-miss acceptance"
+            ),
+        }
     }
 }

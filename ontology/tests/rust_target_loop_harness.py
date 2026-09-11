@@ -5,6 +5,33 @@ docstring stating what green proves and does not, a `main()` returning 0
 clean or 1 on failure, a `control_check()` negative control run first, and
 the checks run in a fixed, documented order.
 
+**Widened for build-order step seven
+(`.opencode/plans/build-order-step-seven-spec.md` REQ-59; expected
+`DECISIONS.md` row D115), on exactly three axes, and no other, per section
+2.2 finding three of that spec:**
+
+  1. `PERMITTED_DEPENDENCIES` widens from three names to four, adding
+     `cognition-client`, mirroring `rust_process_engine_harness.py`'s own
+     REQ-58 widening (never imported from it, REQ-40's own restated
+     instruction that a target-loop regression and an engine-crate posture
+     regression are different reasons to change).
+  2. The task-array cardinality widens from five to seven everywhere it is
+     pinned: the length-assertion expectation, the per-member
+     assertion-count minimum, and the `[&str; 7]` shape expectation for
+     `startup.rs`'s own `ACCEPTED_SELECTOR_NAMES` array. Two new members,
+     M1 (`commit-model-fixture-target`) and M2
+     (`merge-model-fixture-target`), join `TASK_TABLE`.
+  3. `derive_selector_name` is amended to REQ-48's own rule: the action
+     name's leaf, joined by a single hyphen to a fixed cognition-binding
+     token (omitted entirely for stub-bound members, so the five existing
+     names stay byte-identical), joined by a single hyphen to the target.
+
+  The `std::process`, `std::net`, filesystem-write and one-binary postures
+  this module restates are **not** touched, because section 2.2 finding
+  two of the step-seven spec establishes their expectations do not move:
+  the sixth crate's spawn lives wholly inside `crates/cognition-client/`,
+  never inside `crates/process-engine/src/`.
+
 Run from the repo root:
 
     python3 -m ontology.tests.rust_target_loop_harness
@@ -145,12 +172,29 @@ TASK_SELECTOR_ENV_VAR_NAME = "TASK_SELECTOR_ENV_VAR"
 TASK_SELECTOR_ENV_VAR_VALUE = "HEIMDALL_ENGINE_TASK"
 
 # Duplicated (never imported from rust_process_engine_harness.py, REQ-40's
-# own instruction): the disclosed three-name dependency allowlist and the
-# one forbidden name.
+# own instruction): the disclosed dependency allowlist and the one
+# forbidden name.
+#
+# WIDENED for build-order step seven (REQ-59 axis 1): a fourth name,
+# `cognition-client`, mirroring rust_process_engine_harness.py's own REQ-58
+# widening. Duplicated rather than imported, on this file's own existing
+# discipline.
 PERMITTED_DEPENDENCIES: frozenset[str] = frozenset(
-    {"himinbjorg", "hierarchy-vor", "boundary-gjoll"}
+    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client"}
 )
 FORBIDDEN_DEPENDENCIES: frozenset[str] = frozenset({"actuator-git"})
+
+# REQ-48's amended selector-derivation rule (build-order step seven): the
+# fixed token joined between the action-name leaf and the target for a
+# member bound to the REAL cognition implementation. Omitted entirely for
+# stub-bound members (REQ-48's own "token omitted for stub-bound members"
+# clause), so the five existing selector names stay byte-identical to step
+# six's. This harness's own necessary choice of concrete token text
+# ("model"), disclosed here: an implementer choosing a different token
+# satisfies the spec provided the two new selector names it derives match
+# what `main.rs` actually commits (REQ-47's own table:
+# "commit-model-fixture-target", "merge-model-fixture-target").
+REAL_COGNITION_BINDING_TOKEN = "model"
 
 _PERMITTED_STD_PROCESS_OCCURRENCE = "std::process::exit"
 _PERMITTED_STD_PROCESS_FILE = "main.rs"
@@ -193,12 +237,21 @@ _DEFAULTING_OR_FUZZY_PATTERNS: tuple[str, ...] = (
 # the actuator's own constants (REQ-4), and never read by this harness from
 # any other list either: this is this harness's own, independent copy of
 # the spec's fixed table, exactly as REQ-6 itself requires of `main.rs`.
-TASK_TABLE: tuple[tuple[str, str, str, str, str, int], ...] = (
-    ("commit-fixture-target", "target-loop-commit-fixture-target", "action:git.commit", "fixture-target", "sink:git.commit", 0),
-    ("push-fixture-integration-branch", "target-loop-push-fixture-integration-branch", "action:git.push", "fixture-integration-branch", "sink:git.push", 0),
-    ("merge-fixture-target", "target-loop-merge-fixture-target", "action:git.merge", "fixture-target", "sink:git.commit", 0),
-    ("push-main", "target-loop-push-main", "action:git.push", "main", "sink:git.push", 0),
-    ("push-fixture-target", "target-loop-push-fixture-target", "action:git.push", "fixture-target", "sink:git.push", 0),
+#
+# WIDENED for build-order step seven (REQ-59 axis 2, REQ-47's own table):
+# two new members, M1 and M2, both bound to the REAL cognition
+# implementation. A seventh element, the cognition-binding flag
+# ("stub"/"real"), is added to each row's own tuple shape so
+# `_synthetic_full_main_rs` and `derive_selector_name`'s own callers can
+# apply REQ-48's amended rule without a second, parallel table.
+TASK_TABLE: tuple[tuple[str, str, str, str, str, int, str], ...] = (
+    ("commit-fixture-target", "target-loop-commit-fixture-target", "action:git.commit", "fixture-target", "sink:git.commit", 0, "stub"),
+    ("push-fixture-integration-branch", "target-loop-push-fixture-integration-branch", "action:git.push", "fixture-integration-branch", "sink:git.push", 0, "stub"),
+    ("merge-fixture-target", "target-loop-merge-fixture-target", "action:git.merge", "fixture-target", "sink:git.commit", 0, "stub"),
+    ("push-main", "target-loop-push-main", "action:git.push", "main", "sink:git.push", 0, "stub"),
+    ("push-fixture-target", "target-loop-push-fixture-target", "action:git.push", "fixture-target", "sink:git.push", 0, "stub"),
+    ("commit-model-fixture-target", "cognition-model-commit-fixture-target", "action:git.commit", "fixture-target", "sink:git.commit", 0, "real"),
+    ("merge-model-fixture-target", "cognition-model-merge-fixture-target", "action:git.merge", "fixture-target", "sink:git.commit", 0, "real"),
 )
 
 # The real SHA-256 digest of the committed TARGET_LOOP_EVIDENCE.md (REQ-42),
@@ -210,13 +263,22 @@ TASK_TABLE: tuple[tuple[str, str, str, str, str, int], ...] = (
 PINNED_EVIDENCE_SHA256 = "cf91d0383793abc6b1c428caeb8299c170df72078fd2b6e19ba116d295a3f394"
 
 
-def derive_selector_name(action_name: str, target: str) -> str:
-    """REQ-11's own positive derivation rule: the action name's leaf (the
-    substring after the `action:git.` prefix) joined to the target by a
-    single hyphen. A pure function, so a mismatch is provable independent
-    of any file scan."""
+def derive_selector_name(action_name: str, target: str, cognition_binding: str = "stub") -> str:
+    """REQ-11's own positive derivation rule, AMENDED for build-order step
+    seven (REQ-48, REQ-59 axis 3): the action name's leaf (the substring
+    after the `action:git.` prefix), joined by a single hyphen to a fixed
+    cognition-binding token where the binding is `"real"`, joined by a
+    single hyphen to the target. The token is OMITTED ENTIRELY for
+    stub-bound members (the default), so the five existing selector names
+    stay byte-identical to step six's own. A pure function, so a mismatch
+    is provable independent of any file scan. The vocabulary carries no
+    verdict word by construction: `cognition_binding` names only WHICH
+    IMPLEMENTATION PROPOSES the action, never what is expected to happen to
+    it (REQ-48's own load-bearing property)."""
     prefix = "action:git."
     leaf = action_name[len(prefix):] if action_name.startswith(prefix) else action_name
+    if cognition_binding == "real":
+        return f"{leaf}-{REAL_COGNITION_BINDING_TOKEN}-{target}"
     return f"{leaf}-{target}"
 
 
@@ -300,15 +362,22 @@ def _count_non_emptiness_assertions(src: str) -> int:
     return len(re.findall(r"const\s+_\s*:\s*\(\)\s*=\s*assert!", src))
 
 
-def _has_pairwise_distinctness_assertion(src: str) -> bool:
+def _has_pairwise_distinctness_assertion(src: str, min_comparisons: int = 4) -> bool:
     """Mechanical proxy, not a full parser (this repository's own
-    established discipline): a compile-time assertion asserting five
-    values pairwise distinct needs at least four `!=` comparisons (a
-    chained a != b && b != c && c != d && d != e shape, or equivalent);
-    fewer than that cannot possibly cover all five members, so this
-    threshold is a necessary, not sufficient, mechanical signal."""
+    established discipline): a compile-time assertion asserting N values
+    pairwise distinct needs at least N-1 `!=` comparisons (a chained
+    a != b && b != c && ... shape, or equivalent); fewer than that cannot
+    possibly cover all N members, so this threshold is a necessary, not
+    sufficient, mechanical signal.
+
+    WIDENED for build-order step seven (REQ-59 axis 2): `min_comparisons`
+    defaults to 4 (five members' own minimum, step six's own value) but
+    the seven-member array's own callers below pass 6 (REQ-48's own "the
+    seven names are pairwise distinct, asserted at compile time over all
+    21 pairs" -- a full 21-pair assertion has at least 6 comparisons in
+    even the sparsest chained form)."""
     for m in re.finditer(r"const\s+_\s*:\s*\(\)\s*=\s*assert!\(.*?\)\s*;", src, re.DOTALL):
-        if m.group(0).count("!=") >= 4:
+        if m.group(0).count("!=") >= min_comparisons:
             return True
     return False
 
@@ -318,9 +387,10 @@ def check_closed_task_set(main_rs_path: Path = MAIN_RS, table: tuple = TASK_TABL
         return CheckResult(ok=False, detail=f"{main_rs_path} does not exist")
     src = _strip_line_comments(main_rs_path.read_text(encoding="utf-8"))
     violations: list[str] = []
+    member_count = len(table)
 
     for row in table:
-        selector, task_id, action_name, target, sink, _cost = row
+        selector, task_id, action_name, target, sink, _cost, _binding = row
         for label, value in (
             ("selector name", selector),
             ("task_id", task_id),
@@ -331,41 +401,47 @@ def check_closed_task_set(main_rs_path: Path = MAIN_RS, table: tuple = TASK_TABL
             literal = f'"{value}"'
             if literal not in src:
                 violations.append(
-                    f"member {selector!r}: missing literal {literal} ({label}) -- REQ-6's "
+                    f"member {selector!r}: missing literal {literal} ({label}) -- REQ-47's "
                     f"table requires this value verbatim"
                 )
 
-    if _count_len_n_assertions(src, 5) == 0:
+    # WIDENED for build-order step seven (REQ-59 axis 2, REQ-49): the
+    # length-assertion expectation moves from five to seven.
+    if _count_len_n_assertions(src, member_count) == 0:
         violations.append(
-            "no compile-time `assert!(<array>.len() == 5)` found in main.rs (REQ-9): an "
-            "edit that adds or removes a member must fail the build, not a later test run"
+            f"no compile-time `assert!(<array>.len() == {member_count})` found in "
+            f"main.rs (REQ-49): an edit that adds or removes a member must fail the "
+            f"build, not a later test run"
         )
 
     assertion_count = _count_non_emptiness_assertions(src)
-    expected_minimum = 5 * 5 + 1  # five fields per member, five members, plus the length assertion
+    # five fields per member, member_count members, plus the length assertion.
+    expected_minimum = 5 * member_count + 1
     if assertion_count < expected_minimum:
         violations.append(
             f"found only {assertion_count} `const _: () = assert!` occurrence(s) in "
-            f"main.rs; expected at least {expected_minimum} (REQ-8: one non-emptiness "
-            f"assertion per task_id/action_name/target/sink/selector-name, for each of "
-            f"the five members, plus the array's own length assertion)"
+            f"main.rs; expected at least {expected_minimum} (REQ-8/REQ-47: one "
+            f"non-emptiness assertion per task_id/action_name/target/sink/selector-name, "
+            f"for each of the {member_count} members, plus the array's own length "
+            f"assertion)"
         )
 
-    if not _has_pairwise_distinctness_assertion(src):
+    if not _has_pairwise_distinctness_assertion(src, min_comparisons=max(4, member_count - 1)):
         violations.append(
-            "no compile-time assertion found asserting the five selector names are "
-            "pairwise distinct (REQ-11): expected an `assert!` containing at least four "
-            "`!=` comparisons"
+            f"no compile-time assertion found asserting the {member_count} selector "
+            f"names are pairwise distinct (REQ-48): expected an `assert!` containing at "
+            f"least {max(4, member_count - 1)} `!=` comparisons"
         )
 
     if violations:
         return CheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
     return CheckResult(
         ok=True,
-        detail="all thirty of REQ-6's literal values are present verbatim, the array's "
-               "compile-time length assertion asserts exactly five, at least 26 "
-               "non-emptiness assertions are present, and a pairwise-distinctness "
-               "assertion over the five selector names is present.",
+        detail=f"all of REQ-47's literal values ({member_count} members) are present "
+               f"verbatim, the array's compile-time length assertion asserts exactly "
+               f"{member_count}, at least {expected_minimum - 1} non-emptiness assertions "
+               f"are present, and a pairwise-distinctness assertion over the "
+               f"{member_count} selector names is present.",
     )
 
 
@@ -441,36 +517,57 @@ def check_selector_containment(
         # prefix whose companion `_ACTION_NAME` or `_TARGET` constant fails
         # to match is silently dropped BY THE EXTRACTOR, so a for-loop over
         # its result alone can report a clean pass having checked fewer than
-        # five members, or none. This is an EXTRACTION-SHAPE problem --
-        # the regex scan could not find all five members' own constants,
-        # e.g. because a future edit to main.rs's constant-declaration shape
-        # inlined values directly into the struct literal instead of
-        # declaring them via named `const <PREFIX>_ACTION_NAME`/`_TARGET`
-        # constants -- and is reported distinctly from a REQ-11 derivation
+        # seven members, or none. This is an EXTRACTION-SHAPE problem --
+        # the regex scan could not find all seven members' own constants
+        # (WIDENED for build-order step seven, REQ-59 axis 2), e.g. because
+        # a future edit to main.rs's constant-declaration shape inlined
+        # values directly into the struct literal instead of declaring
+        # them via named `const <PREFIX>_ACTION_NAME`/`_TARGET` constants
+        # -- and is reported distinctly from a REQ-11/REQ-48 derivation
         # mismatch (checked in the loop below), so a reader is never left
         # unsure which of the two failed.
-        if len(extracted_triples) != 5:
+        if len(extracted_triples) != 7:
             violations.append(
                 f"main.rs: extract_member_selector_triples found only "
                 f"{len(extracted_triples)} member (action_name, target, selector_name) "
-                f"triple(s) by regex scan, but exactly 5 are expected -- this is an "
-                f"EXTRACTION-SHAPE problem (the scan could not locate all five members' "
-                f"own companion `_ACTION_NAME`/`_TARGET` constants), not a REQ-11 "
+                f"triple(s) by regex scan, but exactly 7 are expected -- this is an "
+                f"EXTRACTION-SHAPE problem (the scan could not locate all seven members' "
+                f"own companion `_ACTION_NAME`/`_TARGET` constants), not a REQ-11/REQ-48 "
                 f"derivation mismatch; a change to main.rs's constant-declaration shape "
                 f"(for example inlining a member's values directly into the struct "
                 f"literal instead of via named constants) would otherwise silently "
                 f"reduce how many members this check actually examines, down to zero, "
                 f"while still reporting a clean pass"
             )
+        # REQ-48's own amended rule (build-order step seven): a member's
+        # selector name may be derived under EITHER the stub-bound rule
+        # (no token) or the real-bound rule (the fixed token). This
+        # harness's own disclosed choice, since the exact field name
+        # `main.rs` uses to record a member's cognition binding is not
+        # fixed by the spec (REQ-46 leaves the field's own name to the
+        # implementer): rather than requiring a specific constant name to
+        # extract the binding directly, this check accepts a selector name
+        # that matches EITHER derivation and reports a mismatch only when
+        # NEITHER derivation produces the committed name. This is strictly
+        # weaker than a binding-aware check, and is disclosed as such: it
+        # still catches every case this harness's own negative controls
+        # plant (a selector name matching neither rule), but it would not
+        # catch a member's binding token used inconsistently with which
+        # CognitionStep it actually binds. That residual belongs to the
+        # Rust suite's own compile-time and runtime assertions instead
+        # (crates/process-engine/unit_tests/startup_failclosed.rs's own
+        # REQ-49 additions), which this harness does not re-derive.
         for prefix, action_name, target, selector_name in extracted_triples:
-            derived = derive_selector_name(action_name, target)
-            if derived != selector_name:
+            derived_stub = derive_selector_name(action_name, target, "stub")
+            derived_real = derive_selector_name(action_name, target, "real")
+            if selector_name not in (derived_stub, derived_real):
                 violations.append(
-                    f"main.rs: {prefix}_SELECTOR_NAME is {selector_name!r}, but REQ-11's "
-                    f"derivation rule applied to {prefix}_ACTION_NAME={action_name!r} and "
-                    f"{prefix}_TARGET={target!r} derives {derived!r} instead -- an edit to "
-                    f"the action name or target without the matching selector-name edit "
-                    f"would otherwise pass undetected"
+                    f"main.rs: {prefix}_SELECTOR_NAME is {selector_name!r}, but REQ-48's "
+                    f"amended derivation rule applied to {prefix}_ACTION_NAME={action_name!r} "
+                    f"and {prefix}_TARGET={target!r} derives {derived_stub!r} (stub-bound) "
+                    f"or {derived_real!r} (real-bound) instead -- an edit to the action "
+                    f"name or target without the matching selector-name edit would "
+                    f"otherwise pass undetected"
                 )
 
     if violations:
@@ -499,12 +596,20 @@ def check_selector_containment(
 # which would drift silently the same way finding I2 itself describes.
 # ---------------------------------------------------------------------------------
 
+# WIDENED for build-order step seven (REQ-59 axis 2): both array-shape
+# expectations move from the literal `5` to the literal `7`, matching
+# REQ-49's own "the array's compile-time length assertion is updated to
+# assert exactly seven" and "startup.rs's own independent
+# ACCEPTED_SELECTOR_NAMES array is widened to seven in the same commit".
+_TASK_MEMBERS_ARRAY_LEN = 7
 _TASK_MEMBERS_ARRAY_RE = re.compile(
-    r"const\s+TASK_MEMBERS\s*:\s*\[EngineTaskMember;\s*5\]\s*=\s*\[(.*?)\];", re.DOTALL
+    rf"const\s+TASK_MEMBERS\s*:\s*\[EngineTaskMember;\s*{_TASK_MEMBERS_ARRAY_LEN}\]\s*=\s*\[(.*?)\];",
+    re.DOTALL,
 )
 _MEMBER_SELECTOR_FIELD_RE = re.compile(r"selector_name\s*:\s*(\w+)_SELECTOR_NAME")
 _ACCEPTED_SELECTOR_NAMES_ARRAY_RE = re.compile(
-    r"const\s+ACCEPTED_SELECTOR_NAMES\s*:\s*\[&str;\s*5\]\s*=\s*\[(.*?)\];", re.DOTALL
+    rf"const\s+ACCEPTED_SELECTOR_NAMES\s*:\s*\[&str;\s*{_TASK_MEMBERS_ARRAY_LEN}\]\s*=\s*\[(.*?)\];",
+    re.DOTALL,
 )
 _QUOTED_STRING_RE = re.compile(r'"([^"]*)"')
 
@@ -829,61 +934,78 @@ def run_rust_suite(crate_dir: Path = CRATE_DIR) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------------
 
 
-def _synthetic_main_rs_all_five(extra_asserts: int = 0, distinct_assert: bool = True) -> str:
+def _synthetic_main_rs_all_members(
+    extra_asserts: int = 0, distinct_assert: bool = True, table: tuple = TASK_TABLE
+) -> str:
+    """WIDENED for build-order step seven (REQ-59 axis 2): parameterised by
+    `table` (`TASK_TABLE`'s own seven rows by default) rather than hardcoded
+    at five, so the length assertion and the pairwise-distinctness
+    assertion both scale with whatever table is passed -- used by the
+    six-member and eight-member negative controls below, which must fail
+    against the SEVEN-member expectation now baseline, not the five-member
+    one step six pinned."""
     lines = ["#![forbid(unsafe_code)]", "fn main() {}", ""]
     asserts = 0
-    for row in TASK_TABLE:
-        selector, task_id, action_name, target, sink, _cost = row
+    for row in table:
+        selector, task_id, action_name, target, sink, _cost, _binding = row
         for value in (task_id, action_name, target, sink, selector):
             lines.append(f'const _: () = assert!(!"{value}".is_empty());')
             asserts += 1
     for i in range(extra_asserts):
         lines.append(f'const _: () = assert!(!"filler-{i}".is_empty());')
         asserts += 1
-    lines.append('const _: () = assert!(TASK_MEMBERS.len() == 5);')
+    lines.append(f'const _: () = assert!(TASK_MEMBERS.len() == {len(table)});')
     if distinct_assert:
-        names = [row[0] for row in TASK_TABLE]
+        names = [row[0] for row in table]
         chain = " && ".join(f'"{names[i]}" != "{names[i+1]}"' for i in range(len(names) - 1))
         lines.append(f"const _: () = assert!({chain});")
     return "\n".join(lines)
 
 
-_MEMBER_PREFIXES: tuple[str, ...] = ("P1", "P2", "N1", "N2", "N3")
+# RETIRED name, kept as an alias for build-order step seven (REQ-59's own
+# amendment discipline: an explicit retirement rather than a silent
+# rename): every existing call site below now uses
+# `_synthetic_main_rs_all_members` directly.
+_synthetic_main_rs_all_five = _synthetic_main_rs_all_members
+
+_MEMBER_PREFIXES: tuple[str, ...] = ("P1", "P2", "N1", "N2", "N3", "M1", "M2")
 
 
 def _synthetic_full_main_rs(
     selector_overrides: dict[str, str] | None = None,
     member_order: list[int] | None = None,
+    table: tuple = TASK_TABLE,
 ) -> str:
     """Builds a synthetic main.rs carrying the REAL file's own shape (one
     `const <PREFIX>_SELECTOR_NAME`/`_ACTION_NAME`/`_TARGET` triple per
     member, and one `TASK_MEMBERS` array literal referencing them by
     name, in `EngineTaskMember { selector_name: <PREFIX>_SELECTOR_NAME,
-    ... }` form), on `TASK_TABLE`'s own five rows. Used by both the
-    finding-I1 derivation-application controls and the finding-I2
-    order-agreement controls below, so a single fixture generator proves
-    both checks bite against a realistic, committed-shaped file rather
-    than only against `derive_selector_name`'s or the array-order
-    extraction's own isolated inputs.
+    ... }` form), on `TASK_TABLE`'s own seven rows (WIDENED for build-order
+    step seven, REQ-59 axis 2). Used by both the finding-I1
+    derivation-application controls and the finding-I2 order-agreement
+    controls below, so a single fixture generator proves both checks bite
+    against a realistic, committed-shaped file rather than only against
+    `derive_selector_name`'s or the array-order extraction's own isolated
+    inputs.
 
     `selector_overrides` maps a prefix to a replacement selector-name
-    literal (used to plant a REQ-11 derivation mismatch without touching
-    the real file). `member_order` reorders which row occupies which
-    `TASK_MEMBERS` array position (used to plant an order-agreement
+    literal (used to plant a REQ-11/REQ-48 derivation mismatch without
+    touching the real file). `member_order` reorders which row occupies
+    which `TASK_MEMBERS` array position (used to plant an order-agreement
     mismatch against a startup.rs fixture)."""
     selector_overrides = selector_overrides or {}
-    indices = member_order if member_order is not None else list(range(len(TASK_TABLE)))
+    indices = member_order if member_order is not None else list(range(len(table)))
     lines = ["#![forbid(unsafe_code)]", "fn main() {}", ""]
-    for i, row in enumerate(TASK_TABLE):
+    for i, row in enumerate(table):
         prefix = _MEMBER_PREFIXES[i]
-        selector, task_id, action_name, target, sink, _cost = row
+        selector, task_id, action_name, target, sink, _cost, _binding = row
         selector = selector_overrides.get(prefix, selector)
         lines.append(f'const {prefix}_SELECTOR_NAME: &str = "{selector}";')
         lines.append(f'const {prefix}_TASK_ID: &str = "{task_id}";')
         lines.append(f'const {prefix}_ACTION_NAME: &str = "{action_name}";')
         lines.append(f'const {prefix}_TARGET: &str = "{target}";')
         lines.append(f'const {prefix}_SINK: &str = "{sink}";')
-    lines.append("const TASK_MEMBERS: [EngineTaskMember; 5] = [")
+    lines.append(f"const TASK_MEMBERS: [EngineTaskMember; {len(table)}] = [")
     for i in indices:
         prefix = _MEMBER_PREFIXES[i]
         lines.append("    EngineTaskMember {")
@@ -897,15 +1019,16 @@ def _synthetic_full_main_rs(
     return "\n".join(lines)
 
 
-def _synthetic_startup_rs(selector_order: list[str] | None = None) -> str:
+def _synthetic_startup_rs(selector_order: list[str] | None = None, table: tuple = TASK_TABLE) -> str:
     """Builds a synthetic startup.rs carrying only the shape the
     order-agreement extraction needs: `TASK_SELECTOR_ENV_VAR`'s own
     literal (so `check_selector_containment`'s other sub-checks do not
     misfire on a fixture reused across both), and `ACCEPTED_SELECTOR_NAMES`
-    in the given order (`TASK_TABLE`'s own order by default)."""
-    order = selector_order if selector_order is not None else [row[0] for row in TASK_TABLE]
+    in the given order (`TASK_TABLE`'s own order by default, WIDENED to
+    seven names for build-order step seven, REQ-59 axis 2)."""
+    order = selector_order if selector_order is not None else [row[0] for row in table]
     lines = [f'pub const {TASK_SELECTOR_ENV_VAR_NAME}: &str = "{TASK_SELECTOR_ENV_VAR_VALUE}";']
-    lines.append("const ACCEPTED_SELECTOR_NAMES: [&str; 5] = [")
+    lines.append(f"const ACCEPTED_SELECTOR_NAMES: [&str; {len(order)}] = [")
     for name in order:
         lines.append(f'    "{name}",')
     lines.append("];")
@@ -922,10 +1045,11 @@ def control_check() -> list[str]:
         # Check 1 controls: closed task set.
         # -------------------------------------------------------------
 
-        # Legitimate: all five members, length assertion == 5, plenty of
-        # non-emptiness assertions, a pairwise-distinctness assertion.
+        # Legitimate: all seven members (build-order step seven, REQ-59
+        # axis 2), length assertion == 7, plenty of non-emptiness
+        # assertions, a pairwise-distinctness assertion.
         legit_main = base / "main_legit.rs"
-        legit_main.write_text(_synthetic_main_rs_all_five())
+        legit_main.write_text(_synthetic_main_rs_all_members())
         legit_result = check_closed_task_set(legit_main)
         if not legit_result.ok:
             failures.append(
@@ -933,37 +1057,43 @@ def control_check() -> list[str]:
                 f"main.rs: {legit_result.violations}"
             )
 
-        # Violation: four members (N3 dropped), length assertion == 4.
-        four_member = base / "main_four.rs"
-        four_lines = _synthetic_main_rs_all_five().replace(
-            'const _: () = assert!(TASK_MEMBERS.len() == 5);',
-            'const _: () = assert!(TASK_MEMBERS.len() == 4);',
-        )
-        # Remove N3's literals to genuinely simulate a four-member array.
-        for value in TASK_TABLE[-1][:5]:
-            four_lines = four_lines.replace(f'const _: () = assert!(!"{value}".is_empty());\n', "")
-        four_member.write_text(four_lines)
-        four_result = check_closed_task_set(four_member)
-        if four_result.ok:
-            failures.append("closed-task-set control did NOT catch a four-member array")
-
-        # Violation: six members (an extra, unlisted sixth), length
-        # assertion == 6.
+        # Violation (REQ-59 axis 2): six members (M2 dropped), length
+        # assertion == 6. Both a six-member and an eight-member array must
+        # fail against the widened seven-member baseline.
+        six_table = TASK_TABLE[:-1]
         six_member = base / "main_six.rs"
-        six_lines = _synthetic_main_rs_all_five().replace(
-            'const _: () = assert!(TASK_MEMBERS.len() == 5);',
-            'const _: () = assert!(TASK_MEMBERS.len() == 6);\n'
-            'const _: () = assert!(!"sixth-member-unlisted".is_empty());',
+        six_lines = _synthetic_main_rs_all_members(table=six_table).replace(
+            f'const _: () = assert!(TASK_MEMBERS.len() == {len(six_table)});',
+            f'const _: () = assert!(TASK_MEMBERS.len() == {len(six_table)});',
         )
         six_member.write_text(six_lines)
         six_result = check_closed_task_set(six_member)
         if six_result.ok:
-            failures.append("closed-task-set control did NOT catch a six-member array")
+            failures.append(
+                "closed-task-set control did NOT catch a six-member array (one short of "
+                "the widened seven-member baseline)"
+            )
+
+        # Violation (REQ-59 axis 2): eight members (an extra, unlisted
+        # eighth), length assertion == 8.
+        eight_member = base / "main_eight.rs"
+        eight_lines = _synthetic_main_rs_all_members().replace(
+            f'const _: () = assert!(TASK_MEMBERS.len() == {len(TASK_TABLE)});',
+            f'const _: () = assert!(TASK_MEMBERS.len() == {len(TASK_TABLE) + 1});\n'
+            f'const _: () = assert!(!"eighth-member-unlisted".is_empty());',
+        )
+        eight_member.write_text(eight_lines)
+        eight_result = check_closed_task_set(eight_member)
+        if eight_result.ok:
+            failures.append(
+                "closed-task-set control did NOT catch an eight-member array (one over "
+                "the widened seven-member baseline)"
+            )
 
         # Violation: missing length assertion entirely.
         missing_len = base / "main_missing_len.rs"
-        missing_len_src = _synthetic_main_rs_all_five().replace(
-            'const _: () = assert!(TASK_MEMBERS.len() == 5);', ""
+        missing_len_src = _synthetic_main_rs_all_members().replace(
+            f'const _: () = assert!(TASK_MEMBERS.len() == {len(TASK_TABLE)});', ""
         )
         missing_len.write_text(missing_len_src)
         missing_len_result = check_closed_task_set(missing_len)
@@ -973,8 +1103,8 @@ def control_check() -> list[str]:
         # Violation: too few non-emptiness assertions (strip most of them).
         few_asserts = base / "main_few_asserts.rs"
         few_lines = "\n".join(
-            _synthetic_main_rs_all_five().split("\n")[:6]
-            + ['const _: () = assert!(TASK_MEMBERS.len() == 5);']
+            _synthetic_main_rs_all_members().split("\n")[:6]
+            + [f'const _: () = assert!(TASK_MEMBERS.len() == {len(TASK_TABLE)});']
         )
         few_asserts.write_text(few_lines)
         few_asserts_result = check_closed_task_set(few_asserts)
@@ -986,26 +1116,45 @@ def control_check() -> list[str]:
 
         # Violation: no pairwise-distinctness assertion.
         no_distinct = base / "main_no_distinct.rs"
-        no_distinct.write_text(_synthetic_main_rs_all_five(distinct_assert=False))
+        no_distinct.write_text(_synthetic_main_rs_all_members(distinct_assert=False))
         no_distinct_result = check_closed_task_set(no_distinct)
         if no_distinct_result.ok:
             failures.append(
                 "closed-task-set control did NOT catch a missing pairwise-distinctness "
-                "assertion over the five selector names"
+                "assertion over the seven selector names"
             )
 
-        # Violation: a selector name that does not match REQ-11's
-        # derivation rule (pure-function control, independent of any file).
+        # Violation: a selector name that does not match REQ-11's original
+        # (stub-bound) derivation rule (pure-function control, independent
+        # of any file).
         if derive_selector_name("action:git.push", "main") != "push-main":
             failures.append(
-                "derive_selector_name control: the legitimate case (push, main) did not "
-                "derive to 'push-main'"
+                "derive_selector_name control: the legitimate stub-bound case (push, "
+                "main) did not derive to 'push-main'"
             )
         mismatched_selector = "delete-everything"
         if derive_selector_name("action:git.push", "main") == mismatched_selector:
             failures.append(
                 "derive_selector_name control did NOT distinguish a mismatched selector "
                 "name from the correctly derived one"
+            )
+
+        # Violation (REQ-48, REQ-59 axis 3): the amended rule for a
+        # REAL-bound member. The token must be present, and its ABSENCE
+        # must be distinguishable from its presence.
+        if derive_selector_name("action:git.commit", "fixture-target", "real") != "commit-model-fixture-target":
+            failures.append(
+                "derive_selector_name control: the legitimate real-bound case "
+                "(commit, fixture-target, real) did not derive to "
+                "'commit-model-fixture-target'"
+            )
+        if derive_selector_name("action:git.commit", "fixture-target", "real") == derive_selector_name(
+            "action:git.commit", "fixture-target", "stub"
+        ):
+            failures.append(
+                "derive_selector_name control did NOT distinguish a real-bound "
+                "derivation from its own stub-bound counterpart -- REQ-48's own token "
+                "must change the derived name"
             )
 
         # -------------------------------------------------------------
@@ -1119,26 +1268,27 @@ def control_check() -> list[str]:
                 f"{correct_derivation_result.violations}"
             )
         # Explicit, not merely incidental: proves extraction over the same
-        # unmutated fixture actually found all five triples (the exactly-5
-        # case this module's new extraction-count assertion must permit),
-        # rather than the check above passing for some unrelated reason.
+        # unmutated fixture actually found all seven triples (WIDENED for
+        # build-order step seven, REQ-59 axis 2: the exactly-7 case this
+        # module's extraction-count assertion must permit), rather than the
+        # check above passing for some unrelated reason.
         correct_derivation_extracted = extract_member_selector_triples(
             _strip_line_comments(_synthetic_full_main_rs())
         )
-        if len(correct_derivation_extracted) != 5:
+        if len(correct_derivation_extracted) != 7:
             failures.append(
                 f"extraction-count control: extract_member_selector_triples found "
                 f"{len(correct_derivation_extracted)} triple(s) over a fully compliant "
-                f"synthetic main.rs, expected exactly 5"
+                f"synthetic main.rs, expected exactly 7"
             )
 
         # Violation (extraction-shape gap, one layer below finding I1): a
         # real-shaped main.rs where P1's own companion `_ACTION_NAME`
         # constant has been renamed, so `extract_member_selector_triples`
         # itself -- by its own documented, silent-skip behaviour -- returns
-        # only 4 triples rather than 5. Proves `check_selector_containment`
+        # only 6 triples rather than 7. Proves `check_selector_containment`
         # treats this as a genuine, named failure (an extraction-shape
-        # problem) rather than silently checking fewer than five members
+        # problem) rather than silently checking fewer than seven members
         # and reporting a clean pass.
         missing_companion_src = base / "src_selector_missing_companion"
         missing_companion_src.mkdir()
@@ -1154,12 +1304,12 @@ def control_check() -> list[str]:
             failures.append(
                 "selector-containment control did NOT catch main.rs's P1 member losing "
                 "its own extractable _ACTION_NAME companion constant (extraction found "
-                "fewer than 5 triples, but the check reported a clean pass)"
+                "fewer than 7 triples, but the check reported a clean pass)"
             )
-        elif not any("found only 4" in v for v in missing_companion_result.violations):
+        elif not any("found only 6" in v for v in missing_companion_result.violations):
             failures.append(
                 f"selector-containment control caught the missing companion constant "
-                f"but did not name the actual extracted count (4) as an "
+                f"but did not name the actual extracted count (6) as an "
                 f"extraction-shape problem: {missing_companion_result.violations}"
             )
 
@@ -1367,13 +1517,14 @@ def control_check() -> list[str]:
 
 
 def main() -> int:
-    print("Target-loop structural detector (REQ-36 to REQ-45): the closed five-member")
-    print("task set, the selector's containment, the postures restated from step five,")
-    print("the driver's own restraint, and evidence digest drift, for")
-    print("crates/process-engine/ and ontology/tools/run_target_loop.py. This module")
-    print("never runs the target loop itself (REQ-37). See this module's own docstring")
-    print("for what a green result proves and does not, and note that it is NOT yet")
-    print("wired into ontology/tests/harness.py (REQ-44 is a separate, later obligation).")
+    print("Target-loop structural detector (REQ-36 to REQ-45, widened by build-order")
+    print("step seven's REQ-59 to the closed SEVEN-member task set): the selector's")
+    print("containment, the postures restated from step five, the driver's own")
+    print("restraint, and evidence digest drift, for crates/process-engine/ and")
+    print("ontology/tools/run_target_loop.py. This module never runs the target loop")
+    print("itself (REQ-37). See this module's own docstring for what a green result")
+    print("proves and does not, and note that it is NOT yet wired into")
+    print("ontology/tests/harness.py (REQ-44 is a separate, later obligation).")
     print()
 
     control_failures = control_check()
@@ -1383,15 +1534,15 @@ def main() -> int:
             print(f"  [CRITICAL] {cf}")
         return 1
     print(
-        "  [PASS] negative controls: every planted violation (a four-member array, a "
-        "six-member array, a missing length assertion, too few non-emptiness "
+        "  [PASS] negative controls: every planted violation (a six-member array, an "
+        "eight-member array, a missing length assertion, too few non-emptiness "
         "assertions, a missing pairwise-distinctness assertion, a mismatched "
-        "selector-derivation name, a selector leaked outside startup.rs, a "
-        "defaulting selector resolution, a selector-fed EngineTask field, a "
-        "real-shaped main.rs whose selector name does not match REQ-11's derivation "
-        "rule applied to its own extracted action_name/target, a "
-        "TASK_MEMBERS/ACCEPTED_SELECTOR_NAMES ordering disagreement, a "
-        "two-binary-target manifest, a missing forbid(unsafe_code)/planted unsafe "
+        "selector-derivation name (both stub-bound and real-bound), a selector leaked "
+        "outside startup.rs, a defaulting selector resolution, a selector-fed "
+        "EngineTask field, a real-shaped main.rs whose selector name does not match "
+        "REQ-48's amended derivation rule applied to its own extracted "
+        "action_name/target, a TASK_MEMBERS/ACCEPTED_SELECTOR_NAMES ordering "
+        "disagreement, a two-binary-target manifest, a missing forbid(unsafe_code)/planted unsafe "
         "keyword, a planted std::process::Command call, a planted std::net call, a "
         "planted filesystem write, a planted actuator-git dependency, planted git "
         "commit/push/merge invocations, and a mutated evidence digest) is caught, "

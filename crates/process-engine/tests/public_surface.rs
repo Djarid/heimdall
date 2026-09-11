@@ -4,6 +4,19 @@
 //! the real-cohort verification markers (REQ-53, AC-58) of
 //! `.opencode/plans/process-engine-step-five-spec.md`.
 //!
+//! **Build-order step seven addendum
+//! (`.opencode/plans/build-order-step-seven-spec.md` REQ-40, REQ-29;
+//! AC-42).** `run_sequence` gains a third parameter,
+//! `process_engine::CognitionBinding`, and stays the crate's **one**
+//! public library entry point. Every call to `run_sequence` in this file
+//! is updated to pass `process_engine::CognitionBinding::Stub`, since this
+//! file's own scope (both directions of PE-9, over `DefaultCognitionStep`'s
+//! own behaviour) is unaffected by the addition of a second, real
+//! implementation: `CognitionBinding::Real`'s own behaviour needs the
+//! model-bound path (`crates/cognition-client/`) provisioned, which is
+//! confirmed only by hand (AC-1, AC-2 of the step-seven spec), never by an
+//! automated test.
+//!
 //! Compiled as an EXTERNAL crate importing `process_engine`'s public surface
 //! only, exactly as `crates/hierarchy-vor/tests/public_surface.rs` and
 //! `crates/himinbjorg/tests/public_surface.rs` do for their own precedent
@@ -27,13 +40,19 @@
 //!
 //!   - Crate-root re-exports: `process_engine::{EngineTask, EngineOutcome,
 //!     EngineStep, STEP_SEQUENCE, LoopCap, CognitionStep, CognitionOutput,
-//!     DefaultCognitionStep, run_sequence}`.
+//!     CognitionRefusal, CognitionBinding, DefaultCognitionStep, run_sequence,
+//!     EXIT_COGNITION_REFUSAL}`.
 //!   - `process_engine::run_sequence(cohort: &hierarchy_vor::VerifiedCohort,
-//!     task: &EngineTask) -> EngineOutcome` (REQ-11, REQ-26, REQ-31): the
-//!     crate's one public entry point, taking the already-verified cohort by
-//!     reference and the task as a plain parameter, so this external test
-//!     drives both directions of PE-9 without needing the binary's own input
-//!     surface at all.
+//!     task: &EngineTask, binding: CognitionBinding) -> EngineOutcome`
+//!     (REQ-11, REQ-26, REQ-31; build-order step seven REQ-40): the crate's
+//!     one public entry point, taking the already-verified cohort by
+//!     reference, the task as a plain parameter and, as of build-order step
+//!     seven, a third parameter naming which of the two CognitionStep
+//!     implementations to run, so this external test drives both directions
+//!     of PE-9 without needing the binary's own input surface at all.
+//!     `process_engine::CognitionBinding::Stub` is passed at every call site
+//!     below: this file's own scope is `DefaultCognitionStep`'s behaviour,
+//!     unaffected by the real implementation's addition.
 //!   - `himinbjorg::{Decision, CheckId, CheckOutcome, BrokerRefusal}` and
 //!     `hierarchy_vor::{load_trusted_set_from_env, load_verified_cohort,
 //!     SecretRefusal, SECRET_PATH_ENV_VAR, cohort::AUTHORISER_ID}`, both
@@ -158,7 +177,11 @@ fn both_directions_of_pe9_and_real_cohort_verification_markers() {
             // `crates/himinbjorg/unit_tests/witness_and_audit.rs`'s own
             // ac58 test demonstrates for `broker_authorised_action` alone.
             let allowed_task = permitted_task("action:git.commit");
-            let allowed_outcome = process_engine::run_sequence(&cohort, &allowed_task);
+            let allowed_outcome = process_engine::run_sequence(
+                &cohort,
+                &allowed_task,
+                process_engine::CognitionBinding::Stub,
+            );
             match allowed_outcome {
                 process_engine::EngineOutcome::BrokerRefused {
                     refusal: himinbjorg::BrokerRefusal::ActuatorRefused(_),
@@ -185,7 +208,11 @@ fn both_directions_of_pe9_and_real_cohort_verification_markers() {
             // deliberately disallowed action is blocked by validate_proposal
             // itself, never by an engine-side filter.
             let disallowed_task = permitted_task("action:totally-unknown-and-never-permitted");
-            let disallowed_outcome = process_engine::run_sequence(&cohort, &disallowed_task);
+            let disallowed_outcome = process_engine::run_sequence(
+                &cohort,
+                &disallowed_task,
+                process_engine::CognitionBinding::Stub,
+            );
             match disallowed_outcome {
                 process_engine::EngineOutcome::GateBlocked { checks } => {
                     assert_eq!(
@@ -221,7 +248,11 @@ fn both_directions_of_pe9_and_real_cohort_verification_markers() {
             // permitted task must not error out from a stale or reused
             // witness (each call obtains its own fresh witness internally),
             // and must not panic.
-            let second_allowed_outcome = process_engine::run_sequence(&cohort, &allowed_task);
+            let second_allowed_outcome = process_engine::run_sequence(
+                &cohort,
+                &allowed_task,
+                process_engine::CognitionBinding::Stub,
+            );
             assert!(
                 matches!(
                     second_allowed_outcome,
@@ -268,6 +299,202 @@ fn both_directions_of_pe9_and_real_cohort_verification_markers() {
             );
         }
     }
+}
+
+// ===================================================================================
+// Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`),
+// section 5.7: the two new task members M1 and M2, and the sixth exit code
+// (REQ-40, REQ-50; AC-42, AC-52). Gated behind a real cohort, following
+// this file's own established convention above.
+//
+// **What this suite does NOT claim (AC-1, AC-2 of the spec).** These tests
+// exercise CognitionBinding::Stub only, never CognitionBinding::Real: the
+// real cognition implementation needs the model sidecar
+// (`crates/cognition-client/`) and its own two path-shaped environment
+// variables provisioned, which this automated suite never provisions (per
+// the spec's own AC-1: "not confirmable by any cargo test or harness run,
+// and no test is to be written that fakes it"). What this suite DOES prove
+// is the structural half available without the model: that
+// CognitionBinding::Stub, run against M1's and M2's own task shapes (same
+// action name, target and sink REQ-47 fixes, but bound to the stub rather
+// than to the real implementation), reaches the SAME check-five block the
+// spec's own M1/M2 table describes for the real path, because the stub's
+// own parameter is Canonical/Inert and therefore does NOT itself trigger
+// check five -- so a stub-bound run over M1's own action/target/sink is
+// expected to reach `Executed` or `BrokerRefused` (the same outcome class
+// P1 reaches), never `GateBlocked` on check five. This is a deliberately
+// WEAKER claim than AC-52's own real-model claim, and this file states the
+// difference rather than blurring it.
+// ===================================================================================
+
+fn m1_shaped_task() -> process_engine::EngineTask {
+    process_engine::EngineTask {
+        task_id: "fixture-task-m1-shape".to_string(),
+        action_name: "action:git.commit".to_string(),
+        target: "fixture-target".to_string(),
+        sink: "sink:git.commit".to_string(),
+        declared_cost: 0,
+    }
+}
+
+fn m2_shaped_task() -> process_engine::EngineTask {
+    process_engine::EngineTask {
+        task_id: "fixture-task-m2-shape".to_string(),
+        action_name: "action:git.merge".to_string(),
+        target: "fixture-target".to_string(),
+        sink: "sink:git.commit".to_string(),
+        declared_cost: 0,
+    }
+}
+
+#[test]
+fn m1_shaped_task_under_the_stub_binding_does_not_block_at_check_five() {
+    match hierarchy_vor::load_trusted_set_from_env(hierarchy_vor::cohort::AUTHORISER_ID) {
+        Ok(trusted) => {
+            let cohort = hierarchy_vor::load_verified_cohort(&trusted).unwrap_or_else(|e| {
+                panic!(
+                    "a secret was provisioned via {} but the committed attestation did \
+                     not verify against it ({e:?}); this is a provisioning defect and is \
+                     FATAL, never a skip",
+                    hierarchy_vor::SECRET_PATH_ENV_VAR,
+                )
+            });
+            let task = m1_shaped_task();
+            let outcome = process_engine::run_sequence(
+                &cohort,
+                &task,
+                process_engine::CognitionBinding::Stub,
+            );
+            match outcome {
+                process_engine::EngineOutcome::GateBlocked { checks } => {
+                    let (fifth_id, fifth_outcome) = &checks[4];
+                    assert_eq!(*fifth_id, himinbjorg::CheckId::TaintCompatible);
+                    assert!(
+                        matches!(fifth_outcome, himinbjorg::CheckOutcome::Pass),
+                        "AC-52's own contrast case: an M1-shaped task run under \
+                         CognitionBinding::Stub (Canonical/Inert, never Tainted/Action) \
+                         must PASS check five, unlike the real implementation's own \
+                         Tainted/Action declaration, which blocks it. Getting the same \
+                         block under the stub would mean the block is not attributable \
+                         to the model's own honest declaration at all; got a failing \
+                         check five under the stub"
+                    );
+                }
+                process_engine::EngineOutcome::BrokerRefused { .. }
+                | process_engine::EngineOutcome::Executed { .. } => {
+                    // Expected: the stub's own Canonical/Inert parameter
+                    // triggers no rule-core reason, so the sequence
+                    // proceeds past the gate exactly as P1 does.
+                }
+                other => panic!(
+                    "AC-52's own contrast case: an M1-shaped task under \
+                     CognitionBinding::Stub must reach the execute step, not a \
+                     structural refusal; got {other:?}"
+                ),
+            }
+        }
+        Err(hierarchy_vor::SecretRefusal::EnvVarMissing(_)) => {
+            println!(
+                "PROCESS-ENGINE-STEP-SEVEN-GAP: m1_shaped_task_under_the_stub_binding_does_not_block_at_check_five: \
+                 SKIPPED -- {} is not set, so this test cannot obtain a real \
+                 VerifiedCohort.",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+        Err(other) => panic!(
+            "{} names a path but loading it was refused for a reason other than absence \
+             ({other:?}); this is a provisioning defect and is FATAL",
+            hierarchy_vor::SECRET_PATH_ENV_VAR,
+        ),
+    }
+}
+
+#[test]
+fn m2_shaped_task_under_the_stub_binding_blocks_at_check_one_only_never_check_five() {
+    match hierarchy_vor::load_trusted_set_from_env(hierarchy_vor::cohort::AUTHORISER_ID) {
+        Ok(trusted) => {
+            let cohort = hierarchy_vor::load_verified_cohort(&trusted).unwrap_or_else(|e| {
+                panic!(
+                    "a secret was provisioned via {} but the committed attestation did \
+                     not verify against it ({e:?}); this is a provisioning defect and is \
+                     FATAL, never a skip",
+                    hierarchy_vor::SECRET_PATH_ENV_VAR,
+                )
+            });
+            let task = m2_shaped_task();
+            let outcome = process_engine::run_sequence(
+                &cohort,
+                &task,
+                process_engine::CognitionBinding::Stub,
+            );
+            match outcome {
+                process_engine::EngineOutcome::GateBlocked { checks } => {
+                    assert_eq!(checks.len(), 6, "AC-52: all six CheckRecords must be present");
+                    let (first_id, first_outcome) = &checks[0];
+                    assert_eq!(*first_id, himinbjorg::CheckId::ActionPermitted);
+                    assert!(
+                        !matches!(first_outcome, himinbjorg::CheckOutcome::Pass),
+                        "AC-52: action:git.merge is out of the cohort's permitted-action \
+                         surface today, so check one must fail regardless of which \
+                         cognition binding is used"
+                    );
+                    let (fifth_id, fifth_outcome) = &checks[4];
+                    assert_eq!(*fifth_id, himinbjorg::CheckId::TaintCompatible);
+                    assert!(
+                        matches!(fifth_outcome, himinbjorg::CheckOutcome::Pass),
+                        "AC-52's own contrast case: under CognitionBinding::Stub, check \
+                         five must PASS (the stub's own parameter is Canonical/Inert), \
+                         unlike M2's own real-implementation case which fails BOTH check \
+                         one and check five; got a failing check five under the stub"
+                    );
+                }
+                other => panic!(
+                    "AC-52: an M2-shaped task (action:git.merge, absent from the \
+                     cohort's permitted-action surface) must be GateBlocked regardless \
+                     of cognition binding; got {other:?}"
+                ),
+            }
+        }
+        Err(hierarchy_vor::SecretRefusal::EnvVarMissing(_)) => {
+            println!(
+                "PROCESS-ENGINE-STEP-SEVEN-GAP: m2_shaped_task_under_the_stub_binding_blocks_at_check_one_only_never_check_five: \
+                 SKIPPED -- {} is not set, so this test cannot obtain a real \
+                 VerifiedCohort.",
+                hierarchy_vor::SECRET_PATH_ENV_VAR,
+            );
+        }
+        Err(other) => panic!(
+            "{} names a path but loading it was refused for a reason other than absence \
+             ({other:?}); this is a provisioning defect and is FATAL",
+            hierarchy_vor::SECRET_PATH_ENV_VAR,
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------------
+// AC-32/REQ-29: EXIT_COGNITION_REFUSAL is reachable from outside the crate
+// and is distinct from every other exit-code constant.
+// ---------------------------------------------------------------------------------
+
+#[test]
+fn exit_cognition_refusal_is_reachable_and_distinct_from_every_other_exit_code() {
+    let codes = [
+        process_engine::EXIT_EXECUTED,
+        process_engine::EXIT_STARTUP_REFUSAL,
+        process_engine::EXIT_GATE_BLOCKED,
+        process_engine::EXIT_BROKER_REFUSED,
+        process_engine::EXIT_WELL_FORMEDNESS_REFUSAL,
+        process_engine::EXIT_COGNITION_REFUSAL,
+    ];
+    let mut unique = codes.to_vec();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(
+        unique.len(),
+        6,
+        "AC-32/REQ-29: all six exit-code constants must be distinct and reachable from \
+         outside the crate; got {codes:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------------

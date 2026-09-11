@@ -74,6 +74,24 @@
 //! `himinbjorg::ProposalParameter` values only, never for calling
 //! Gjöll's gate or naming `actuator-git` at all.
 //!
+//! **Build-order step seven (`.opencode/plans/build-order-step-seven-spec.md`):
+//! a real model call behind the cognition seam, and its designed block.**
+//! A second [`CognitionStep`] implementation, `RealCognitionStep`, calls
+//! the sixth crate, `cognition-client`, to obtain a validated,
+//! model-authored commit message and declares it `TrustLevel::Tainted`
+//! and `ConsumeMode::Action`: an honest declaration that means every
+//! model-authored proposal blocks at check five,
+//! `ActionOnActionCriticalTainted`, which is the designed outcome of this
+//! step, not a defect. [`DefaultCognitionStep`] is retained, unchanged in
+//! logic, as the one positive control the real implementation cannot
+//! supply while that honest declaration blocks every model-authored
+//! proposal; see `src/cognition.rs`'s own doc comment for its stated
+//! expiry trigger. A sixth [`EngineOutcome`] variant,
+//! `CognitionRefused`, and a sixth exit code, `EXIT_COGNITION_REFUSAL`,
+//! carry a model-call failure distinctly from every other refusal class.
+//! See `plans/dd/process-engine.md` for the REQ-10 and REQ-11 amendments
+//! this step's binding field and fourth dependency require.
+//!
 //! **The sink moved from cognition's output to the task
 //! (build-order step six, ST6-1, REQ-1 to REQ-5).** Before this step
 //! [`CognitionOutput`] carried the one hardcoded sink every proposal
@@ -110,12 +128,12 @@ mod sequence;
 pub mod startup;
 mod task;
 
-pub use cognition::{CognitionOutput, CognitionStep, DefaultCognitionStep};
+pub use cognition::{CognitionOutput, CognitionRefusal, CognitionStep, DefaultCognitionStep};
 pub use outcome::{
-    EXIT_BROKER_REFUSED, EXIT_EXECUTED, EXIT_GATE_BLOCKED, EXIT_STARTUP_REFUSAL,
-    EXIT_WELL_FORMEDNESS_REFUSAL, EngineOutcome, LoopCap, exit_code_for,
+    EXIT_BROKER_REFUSED, EXIT_COGNITION_REFUSAL, EXIT_EXECUTED, EXIT_GATE_BLOCKED,
+    EXIT_STARTUP_REFUSAL, EXIT_WELL_FORMEDNESS_REFUSAL, EngineOutcome, LoopCap, exit_code_for,
 };
-pub use sequence::{EngineStep, STEP_SEQUENCE, run_sequence};
+pub use sequence::{CognitionBinding, EngineStep, STEP_SEQUENCE, run_sequence};
 pub use task::EngineTask;
 
 // `startup` is `pub mod` above, not re-exported here: `src/main.rs` reaches

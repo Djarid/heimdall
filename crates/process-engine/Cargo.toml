@@ -35,3 +35,15 @@ path = "src/main.rs"
 himinbjorg = { path = "../himinbjorg" }
 hierarchy-vor = { path = "../hierarchy-vor" }
 boundary-gjoll = { path = "../boundary-gjoll" }
+# Build-order step seven (REQ-52, `.opencode/plans/build-order-step-seven-spec.md`
+# section 4.8): a fourth in-workspace path dependency, added to the
+# disclosed three above. `cognition-client` (crate root
+# `crates/cognition-client/`) knows nothing of proposals, parameters,
+# trust levels or consume modes (ST7-7): it exposes one plain function
+# (`obtain_message`) plus one validated value type plus one refusal type,
+# and this crate's own `src/cognition.rs` is the one place that calls it,
+# receives the validated message, and constructs the one
+# Tainted/Action `himinbjorg::ProposalParameter` carrying it. The arrow
+# runs one way, this crate to `cognition-client`; that crate's own
+# `[dependencies]` table stays empty.
+cognition-client = { path = "../cognition-client" }

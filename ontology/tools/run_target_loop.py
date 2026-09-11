@@ -1,12 +1,25 @@
 """The out-of-band target-loop driver (build-order step six, ST6-4 and ST6-5,
 `.opencode/plans/build-order-step-six-spec.md` section 4.4, REQ-23 to
 REQ-30; section 5.4, AC-25 to AC-35; section 6.2, EC-25 to EC-33; section
-9.1's Single Responsibility argument).
+9.1's Single Responsibility argument; widened for build-order step seven,
+ST7-11, REQ-65, AC-66, AC-67: two more invocations, M1 and M2, after the
+existing five, each carrying the two sidecar path environment variables
+`crates/cognition-client/src/invocation.rs` reads, in addition to the
+three existing variables. Every one of step six's own restraints is
+unchanged and none is weakened: this driver still never commits, pushes
+or merges; still adjudicates nothing; still holds no expectation, no
+expected exit code and no comparison of an observed outcome against an
+expected one; still reads no secret's contents; and still writes nothing
+inside the working tree unless an explicit `--output` path is supplied.
+It gains no branch on any outcome and no knowledge of which cognition
+implementation a member binds beyond the selector name it passes.
 
 Run from the repository root, once the binary is already built:
 
     cargo build -p process-engine --release
     HEIMDALL_COHORT_SECRET_FILE=/path/outside/the/repo/secret \\
+        HEIMDALL_COGNITION_PYTHON_INTERPRETER=/path/to/poc/.venv/bin/python3 \\
+        HEIMDALL_COGNITION_PACKAGE_ROOT=/path/to/heimdall/repo/root \\
         python3 -m ontology.tools.run_target_loop
 
 This is a standalone, operator-invoked tool (REQ-23). It is not a test and
@@ -72,22 +85,32 @@ fixed order (REQ-24), and nothing beyond them (REQ-25):
      obligation (`plans/dd/process-engine.md` section 12's new row); this
      driver's own `git add` is deliberately out of band and never
      pretends otherwise.
-  7. Invoke the already-built Rust binary five times, once per accepted
+  7. Invoke the already-built Rust binary seven times, once per accepted
      selector value, in the fixed order P1 (`commit-fixture-target`), P2
      (`push-fixture-integration-branch`), N1 (`merge-fixture-target`), N2
-     (`push-main`), N3 (`push-fixture-target`) -- REQ-24 item 7. Each
+     (`push-main`), N3 (`push-fixture-target`), M1
+     (`commit-model-fixture-target`), M2 (`merge-model-fixture-target`) --
+     REQ-24 item 7, widened by build-order step seven's REQ-65. Each
      invocation is a SEPARATE subprocess with `HEIMDALL_ENGINE_TASK`,
      `HEIMDALL_COHORT_SECRET_FILE` and `HEIMDALL_ACTUATOR_GIT_WORKING_REPO`
-     (pointing at the clone) exported in its environment. This driver
-     does NOT inspect one invocation's outcome to decide whether to run
-     the next (REQ-25, EC-33): all five run regardless, because
-     inspecting an outcome to decide what to do next is adjudication, and
-     this driver adjudicates nothing. In particular, P2's push has
-     nothing new to push unless P1's commit succeeded (EC-33); this
-     driver does not encode that dependency, it only lets the transcript
-     show both outcomes so a reader can see it.
+     (pointing at the clone) exported in its environment; the two new
+     invocations, M1 and M2, additionally carry
+     `HEIMDALL_COGNITION_PYTHON_INTERPRETER` and
+     `HEIMDALL_COGNITION_PACKAGE_ROOT`, forwarded unread from this
+     driver's own environment on exactly the same never-open,
+     never-inspect discipline REQ-26 already fixes for the secret path
+     (REQ-65). This driver does NOT inspect one invocation's outcome to
+     decide whether to run the next (REQ-25, EC-33): all seven run
+     regardless, because inspecting an outcome to decide what to do next
+     is adjudication, and this driver adjudicates nothing. In particular,
+     P2's push has nothing new to push unless P1's commit succeeded
+     (EC-33); this driver does not encode that dependency, it only lets
+     the transcript show both outcomes so a reader can see it. M1 and M2
+     are expected to block at Gjöll's own check five (and, for M2, check
+     one too), never to execute; this driver holds no such expectation
+     itself and does not encode it anywhere.
   8. Capture each invocation's exit code, standard output and standard
-     error. After all five, read `git log` and `git ls-remote` from the
+     error. After all seven, read `git log` and `git ls-remote` from the
      BARE origin (read-only), and emit the evidence transcript to
      standard output always, and additionally to a file only when an
      explicit `--output` path is supplied on the command line (REQ-27):
@@ -110,8 +133,8 @@ file alone:
     string, no pass/fail verdict, no comparison of an observed outcome
     against an expected one, anywhere in this file. Its own exit code
     (see `main` below) reflects only whether its own provisioning and its
-    five invocations completed AS OPERATIONS -- it is 0 once all five
-    have run, regardless of what their five outcomes were, and non-zero
+    seven invocations completed AS OPERATIONS -- it is 0 once all seven
+    have run, regardless of what their seven outcomes were, and non-zero
     only when a provisioning step or an invocation's own subprocess spawn
     failed operationally (REQ-25, AC-30). It never reflects whether an
     outcome matched anything, because it holds nothing to match against.
@@ -120,11 +143,21 @@ file alone:
     is read from this driver's OWN environment as a path VALUE ONLY --
     checked for presence and non-emptiness, never opened, never read as
     file content -- and that same unread path string is forwarded
-    verbatim into each of the five invocations' own environments (REQ-26).
+    verbatim into each of the seven invocations' own environments (REQ-26).
     If it is absent or empty in this driver's own environment, this
     driver refuses fail closed, naming the variable, before creating any
     fixture (REQ-26, AC-31): it never invents a path and never searches
-    the filesystem for a candidate.
+    the filesystem for a candidate. The two sidecar path values (REQ-65)
+    are read from this driver's own environment on the identical
+    never-open, never-inspect discipline and forwarded, verbatim and
+    unread, into M1's and M2's own environments only: they are not
+    startup preconditions of this driver, on the same load-bearing reason
+    `crates/cognition-client/` reads them at cognition time rather than at
+    process-engine startup (section 2.2 finding four of the step-seven
+    spec), so a machine missing them still runs P1 through N3 to
+    completion, and only M1 and M2 are affected (each refusing, on their
+    own, through `crates/cognition-client/`'s own fail-closed refusal set,
+    never through anything this driver checks or branches on).
   - It writes nothing inside heimdall's own working tree by default
     (REQ-27, AC-32): the fixture root is asserted to be outside that tree
     before anything is created, and the transcript goes to standard
@@ -145,14 +178,16 @@ invocation, before creating any fixture.
 
 What this file's own exit code does and does not mean (REQ-25, AC-30),
 restated once more because it is easy to misread: 0 means every
-provisioning step succeeded and all five subprocess invocations of the
+provisioning step succeeded and all seven subprocess invocations of the
 engine binary were spawned and ran to completion -- it says NOTHING about
-what those five invocations' own exit codes were. Reading the five
+what those seven invocations' own exit codes were. Reading the seven
 observed exit codes and outcomes against
 `.opencode/plans/build-order-step-six-spec.md` REQ-7's expectation table
-is the reviewer's job, done by hand against the printed transcript, for
-`TARGET_LOOP_EVIDENCE.md` (REQ-55) -- never this driver's own job, and
-never a comparison this file performs.
+and `.opencode/plans/build-order-step-seven-spec.md` REQ-50's expectation
+table is the reviewer's job, done by hand against the printed transcript,
+for `TARGET_LOOP_EVIDENCE.md` (REQ-55) and `COGNITION_EVIDENCE.md`
+(REQ-66) -- never this driver's own job, and never a comparison this file
+performs.
 """
 
 from __future__ import annotations
@@ -174,7 +209,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # driver never reads this file's CONTENTS (REQ-25, REQ-26): it only checks
 # that the variable naming it is present and non-empty in its own
 # environment, then forwards that same path value, unread, into each of
-# the five invocations below.
+# the seven invocations below.
 SECRET_PATH_ENV_VAR = "HEIMDALL_COHORT_SECRET_FILE"
 
 # Mirrored from `crates/actuator-git/src/repo.rs`'s `WORKING_REPO_ENV_VAR`.
@@ -187,17 +222,47 @@ WORKING_REPO_ENV_VAR = "HEIMDALL_ACTUATOR_GIT_WORKING_REPO"
 # invocation, to the selector value currently being run.
 TASK_SELECTOR_ENV_VAR = "HEIMDALL_ENGINE_TASK"
 
+# Mirrored, byte for byte, from
+# `crates/cognition-client/src/invocation.rs`'s own
+# `PYTHON_INTERPRETER_ENV_VAR` and `COGNITION_PACKAGE_ROOT_ENV_VAR`
+# constants (build-order step seven, REQ-65). This driver never opens or
+# reads either value's own referent: it only forwards each path value,
+# unread, into M1's and M2's own environments, on
+# `SECRET_PATH_ENV_VAR`'s own never-open, never-inspect discipline. Unlike
+# the secret path, these two are read from this driver's own environment
+# with a default of the empty string rather than a fail-closed refusal at
+# provisioning time: a machine missing them still runs P1 through N3 (and
+# still provisions the fixture and stages the file) to completion, and
+# `crates/cognition-client/` itself, not this driver, is what refuses M1
+# and M2 fail closed if either is absent, empty or unusable (section 2.2
+# finding four of the step-seven spec: these are not startup
+# preconditions, so this driver does not treat them as any either).
+COGNITION_PYTHON_INTERPRETER_ENV_VAR = "HEIMDALL_COGNITION_PYTHON_INTERPRETER"
+COGNITION_PACKAGE_ROOT_ENV_VAR = "HEIMDALL_COGNITION_PACKAGE_ROOT"
+
 # REQ-6's table / REQ-11's derivation rule, in the fixed order REQ-24 item
-# 7 requires: P1, P2, N1, N2, N3. This driver names selector VALUES only
-# (an index-selecting string the binary's own closed compile-time set
-# accepts); it supplies nothing else to any of the five proposals, on
-# `crates/process-engine/src/startup.rs`'s own REQ-18 property.
+# 7 requires: P1, P2, N1, N2, N3, widened by build-order step seven's
+# REQ-65 to add M1 and M2 after the existing five. This driver names
+# selector VALUES only (an index-selecting string the binary's own closed
+# compile-time set accepts); it supplies nothing else to any of the seven
+# proposals, on `crates/process-engine/src/startup.rs`'s own REQ-18
+# property, and it holds no knowledge of which cognition implementation
+# any selector's own member binds (REQ-65).
 SELECTOR_ORDER: "tuple[str, ...]" = (
     "commit-fixture-target",
     "push-fixture-integration-branch",
     "merge-fixture-target",
     "push-main",
     "push-fixture-target",
+)
+
+# The two model-bound selectors build-order step seven adds (REQ-47's
+# table, M1 and M2), run after the five above, in this fixed order, and
+# carrying the two sidecar path variables in addition to the three
+# existing ones (REQ-65).
+MODEL_SELECTOR_ORDER: "tuple[str, ...]" = (
+    "commit-model-fixture-target",
+    "merge-model-fixture-target",
 )
 
 # REQ-24 item 5: the branch the push names must be the branch the commit
@@ -249,9 +314,39 @@ def require_fixture_secret_path() -> str:
             f"driver's own environment; refusing before creating any fixture (REQ-26). "
             f"This driver never invents a path and never searches the filesystem for a "
             f"candidate secret; it only forwards the value of this variable, unread, to "
-            f"each of the five invocations below."
+            f"each of the seven invocations below."
         )
     return value
+
+
+# ---------------------------------------------------------------------------------
+# REQ-65: the two sidecar path values, read as path values only, never
+# opened, and forwarded only into M1's and M2's own environments. Unlike
+# the secret path above, absence here is NOT a provisioning-time refusal
+# (section 2.2 finding four of the step-seven spec): these are not
+# startup preconditions of this driver, so a machine missing them still
+# runs P1 through N3 to completion, and `crates/cognition-client/` itself
+# refuses M1 and M2 fail closed if either is unusable.
+# ---------------------------------------------------------------------------------
+
+
+def read_cognition_sidecar_paths() -> "dict[str, str]":
+    """Reads `HEIMDALL_COGNITION_PYTHON_INTERPRETER` and
+    `HEIMDALL_COGNITION_PACKAGE_ROOT` from this driver's own environment as
+    path VALUES ONLY (REQ-65): never opened, never read as file or
+    directory content, and never invented or searched for. Returns
+    whatever this driver's own environment carries for each, including an
+    absent value as an empty string; the two values are forwarded
+    verbatim into M1's and M2's own environments only, and this driver
+    never inspects either value beyond forwarding it. A missing or
+    unusable value refuses inside `crates/cognition-client/` itself, at
+    cognition time, never here."""
+    return {
+        COGNITION_PYTHON_INTERPRETER_ENV_VAR: os.environ.get(
+            COGNITION_PYTHON_INTERPRETER_ENV_VAR, ""
+        ),
+        COGNITION_PACKAGE_ROOT_ENV_VAR: os.environ.get(COGNITION_PACKAGE_ROOT_ENV_VAR, ""),
+    }
 
 
 # ---------------------------------------------------------------------------------
@@ -436,33 +531,44 @@ def stage_fixture_file(clone_dir: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------------
-# REQ-24 item 7: the five invocations.
+# REQ-24 item 7, widened by build-order step seven's REQ-65: the seven
+# invocations (P1, P2, N1, N2, N3, M1, M2).
 # ---------------------------------------------------------------------------------
 
 
 @dataclass
 class InvocationRecord:
-    """One invocation's own recorded evidence (REQ-28): the selector
-    value, the three environment variable names with the two path values
-    (never a secret byte -- these are paths, not the secret file's own
-    content), the process exit code, and the printed standard output and
-    standard error verbatim."""
+    """One invocation's own recorded evidence (REQ-28, widened by REQ-65):
+    the selector value, the three environment variable names with their
+    two path values (never a secret byte -- these are paths, not the
+    secret file's own content), the two sidecar path variable names with
+    their values for M1 and M2 only (`None` for the five step-six
+    selectors, so the transcript shows plainly that they were never set
+    for those five), the process exit code, and the printed standard
+    output and standard error verbatim."""
 
     selector: str
     secret_path: str
     working_repo: str
+    cognition_paths: "dict[str, str] | None"
     exit_code: int
     stdout: str
     stderr: str
 
 
 def invoke_engine(
-    selector: str, engine_binary: Path, secret_path: str, working_repo: Path
+    selector: str,
+    engine_binary: Path,
+    secret_path: str,
+    working_repo: Path,
+    cognition_paths: "dict[str, str] | None" = None,
 ) -> InvocationRecord:
     """Runs `engine_binary` once, as a SEPARATE subprocess, with
     `HEIMDALL_ENGINE_TASK`, `HEIMDALL_COHORT_SECRET_FILE` and
     `HEIMDALL_ACTUATOR_GIT_WORKING_REPO` exported in its environment
-    (REQ-24 item 7). Records the exit code and both output streams
+    (REQ-24 item 7), and, when `cognition_paths` is supplied (M1 and M2
+    only, REQ-65), the two sidecar path variables it carries, forwarded
+    verbatim and unread. Records the exit code and both output streams
     without inspecting them to decide anything (REQ-25, EC-33): this
     driver never branches on `selector`, on the exit code, or on either
     stream's content. Raises `DriverError` only if the binary could not
@@ -473,6 +579,8 @@ def invoke_engine(
     env[TASK_SELECTOR_ENV_VAR] = selector
     env[SECRET_PATH_ENV_VAR] = secret_path
     env[WORKING_REPO_ENV_VAR] = str(working_repo)
+    if cognition_paths is not None:
+        env.update(cognition_paths)
     try:
         result = subprocess.run([str(engine_binary)], env=env, capture_output=True, text=True)
     except OSError as exc:
@@ -486,6 +594,7 @@ def invoke_engine(
         selector=selector,
         secret_path=secret_path,
         working_repo=str(working_repo),
+        cognition_paths=cognition_paths,
         exit_code=result.returncode,
         stdout=result.stdout,
         stderr=result.stderr,
@@ -500,9 +609,10 @@ def invoke_engine(
 @dataclass
 class RunEvidence:
     """Everything the transcript reports, recorded once for the whole
-    run (REQ-28): the fixture root, the bare origin path, the clone path,
-    the engine binary path, all five invocations' own records, and the
-    two read-only readings from the bare origin afterwards."""
+    run (REQ-28, widened by REQ-65): the fixture root, the bare origin
+    path, the clone path, the engine binary path, all seven invocations'
+    own records, and the two read-only readings from the bare origin
+    afterwards."""
 
     fixture_root: Path
     bare_origin: Path
@@ -538,27 +648,30 @@ def _render_stream(label: str, text: str, indent: str = "    ") -> "list[str]":
 
 
 def render_transcript(evidence: RunEvidence) -> str:
-    """Builds the evidence transcript (REQ-28): per invocation, the
-    selector value, the three environment variable names with the two
-    path values, the exit code and the printed standard output verbatim;
-    once for the run, the fixture root, the bare origin path, the clone
-    path, the git log reading and the git ls-remote reading. States
-    plainly that the fixed order used is SEQUENCING, never adjudication
-    (REQ-25, EC-33)."""
+    """Builds the evidence transcript (REQ-28, widened by REQ-65): per
+    invocation, the selector value, the three environment variable names
+    with their path values, plus, for M1 and M2 only, the two sidecar
+    path variable names with their values, the exit code and the printed
+    standard output verbatim; once for the run, the fixture root, the
+    bare origin path, the clone path, the git log reading and the git
+    ls-remote reading. States plainly that the fixed order used is
+    SEQUENCING, never adjudication (REQ-25, EC-33)."""
     lines: "list[str]" = []
     lines.append("HEIMDALL TARGET-LOOP DRIVER TRANSCRIPT")
     lines.append("=" * len(lines[0]))
     lines.append("")
     lines.append(
-        "Ordering note (REQ-28, EC-33). The five invocations below ran in the fixed "
-        "order build-order-step-six-spec.md's own REQ-6 table fixes: P1, P2, N1, N2, "
-        "N3. This driver did not inspect any invocation's own outcome to decide "
-        "whether to run the next one; all five ran regardless of what the earlier "
-        "ones produced. Running this fixed order is SEQUENCING, never ADJUDICATION: "
-        "this transcript records what happened and holds no expectation about what "
-        "was supposed to happen. Reading the five exit codes and outcomes below "
-        "against the spec's own REQ-7 expectation table is the reviewer's job, done "
-        "by hand for TARGET_LOOP_EVIDENCE.md, never something this driver computed."
+        "Ordering note (REQ-28, EC-33, widened by REQ-65). The seven invocations "
+        "below ran in the fixed order build-order-step-six-spec.md's own REQ-6 table "
+        "and build-order-step-seven-spec.md's own REQ-47 table together fix: P1, P2, "
+        "N1, N2, N3, M1, M2. This driver did not inspect any invocation's own outcome "
+        "to decide whether to run the next one; all seven ran regardless of what the "
+        "earlier ones produced. Running this fixed order is SEQUENCING, never "
+        "ADJUDICATION: this transcript records what happened and holds no expectation "
+        "about what was supposed to happen. Reading the seven exit codes and outcomes "
+        "below against the two specs' own expectation tables is the reviewer's job, "
+        "done by hand for TARGET_LOOP_EVIDENCE.md and COGNITION_EVIDENCE.md, never "
+        "something this driver computed."
     )
     lines.append("")
     lines.append(f"Fixture root:  {evidence.fixture_root}")
@@ -572,6 +685,11 @@ def render_transcript(evidence: RunEvidence) -> str:
         lines.append(f"  {TASK_SELECTOR_ENV_VAR} = {record.selector}")
         lines.append(f"  {SECRET_PATH_ENV_VAR} = {record.secret_path}  (a path; contents never read or printed by this driver)")
         lines.append(f"  {WORKING_REPO_ENV_VAR} = {record.working_repo}")
+        if record.cognition_paths is not None:
+            for var_name, var_value in record.cognition_paths.items():
+                lines.append(
+                    f"  {var_name} = {var_value}  (a path; contents never read or printed by this driver)"
+                )
         lines.append(f"  exit code: {record.exit_code}")
         for line in _render_stream("stdout", record.stdout):
             lines.append(f"  {line}")
@@ -615,11 +733,13 @@ def render_transcript(evidence: RunEvidence) -> str:
 
 
 def run_driver(fixture_root_arg: "str | None", engine_binary_arg: "str | None") -> RunEvidence:
-    """Runs REQ-24's eight responsibilities in order, on an already
-    validated environment, and returns the recorded evidence. Raises
-    `DriverError` on any operational failure; never raises because an
-    invocation's own outcome was merely unexpected."""
+    """Runs REQ-24's eight responsibilities in order, widened by REQ-65 to
+    seven invocations rather than five, on an already validated
+    environment, and returns the recorded evidence. Raises `DriverError`
+    on any operational failure; never raises because an invocation's own
+    outcome was merely unexpected."""
     secret_path = require_fixture_secret_path()
+    cognition_paths = read_cognition_sidecar_paths()
     engine_binary = resolve_engine_binary(engine_binary_arg)
 
     fixture_root = Path(fixture_root_arg) if fixture_root_arg else default_fixture_root()
@@ -654,6 +774,15 @@ def run_driver(fixture_root_arg: "str | None", engine_binary_arg: "str | None") 
             invoke_engine(selector, engine_binary, secret_path, clone_dir)
         )
 
+    # REQ-65: the two model-bound selectors, M1 and M2, run after the
+    # existing five, each additionally carrying the two sidecar path
+    # variables. This driver holds no knowledge of which cognition
+    # implementation either binds beyond the selector name passed above.
+    for selector in MODEL_SELECTOR_ORDER:
+        evidence.invocations.append(
+            invoke_engine(selector, engine_binary, secret_path, clone_dir, cognition_paths)
+        )
+
     evidence.git_log, evidence.git_ls_remote = read_bare_origin_evidence(bare_dir)
 
     return evidence
@@ -663,11 +792,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Provision a throwaway fixture outside heimdall's own working tree and "
-            "run the process-engine binary five times, once per accepted "
-            "HEIMDALL_ENGINE_TASK selector, in the fixed order the spec fixes "
-            "(build-order step six). Adjudicates nothing and holds no expectation: "
-            "see the module docstring for the full statement of what this tool does "
-            "and does not do."
+            "run the process-engine binary seven times, once per accepted "
+            "HEIMDALL_ENGINE_TASK selector, in the fixed order the two specs fix "
+            "(build-order steps six and seven). Adjudicates nothing and holds no "
+            "expectation: see the module docstring for the full statement of what "
+            "this tool does and does not do."
         )
     )
     parser.add_argument(
@@ -719,11 +848,11 @@ def main(argv: "list[str] | None" = None) -> int:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(transcript, encoding="utf-8")
 
-    # REQ-25, AC-30: this driver's own exit code reflects only that
-    # provisioning succeeded and all five invocations were spawned and
-    # ran to completion. It is 0 here regardless of what the five
-    # invocations' own exit codes were: none of them is inspected above
-    # to decide this return value.
+    # REQ-25, AC-30, widened by REQ-65: this driver's own exit code
+    # reflects only that provisioning succeeded and all seven invocations
+    # were spawned and ran to completion. It is 0 here regardless of what
+    # the seven invocations' own exit codes were: none of them is
+    # inspected above to decide this return value.
     return 0
 
 

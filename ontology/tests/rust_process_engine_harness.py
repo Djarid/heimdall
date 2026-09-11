@@ -82,7 +82,9 @@ source, not about the toolchain:
 
   1. Dependency posture (discrepancy A above). Reuses (never reimplements)
      `ontology.tests.rust_gate_harness.check_dependency_posture` with the
-     three-name allowlist, REQ-51's own instruction ("reusing
+     four-name allowlist (WIDENED for build-order step seven, REQ-58: a
+     fourth name, `cognition-client`, is now permitted alongside the
+     original three), REQ-51's own instruction ("reusing
      rust_gate_harness.check_dependency_posture by import, never by copy")
      honoured; `check_dependency_posture`'s own empty default is untouched,
      so `boundary-gjoll`'s and `hierarchy-vor`'s own manifests keep their
@@ -151,8 +153,19 @@ SEQUENCE_RS = SRC_DIR / "sequence.rs"
 # the real, disclosed and approved manifest carries three. This allowlist
 # reflects the REAL current dependency table, not REQ-51's original
 # assumption.
+#
+# WIDENED for build-order step seven
+# (`.opencode/plans/build-order-step-seven-spec.md` REQ-52, REQ-58; expected
+# `DECISIONS.md` row D115 or D117): a fourth name, `cognition-client`, is
+# added. `crates/process-engine/Cargo.toml` gains a fourth in-workspace path
+# dependency on the sixth crate, so this crate's own `CognitionStep` real
+# implementation can call `cognition-client`'s one public function and
+# construct the resulting `Tainted`/`Action` `ProposalParameter` (REQ-36).
+# This is a reviewed, disclosed widening, on `PE-6`'s own precedent for
+# extending an allowlist by a justified, keyed entry rather than by
+# silently raising a count.
 PERMITTED_DEPENDENCIES: frozenset[str] = frozenset(
-    {"himinbjorg", "hierarchy-vor", "boundary-gjoll"}
+    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client"}
 )
 
 FORBIDDEN_DEPENDENCIES: frozenset[str] = frozenset({"actuator-git"})
@@ -189,8 +202,9 @@ def _strip_line_comments(src: str) -> str:
 # ---------------------------------------------------------------------------------
 # Check 1: dependency posture (discrepancy A). The [dependencies] half
 # reuses rust_gate_harness.check_dependency_posture directly, with the
-# three-name allowlist, and this function's own detail string states the
-# discrepancy against REQ-51's original two-name text rather than hiding it.
+# four-name allowlist (WIDENED for build-order step seven, REQ-58), and this
+# function's own detail string states the discrepancy against REQ-51's
+# original two-name text rather than hiding it.
 # ---------------------------------------------------------------------------------
 
 
@@ -203,10 +217,11 @@ class DependencyPostureReport:
 
 def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> DependencyPostureReport:
     """Reuses `rust_gate_harness.check_dependency_posture` (never
-    reimplemented), passing the THREE-name allowlist that reflects this
-    crate's real, disclosed manifest (discrepancy A). `boundary-gjoll` and
-    `hierarchy-vor`'s own manifests are untouched: `check_dependency_posture`
-    is called here with an explicit allowlist argument, and its own empty
+    reimplemented), passing the FOUR-name allowlist (WIDENED for build-order
+    step seven, REQ-58) that reflects this crate's real, disclosed manifest
+    (discrepancy A). `boundary-gjoll` and `hierarchy-vor`'s own manifests are
+    untouched: `check_dependency_posture` is called here with an explicit
+    allowlist argument, and its own empty
     default (used by every OTHER existing caller) is never edited."""
     result = rust_gate_harness.check_dependency_posture(manifest_path, PERMITTED_DEPENDENCIES)
     if not result.manifest_found:
@@ -218,10 +233,14 @@ def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> Dependency
         detail=(
             f"{result.detail} NOTE (discrepancy A, disclosed): REQ-51's own text names a "
             f"two-name allowlist (himinbjorg, hierarchy-vor); this check uses the REAL, "
-            f"disclosed three-name allowlist {sorted(PERMITTED_DEPENDENCIES)} because "
+            f"disclosed FOUR-name allowlist {sorted(PERMITTED_DEPENDENCIES)} because "
             f"Cargo.toml's own comment and src/lib.rs's own doc comment both disclose an "
             f"approved, empirically-confirmed third path dependency on boundary-gjoll for "
-            f"ProposalParameter value construction only."
+            f"ProposalParameter value construction only, and build-order step seven "
+            f"(`.opencode/plans/build-order-step-seven-spec.md` REQ-52, REQ-58) adds a "
+            f"fourth, reviewed path dependency on cognition-client so the real "
+            f"CognitionStep implementation can call the sixth crate's one public "
+            f"function."
         ),
     )
 
@@ -588,6 +607,12 @@ def control_check() -> list[str]:
 
     with tempfile.TemporaryDirectory() as d:
         # Check 1 control: dependency posture. An unlisted name must be caught.
+        # Two distinct unlisted-name shapes are planted here (REQ-58, AC-61):
+        # a forbidden, well-known name (actuator-git) and a wholly unrelated,
+        # never-permitted name, so the allowlist is proved to reject both a
+        # specifically forbidden entry and a merely-unlisted one, rather than
+        # only the one this repository already has a separate forbidden-set
+        # check for (check 4, below).
         bad_manifest = Path(d) / "Cargo.toml"
         bad_manifest.write_text(
             '[package]\nname = "process-engine"\n\n[dependencies]\n'
@@ -603,18 +628,36 @@ def control_check() -> list[str]:
                 "entry in [dependencies]"
             )
 
+        bad_unlisted_manifest = Path(d) / "Cargo-unlisted.toml"
+        bad_unlisted_manifest.write_text(
+            '[package]\nname = "process-engine"\n\n[dependencies]\n'
+            'himinbjorg = { path = "../himinbjorg" }\n'
+            'hierarchy-vor = { path = "../hierarchy-vor" }\n'
+            'boundary-gjoll = { path = "../boundary-gjoll" }\n'
+            'cognition-client = { path = "../cognition-client" }\n'
+            'some-unlisted-crate = { path = "../some-unlisted-crate" }\n'
+        )
+        unlisted_result = check_dependency_posture(bad_unlisted_manifest)
+        if unlisted_result.ok:
+            failures.append(
+                "dependency-posture control did NOT catch a planted, wholly unlisted "
+                "(some-unlisted-crate) entry in [dependencies], distinct from the "
+                "actuator-git case above"
+            )
+
         clean_manifest = Path(d) / "Cargo-clean.toml"
         clean_manifest.write_text(
             '[package]\nname = "process-engine"\n\n[dependencies]\n'
             'himinbjorg = { path = "../himinbjorg" }\n'
             'hierarchy-vor = { path = "../hierarchy-vor" }\n'
             'boundary-gjoll = { path = "../boundary-gjoll" }\n'
+            'cognition-client = { path = "../cognition-client" }\n'
         )
         clean_result = check_dependency_posture(clean_manifest)
         if not clean_result.ok:
             failures.append(
                 "dependency-posture control WRONGLY flagged a manifest carrying only "
-                "the three disclosed, permitted dependencies"
+                "the four disclosed, permitted dependencies"
             )
 
         # Check 2 control: test isolation. A stray #[test] fn outside lib.rs
@@ -743,8 +786,9 @@ def control_check() -> list[str]:
 
 
 def main() -> int:
-    print("Process-engine posture detector (REQ-51): dependency posture (against the")
-    print("REAL, disclosed three-name dependency table, discrepancy A), test and code")
+    print("Process-engine posture detector (REQ-51, widened by build-order step seven's")
+    print("REQ-52/REQ-58): dependency posture (against the REAL, disclosed four-name")
+    print("dependency table, discrepancy A), test and code")
     print("isolation including main.rs, mechanical surface properties (forbid(unsafe_code)")
     print("in both crate roots, one binary target, std::process/std::net absence with the")
     print("one disclosed std::process::exit exception, discrepancy B), EngineStep's five")

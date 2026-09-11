@@ -205,6 +205,92 @@ any future crate's gate-adjacent path remains a deliberate trust-boundary decisi
 requiring its own `DECISIONS.md` row, exactly as HB3-3 and D112 already required
 for the second and third.
 
+**The sixth crate's dependency ruling (D115), the first ruling in this section
+that adds a crate with an EMPTY table rather than a widened one.**
+`crates/cognition-client/` (build-order step seven) is the workspace's sixth
+crate, and, unlike every widening above, its own `[dependencies]` table stays
+empty, matching `boundary-gjoll`, `hierarchy-vor` and `actuator-git` rather
+than `himinbjorg` or `process-engine`. This is a deliberate reversal of the
+brainstorm's own initial recommendation, not the default outcome: the
+brainstorm's section 5.1 proposed the crate depend on `himinbjorg` (for
+`ProposalParameter`) and, on D113's own disclosed precedent, `boundary-gjoll`,
+but that recommendation is overruled here because it is not needed. The crate
+returns a validated value type wrapping the message and nothing else; the
+`ProposalParameter` construction and the `Tainted`/`Action` declarations all
+happen in the crate that already depends on both (`crates/process-engine/src/cognition.rs`),
+which needed them anyway. Four consequences follow, each an improvement over
+the declined alternative: `check_dependency_posture`'s strict empty default
+applies to the sixth crate unchanged, with no allowlist widening needed for
+it; D113's disclosed three-entry deviation is not repeated in a second crate;
+the crate's single responsibility is sharper (obtain a validated message from
+the sidecar, or refuse, with no view on trust, consumption, proposals or
+gates); and the honest trust declaration lives beside the stub it sits next
+to, in one file, rather than split across two crates. `crates/process-engine/`'s
+own table widens instead, from three in-workspace path entries to four
+(`himinbjorg`, `hierarchy-vor`, `boundary-gjoll`, `cognition-client`), on
+exactly the same non-weakening ground the three prior widenings in this
+section already establish: the new dependency is on a crate whose own table
+is empty and which carries `#![forbid(unsafe_code)]`, so no new reachability
+to a model call or a network call is introduced BY THE DEPENDENCY GRAPH
+ITSELF. What the fourth dependency does introduce, stated plainly rather than
+smoothed into the same sentence as the other three, is the one thing every
+prior widening in this section could truthfully say it did not: a model call
+is now transitively reachable from `crates/process-engine/`, because that is
+`cognition-client`'s entire purpose. See the amended workspace-level sentence
+immediately below for how that is reconciled with this section's own opening
+rule, and see the `std::process`-reopening cross-reference two paragraphs
+down for the crate's own second load-bearing property.
+
+**The amended workspace-level sentence (D115, REQ-51).** This section's own
+opening rule states "there is no crate through which a model call or a
+network call could be reached" as the load-bearing property the empty
+`[dependencies]` default protects. That sentence no longer holds as written,
+because `crates/cognition-client/` exists precisely to reach a model call, and
+`crates/process-engine/` reaches it transitively through the fourth path
+dependency above. Four things are true together, and the amendment states
+them together rather than smoothing over the first: **(1)** the sentence
+above is amended, not preserved by a technicality; **(2)** invariant 3.1 is
+NOT weakened, and is narrower than that sentence always was: invariant 3.1
+says the symbolic layer contains no language model, the symbolic layer is
+`ontology/yggdrasil/`, `ontology/nornir/` and `poc/symbolic.py`, and none of
+the three is touched by build-order step seven; **(3)** what remains true,
+and now carries the weight the broader sentence used to: no crate on the
+**authorisation** path reaches a model call or a network call.
+`crates/boundary-gjoll/`, `crates/hierarchy-vor/`, `crates/himinbjorg/` and
+`crates/actuator-git/` all keep their existing tables and none names
+`cognition-client`, so the gate, the cohort, the gateway and the actuator
+remain unreachable from the cognition plane in that direction; **(4)**
+`std::net` gains no exception anywhere in the workspace: the sidecar is a
+child process, not a socket.
+
+**The `std::process`-in-a-second-crate ruling (D117), reopening D112's
+one-crate ruling exactly as D112 itself instructs, with its own narrower
+justification rather than D112's reused verbatim.** `crates/cognition-client/src/invocation.rs`
+is now the second module in the whole workspace permitted to reference
+`std::process`, alongside `crates/actuator-git/src/execute.rs` and `main.rs`'s
+one disclosed `std::process::exit`. D112's own reasoning for the git
+actuator's spawn, that `git` is a compiled, externally audited tool invoked
+deterministically with fixed arguments and that the actuator interprets and
+evaluates nothing, does **not** transfer to a Python interpreter that loads a
+language model and generates text, the opposite of a deterministic
+fixed-argument tool, and this ruling does not pretend otherwise. The narrower
+justification, in full, in `DECISIONS.md` D117 and cross-referenced here
+rather than duplicated: the cognition plane adjudicates nothing (everything
+the sidecar produces passes through `validate_proposal`'s six checks and the
+witness match regardless of what it produced); the spawn is a fixed argv with
+no shell on any path; the Python it spawns is not on the authorisation path
+and is structurally forbidden from becoming so (`cognition/` sits under no
+`symbolic_guard.py` scan root, and `cognition`, `mlx` and `mlx_lm` are not
+added to `ALLOWED_IMPORT_ROOTS`); and the output crossing back is positively
+validated and refused rather than sanitised. The two existing text scans over
+`crates/process-engine/src/` (`rust_process_engine_harness.py`,
+`rust_target_loop_harness.py`) stay green and need no widening on this axis,
+but that green result must not be read as evidence that the engine's
+transitive reachability is unchanged, because the amended workspace-level
+sentence above states plainly that it is not. A future crate needing to touch
+`std::process` for a THIRD, unrelated reason reopens this ruling again with
+its own `DECISIONS.md` row, exactly as this ruling itself was required to.
+
 **The out-of-tree secret convention (D110), recorded as the standing pattern for
 a future crate needing similar provenance.** Where a crate's correctness
 depends on a secret the source tree itself must not contain (an attestation
