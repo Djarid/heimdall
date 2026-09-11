@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Publication-domain classification rules. The fourth sibling (D29), covering the
 open-web/published surface a probe found uncovered.
 

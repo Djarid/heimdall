@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `action_critical_for` (the only reader of
 //! `hierarchy_vor::CohortSurface::consequential_sinks`), the translation into
 //! `boundary_gjoll`'s input shapes, the single

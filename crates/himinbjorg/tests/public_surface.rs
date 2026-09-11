@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The integration test proving the public surface is sufficient (REQ-26,
 //! AC-41), the two reserved REQ-32 markers (AC-46), and the structural
 //! no-fallback demonstration under an arbitrary, non-real secret (AC-35).

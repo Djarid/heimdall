@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `build_context` and the fixed context's own hardcoded constants (REQ-7,
 //! REQ-8, section 5.2 and section 6.1 of
 //! `.opencode/plans/himinbjorg-step-three.md`, section 13 file 6).

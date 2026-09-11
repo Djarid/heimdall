@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Symbolic layer for the Heimdall premise proof-of-concept.
 
 This is the symbolic half of the paired symbolic-plus-LLM pipeline. It is plain

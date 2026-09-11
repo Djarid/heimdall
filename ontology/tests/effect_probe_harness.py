@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Test harness for direction D: verify a sink's declared effect primitive against behaviour.
 
 Run from the repo root:

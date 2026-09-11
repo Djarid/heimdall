@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The marshalled-assertion model: Nornir's input and output.
 
 A `MarshalledAssertion` is what Fenrir produces and Nornir consumes (the marshalling

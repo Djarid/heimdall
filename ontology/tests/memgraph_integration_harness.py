@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Integration test: Nornir and the Gjoll gate running over a LIVE Memgraph store.
 
 The substrate spike proved the reachability algorithm on Memgraph (D57), and the gate

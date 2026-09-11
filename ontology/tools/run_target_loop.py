@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The out-of-band target-loop driver (build-order step six, ST6-4 and ST6-5,
 `.opencode/plans/build-order-step-six-spec.md` section 4.4, REQ-23 to
 REQ-30; section 5.4, AC-25 to AC-35; section 6.2, EC-25 to EC-33; section

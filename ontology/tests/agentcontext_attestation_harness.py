@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """D103's own suite: `AgentContext`'s integrity is enforced at `resolve()` (REQ-23, REQ-24).
 
 Run from the repo root:

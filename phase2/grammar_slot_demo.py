@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Optional real-model demonstration of TRUE grammar-constrained slot extraction (D90).
 
 This is the model-run companion to `grammar_slot_extraction.py`. Where D87

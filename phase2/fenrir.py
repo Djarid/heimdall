@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Fenrir: the sandbox reading agent.
 
 Fenrir is the only agent permitted to read tainted content directly. It reads a

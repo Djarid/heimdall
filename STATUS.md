@@ -12,7 +12,7 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D115 to D117)
+## 0. Resume here (handoff, last updated after D118)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
@@ -47,11 +47,15 @@ both arms (a latent gap, not exercised because every parameter anywhere in `crat
 build spec's own instruction that no test is to be written that fakes a real model call.
 Invariant 3.6 does not advance beyond the narrow sense the live detectors already measured for
 steps three to six: no new containment is observed, no third-party corpus is run, and Gjöll's
-own Python gate functions still have zero non-test callers. The code licence stays OPEN, now
-named as covering **six** crates rather than five (section 5); the operator explicitly chose to
-proceed with the build and settle the licence question before merge, not before build. See
-D115 to D117 in `DECISIONS.md`, `plans/dd/cognition-client.md` for the sixth crate's own design,
-and `COGNITION_EVIDENCE.md` for the transcript.
+own Python gate functions still have zero non-test callers. See D115 to D117 in `DECISIONS.md`,
+`plans/dd/cognition-client.md` for the sixth crate's own design, and `COGNITION_EVIDENCE.md` for
+the transcript.
+
+**The code licence, open since D109, is now settled (D118): see section 5.** All code in this
+repository is licensed AGPL-3.0-or-later, carried at the root `LICENSE` file with all six crate
+manifests and 150 source files (89 Python, 61 Rust) headed accordingly; documentation stays
+CC-BY-SA-4.0 under `LICENSE.md`, unaffected, and `ontology/reference/sumo/`'s separate GPL
+reference-only quarantine is untouched.
 
 **This closes the seven-step build order `plans/synthesis-bootstrap.md` section 6 names.** That
 document does not itself name an eighth step: its own section 6 lists exactly seven, ending at
@@ -264,8 +268,8 @@ MSRV 1.85, the crate's `[dependencies]` table is empty, and the conventions this
 recorded once at `plans/rust-workspace-baseline.md` for build-order steps two to seven to
 inherit. This build does not advance invariant 3.6's proof status, does not change the 22 RED
 findings or the pipeline containment figure, and does not close the sink-declaration root seam.
-The code licence stays OPEN and is now a named blocker (section 5). **A stale figure is also
-corrected here:** `gjoll_invocation_harness` finds **six** test call sites, not five;
+The code licence was OPEN at this step and is now SETTLED (D118, section 5). **A stale figure is
+also corrected here:** `gjoll_invocation_harness` finds **six** test call sites, not five;
 `ontology/tests/agentcontext_attestation_harness.py` (D103, landed via PR #9, before this build)
 had already added a sixth by calling `gjoll.evaluate` directly, and the "five" figure this page
 and the build spec carried was stale from before this build started, not caused by it. The zero
@@ -985,8 +989,9 @@ gate's own `rule::apply` tests untrusted-derivation by equality against `Tainted
 rank, so a `Vouched` declaration would pass silently if anything ever made one (nothing does
 today); and no Rust test exercises `CognitionBinding::Real` end to end, a stated limit rather
 than an oversight, since the build spec forbids writing a test that fakes a real model call. The
-code licence is OPEN and now named as covering six crates (section 5). See D115 to D117 in
-`DECISIONS.md` and `COGNITION_EVIDENCE.md` for the full transcript and breakdown.
+code licence was OPEN at this step, now covering six crates, and is settled by D118 (section 5).
+See D115 to D117 in `DECISIONS.md` and `COGNITION_EVIDENCE.md` for the full transcript and
+breakdown.
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -1194,9 +1199,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   behavioural cross-check, D103's `AgentContext` attestation, D94's sink-declaration attestation
   and the four re-validation gates' `GatePolicy`/`GateResult` scaffold. Proves translation
   fidelity against the Python reference, which stays untouched; does not advance invariant 3.6's
-  proof status or change the 22 RED findings. The code licence is OPEN (section 5). See
-  `plans/rust-workspace-baseline.md` for the conventions this establishes for build-order steps
-  two to seven.
+  proof status or change the 22 RED findings. The code licence was OPEN at this step and is now
+  SETTLED (D118, section 5). See `plans/rust-workspace-baseline.md` for the conventions this
+  establishes for build-order steps two to seven.
 - **The repository's second Rust crate** (`crates/hierarchy-vor/`, D110): re-expresses D103's
   attested-record substrate generically, then carries exactly one hardcoded, attested cohort
   (`heimdall-dev`) behind a single mandatory entry point, `load_verified_cohort`. Six modules: a
@@ -1216,9 +1221,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   this record type in this crate only; does not close D103's limit two, does not advance
   invariant 3.6 and does not touch `AgentContext`, `resolve()` or `gjoll.py`. The committed
   `COMMITTED_ATTESTATION` constant is honestly a development-time placeholder, not yet a real
-  provisioned production secret's output (section 5's own residual list). The code licence is
-  OPEN (section 5). See `plans/dd/vor.md` for the full design and `DECISIONS.md` D110 for the
-  line-budget breakdown.
+  provisioned production secret's output (section 5's own residual list). The code licence was
+  OPEN at this step and is now SETTLED (D118, section 5). See `plans/dd/vor.md` for the full
+  design and `DECISIONS.md` D110 for the line-budget breakdown.
 - **The repository's third Rust crate** (`crates/himinbjorg/`, D111): carries Himinbjörg's four
   interfaces (`build_context`, `enforce_definition`, `validate_proposal`, `broker_action`) at the
   minimal fidelity `plans/synthesis-bootstrap.md` section 5 scopes, across seven modules: `types`
@@ -1245,9 +1250,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   `ontology/tests/rust_gate_harness.py`'s `check_dependency_posture` gained an optional allowlist
   (default empty, both existing callers byte-identical) rather than a second copy. Does not touch
   `ontology/yggdrasil/control_surface.py`, `ontology/nornir/gjoll.py`, `ontology/nornir/engine.py`
-  or `ontology/nornir/authorisation_record.py`, all confirmed unchanged. The code licence is OPEN
-  (section 5). See `plans/dd/himinbjorg.md` for the full design and `DECISIONS.md` D111 for the
-  line-budget breakdown.
+  or `ontology/nornir/authorisation_record.py`, all confirmed unchanged. The code licence was OPEN
+  at this step and is now SETTLED (D118, section 5). See `plans/dd/himinbjorg.md` for the full
+  design and `DECISIONS.md` D111 for the line-budget breakdown.
 - **The repository's fourth Rust crate** (`crates/actuator-git/`, D112): fills `broker_action`'s
   one actuator slot without changing its signature. Five modules, each with one reason to change:
   `types` (the operation, outcome and refusal vocabularies), `argv` (the fixed argument shapes and
@@ -1268,9 +1273,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   `ontology/tests/actuator_invocation_harness.py`, folded additively into the main suite on
   `run_rust_gateway`'s exact shape). Two residuals are named, not closed: the witness is not
   single use (EC-12), and a lying `DecisionRecorder` defeats the audit obligation (EC-13, the same
-  class of limit as D103's limit two and D100's in-process label rewrite). The code licence is OPEN
-  (section 5). See `plans/dd/actuator-git.md` for the full design and `DECISIONS.md` D112 for the
-  line-budget breakdown.
+  class of limit as D103's limit two and D100's in-process label rewrite). The code licence was
+  OPEN at this step and is now SETTLED (D118, section 5). See `plans/dd/actuator-git.md` for the
+  full design and `DECISIONS.md` D112 for the line-budget breakdown.
 - **The repository's fifth Rust crate** (`crates/process-engine/`, D113): sequences the fixed
   five-step run, giving `himinbjorg::validate_proposal`, `broker_authorised_action`,
   Himinbjörg's other three interfaces and `hierarchy_vor::load_verified_cohort` each their first
@@ -1301,9 +1306,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   checks still refuses at the actuator with `ActuationRefusal::ExitStatus`, because nothing in
   the workspace can stage a change (the designed outcome of PE-3). Named residuals carried
   forward, not closed: EC-1 (nothing stages a change), EC-7 (unchanged), EC-12 (narrowed at the
-  engine only), EC-13 (untouched) and EC-16 (unchanged). The code licence is OPEN (section 5).
-  See `plans/dd/process-engine.md` for the full design and `DECISIONS.md` D113 for the
-  line-budget breakdown.
+  engine only), EC-13 (untouched) and EC-16 (unchanged). The code licence was OPEN at this step
+  and is now SETTLED (D118, section 5). See `plans/dd/process-engine.md` for the full design and
+  `DECISIONS.md` D113 for the line-budget breakdown.
 - **Build-order step six (D114): the target loop has run end to end, once, on a fixture.**
   `EngineTask` gains a fifth field, `sink: String`, and `CognitionOutput` loses its own, closing
   a sink-fidelity gap rather than a safety hole (before this step every proposal declared the
@@ -1332,8 +1337,9 @@ named remaining refinement, contained by Gjoll at action time, not here.
   than smoothed over: provisioning a real secret for the first time in this repository's history
   surfaced three pre-existing test defects in `crates/himinbjorg`, invisible under every prior
   verification claim because the tests had always silently skipped; all three are unrelated to
-  the secret change and all three are now fixed. The code licence is still OPEN (section 5). See
-  `TARGET_LOOP_EVIDENCE.md` and `DECISIONS.md` D114 for the full transcript and breakdown.
+  the secret change and all three are now fixed. The code licence was still OPEN at this step and
+  is now SETTLED (D118, section 5). See `TARGET_LOOP_EVIDENCE.md` and `DECISIONS.md` D114 for the
+  full transcript and breakdown.
 - **The repository's sixth Rust crate, and build-order step seven (D115 to D117): a genuine
   model call now sits on the process engine's own non-test cognition path.**
   `crates/cognition-client/` spawns a Python MLX sidecar (a new top-level `cognition/` Python
@@ -1376,10 +1382,11 @@ named remaining refinement, contained by Gjoll at action time, not here.
   changes to address it); and the stated test-coverage gap that no Rust test exercises
   `CognitionBinding::Real` end to end, by design, per the spec's own instruction that no test is
   to be written that fakes a real model call, named as a stated limit rather than an oversight.
-  The code licence is still OPEN, now covering **six** crates rather than five (section 5): the
-  operator explicitly chose to proceed with the build and settle the licence question before
-  merge, not before build. See `plans/dd/cognition-client.md` for the full design and
-  `DECISIONS.md` D115 to D117 for the line-budget breakdown.
+  The code licence was still OPEN at this step, now covering **six** crates rather than five, and
+  is now SETTLED (D118, section 5): the operator explicitly chose to proceed with the build and
+  settle the licence question before merge, not before build, and that choice is executed at
+  D118. See `plans/dd/cognition-client.md` for the full design and `DECISIONS.md` D115 to D117
+  for the line-budget breakdown.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -1402,7 +1409,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D100 narrowed the gjoll no-registry `agent_consequential_sinks` residual D97 named: consequentiality now derives from the classify-time stamp a value already carries, so a hollowed or swapped gate-time argument, or a value with no stamp at all, no longer disarms the block | SETTLED (narrowed, not fully closed) | The narrow remaining gap is a caller able to rewrite the stamp on a `ClassifiedAssertion` in process, before the gate call; out of the threat model, the same footing as `action_critical`/`trust_level` today |
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
-| **D109/D110/D111/D112/D113/D114/D115: the code licence is OPEN and blocks publication, now covering SIX crates rather than five.** No source file in this repository carries a licence header, Python or Rust; `LICENSE.md` covers documentation only (CC-BY-SA-4.0), and none of `crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml`, `crates/process-engine/Cargo.toml` or `crates/cognition-client/Cargo.toml` carries a `license` field. Build-order step six (D114) added no sixth crate, only `ontology/tools/run_target_loop.py` (a standalone Python tool) and edits inside the existing five, so the blocker was unaffected by that step. Build-order step seven (D115) DID add a sixth crate, `crates/cognition-client/`, and also a new top-level Python package (`cognition/`), widening the set of unlicensed source this blocker covers rather than narrowing it; the operator was asked explicitly whether to settle the licence question before this sixth crate landed (per the build spec's own step 0, EC-52) and explicitly chose to proceed with the build and settle the licence question before merge, not before build, a decision recorded rather than made silently | OPEN (blocker) | Must be settled before any code in this repository is published, and now blocks all six crates plus the `cognition/` Python package. `LICENSE.md`'s Scope section names AGPL-3.0-or-later only as an example (`e.g.`), so the question is genuinely unsettled and is a one-way door once decided; retro-heading the existing Python is part of settling this, not a separate task |
+| **D118 settles the code licence: AGPL-3.0-or-later, for all code.** D109 to D117 recorded this as a genuinely open blocker across the whole seven-step build order, growing from five crates to six as build-order step seven (D115) landed `crates/cognition-client/` and the top-level `cognition/` Python package, still unsettled; the operator was asked explicitly whether to settle before that sixth crate landed (the build spec's own step 0, EC-52) and chose explicitly to proceed with the build and settle before merge, not before build, a choice this row's predecessors recorded rather than smoothed over. D118 executes that choice: a root `LICENSE` file carries the AGPL-3.0 text verbatim; all six crate manifests (`crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml`, `crates/process-engine/Cargo.toml`, `crates/cognition-client/Cargo.toml`) carry `license = "AGPL-3.0-or-later"`; and every tracked source file outside `ontology/reference/sumo/` carries an SPDX header, 89 Python files and 61 Rust files, 150 in total, mechanically checked by `ontology/tests/harness.py::run_licence_posture`. `LICENSE.md` covers documentation only (CC-BY-SA-4.0) and is unaffected; `ontology/reference/sumo/`'s GPL reference-only quarantine (D38, D40) is a separate and independent matter, untouched by this settlement, and remains true exactly as before | SETTLED (D118) | No longer blocks publication on this item. `LICENSE.md`'s Scope section now states the settlement rather than naming AGPL-3.0-or-later as an example (`e.g.`); the licence question is a one-way door now closed, and the historical rows (D109 to D117, and the consistency checks resting on them) keep their original "OPEN at that step" wording with a forward pointer to this row rather than being rewritten |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -1623,10 +1630,11 @@ corpus the author never saw.
    (the promotion gate, queued since D96) and from `plans/synthesis-resolutions.md`/`plans/synthesis-architecture.md`'s
    own further-named work, not guessed. Governed staging stays a written obligation, inherited
    from step six and carried forward unmet by step seven, whose own cognition authors a commit
-   message only (`plans/dd/process-engine.md` section 12). The code licence (section 5) now
-   blocks publication of all SIX crates plus the new `cognition/` Python package; the operator
-   was asked explicitly before this sixth crate landed and chose to proceed with the build and
-   settle the licence question before merge, not before build.
+   message only (`plans/dd/process-engine.md` section 12). The operator was asked explicitly
+   before this sixth crate landed and chose to proceed with the build and settle the licence
+   question before merge, not before build; that question, which had blocked publication of all
+   six crates plus the new `cognition/` Python package, is now settled by D118 (section 5) and no
+   longer blocks publication.
 
 Lower-priority, genuinely wanting real traffic or a real deployment: growing coverage
 breadth from the captured gaps (D60, D26), tuning the finance/communications boundary

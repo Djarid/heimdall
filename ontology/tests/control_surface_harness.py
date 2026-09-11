@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """D97/D100: the control-surface ceiling-enforcement gap, and the gjoll no-registry
 residual (now narrowed by D100, not fixed by D97).
 

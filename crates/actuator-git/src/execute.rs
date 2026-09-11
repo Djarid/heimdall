@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `execute`, the crate's single public entry point, and the only module in
 //! the whole workspace that touches `std::process` (REQ-7, section 10 file
 //! nine of `.opencode/plans/git-actuator-step-four.md`). This module's one

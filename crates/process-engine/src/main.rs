@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `process-engine`'s one binary target (REQ-25, PE-5). A separate crate
 //! root from `src/lib.rs` (REQ-5: its own `#![forbid(unsafe_code)]`
 //! above, since a binary's attributes are not inherited from the

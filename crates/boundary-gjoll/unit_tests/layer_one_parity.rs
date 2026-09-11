@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Layer-one golden-vector replay (REQ-24, REQ-25, REQ-26): all 22 vectors from
 //! `crates/boundary-gjoll/vectors/gate_vectors.json`, replayed directly against
 //! `crate::rule::apply`, the pure rule core. Compiled as an in-crate unit-test module

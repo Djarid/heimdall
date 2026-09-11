@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Rust cohort drift detector (D110, spec section 3.7): is the Rust re-expression of
 Vor's minimal single-cohort form at `crates/hierarchy-vor/` current, dependency-clean,
 surface-clean and passing, following D109's pattern and `rust_gate_harness.py`'s exact

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Spike harness for the D25 / D38 substrate decision (Phase 2).
 
 Runs the four pass criteria from ONTOLOGY_CONSTRUCTION.md section 3.3 against the

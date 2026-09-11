@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Test harness for state-delta consequence detection (mitigation 1 for the D67 break).
 
 Run from the repo root:

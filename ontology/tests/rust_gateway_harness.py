@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Himinbjörg gateway posture detector (D111, `.opencode/plans/himinbjorg-step-three.md`
 REQ-27): is `crates/himinbjorg/` dependency-clean, test-and-code isolated, sufficient on
 its public surface, and passing, following `ontology/tests/rust_cohort_harness.py`'s

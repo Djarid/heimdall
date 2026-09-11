@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Memgraph-backed flow-to-sink store: the live-substrate binding the spike anticipated.
 
 The substrate spike (`OUTCOME.md`) proved the flow-to-sink action-critical algorithm

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Phase 2 detection-layer tests: Fenrir structure, Huginn canary monitoring, the
 attempt-introspection tripwire, and the false-inert catch (D67-fix direction d).
 

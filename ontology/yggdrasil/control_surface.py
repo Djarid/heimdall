@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The control surface: per-agent binding. NOT part of the ontology (D20).
 
 This is deliberately separate from Yggdrasil. The ontology holds action and

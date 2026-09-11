@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The single positive-match validator (REQ-23, REQ-24, REQ-25, REQ-26 of
 //! `.opencode/plans/build-order-step-seven-spec.md`; AC-25 to AC-29): the
 //! only place in this crate a value received from the child is checked, on

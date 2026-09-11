@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The invariant 3.1 guard: assert no language model on the authorisation path.
 
 Invariant 3.1 is the load-bearing rule of the whole architecture (`AGENTS.md`): the

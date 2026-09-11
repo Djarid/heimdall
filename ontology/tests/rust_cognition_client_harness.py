@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Cognition-client posture detector
 (`.opencode/plans/build-order-step-seven-spec.md` section 4.9, REQ-56, REQ-57,
 REQ-61, REQ-62; section 5.9, AC-58 to AC-64), on

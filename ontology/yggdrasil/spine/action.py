@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The action vocabulary: the action types that can exist.
 
 System-wide vocabulary, not per-agent binding (D20): which agent may perform which

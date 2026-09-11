@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The cohort's value shapes, no logic (section 4.1's own description of this
 //! module). [`CohortDefinition`] carries the mandatory cohort's content, one
 //! record type built on `crate::record`'s substrate; [`CohortSurface`] is the

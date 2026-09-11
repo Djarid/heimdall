@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Scheduling-domain classification rules. A sibling of communications (D29).
 
 Adding this module and its line in `register_all` is the whole of the scheduling

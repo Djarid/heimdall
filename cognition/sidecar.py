@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The MLX sidecar module (build-order step seven, REQ-14 to REQ-18, REQ-22).
 
 `crates/cognition-client/`'s invocation module spawns this module as

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `broker_action` (refuse-only, unchanged) and `broker_authorised_action`
 //! (the witness-carrying entry point that CAN reach the actuator): the
 //! credential-scope check, the witness match, the audit write, and the

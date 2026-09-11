@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Himinbjörg's own value shapes (REQ-6, section 7 of
 //! `.opencode/plans/himinbjorg-step-three.md`). No logic, no decision-making
 //! anywhere in this module: every item below is a plain data shape, plus the

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The binary's fail-closed startup contract (REQ-26 to REQ-30, PE-5): AC-30
 //! to AC-34, and edge cases EC-3 to EC-6 of
 //! `.opencode/plans/process-engine-step-five-spec.md`.

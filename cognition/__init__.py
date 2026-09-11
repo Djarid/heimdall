@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The cognition plane's Python sidecar package (build-order step seven).
 
 `.opencode/plans/build-order-step-seven-spec.md` REQ-14: a new, top-level package,

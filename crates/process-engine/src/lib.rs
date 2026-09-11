@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `process-engine` crate root: the repository's fifth Rust crate
 //! (build-order step five, `.opencode/plans/process-engine-step-five-spec.md`,
 //! D108). A library carrying one public entry point, [`run_sequence`],

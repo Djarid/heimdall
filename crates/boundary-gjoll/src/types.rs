@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Shared value types for the `boundary-gjoll` re-expression (D109, spec section
 //! 5.1). Plain data shapes only, mirroring the Python dataclasses they re-express
 //! (`ontology/nornir/gjoll.py`, `ontology/nornir/assertions.py`). No logic and no

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Promotion policy: corroboration for consequential facts, and graded review priority.
 
 Two mitigations for the false-inert break that act at the PROMOTION and REVIEW boundaries

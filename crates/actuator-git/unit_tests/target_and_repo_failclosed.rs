@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The permitted-target allowlist and the working-repository resolution's
 //! fail-closed refusal conditions that do NOT require mutating the process
 //! environment (REQ-14 to REQ-20). Covers AC-15 to AC-18 in full, and the

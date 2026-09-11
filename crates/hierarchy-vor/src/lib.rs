@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `hierarchy-vor` crate root.
 //!
 //! STATUS AT THIS COMMIT (issue #31, `.opencode/plans/vor-minimal-cohort-spec.md`

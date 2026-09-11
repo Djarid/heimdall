@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `validate_proposal`, the six-check sequence, the non-short-circuiting
 //! record and the `Allow`-iff-six-passes rule (REQ-10 to REQ-16, REQ-21,
 //! REQ-23, section 5.4 and section 6.1 of

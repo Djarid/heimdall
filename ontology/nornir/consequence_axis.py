@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Two-dimensional classification: a speech-act type plus a separate consequence axis.
 
 The structural defect this fixes. Nornir's classification collapses two orthogonal questions

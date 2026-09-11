@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Export Vor's cohort golden vectors for the Rust re-expression (D110, spec section
 3.5, issue #25).
 

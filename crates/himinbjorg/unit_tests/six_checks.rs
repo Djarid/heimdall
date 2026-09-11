@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The six-check sequence inside `validate_proposal` (REQ-10 to REQ-16, REQ-21,
 //! REQ-22), `.opencode/plans/himinbjorg-step-three.md` section 8.4 and 8.6:
 //! AC-15 to AC-23, AC-36, AC-37, and the check-record property test (AC-18).

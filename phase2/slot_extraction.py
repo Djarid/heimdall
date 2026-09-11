@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Structural slot extraction: Fenrir binds values to typed slots, not just free text.
 
 Why this exists. The false-inert mitigations D79 to D82 are wired into the live engine

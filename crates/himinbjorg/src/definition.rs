@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `enforce_definition`, the hardcoded global default action set, the set
 //! intersection, the byte-equality trust-ceiling check and the
 //! non-empty-intersection compile-time assertion (REQ-9, section 5.3 and

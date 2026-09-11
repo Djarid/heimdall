@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Vor's invocation boundary: who actually calls the cohort entry point and the
 secret loaders (REQ-45), on `ontology.tests.gjoll_invocation_harness`'s exact
 function shapes (D96's precedent).

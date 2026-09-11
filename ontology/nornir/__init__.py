@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Nornir: the deterministic classifier and reasoner over Yggdrasil.
 
 No language model authors or runs anything here (invariant 3.1, D02). Nornir is

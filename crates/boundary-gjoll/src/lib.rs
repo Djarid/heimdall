@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `boundary-gjoll`: a Rust re-expression of Gjoll's action-time gate (D109).
 //!
 //! All four modules are implemented in this build: `types` and `rule` (layer

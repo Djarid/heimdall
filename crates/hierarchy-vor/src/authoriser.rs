@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The trusted authoriser set and the secret's provenance (section 2.2, section
 //! 3.3, REQ-13 to REQ-19). This module is the only place in the crate that ever
 //! touches a secret byte, and it enforces every one of REQ-14's seven fail-closed

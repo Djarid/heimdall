@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The fail-closed decision procedure (section 3.4's REQ-27), the Rust form of
 //! `authorisation_record.verify_record_attestation` (lines 176 to 232). This
 //! module is generic over [`crate::record::AttestedRecord`] and knows no
