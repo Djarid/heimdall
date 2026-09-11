@@ -20,6 +20,14 @@ ONTOLOGY_CONSTRUCTION.md section 8:
   8.4 Flow-to-sink           agent-scoped and cross-domain reachability, including the
                              mandatory cross-domain state-staging case (D30).
 
+This module also registers a growing set of fatal-gated obligations beyond the
+original four, including (D118, REQ-23 to REQ-28) `run_licence_posture`: the root
+`LICENSE` exists and identifies as AGPL-3.0 (19 November 2007); every
+`crates/*/Cargo.toml` carries `package.license == "AGPL-3.0-or-later"`; and every
+tracked `.py` file outside `ontology/reference/sumo/` and every `.rs` file under
+`crates/` carries its language's SPDX header within its first five lines. This is a
+licensing fact only: it advances no invariant and changes no measurement.
+
 Run: /Users/jasonh/git/heimdall/poc/.venv/bin/python -m ontology.tests.harness
 (from the repo root; any Python 3.11+; no third-party dependency).
 """
@@ -28,7 +36,9 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 from ontology.yggdrasil import load
@@ -147,6 +157,12 @@ class Report:
         # existing counter, obligation, ordering or message above changes
         # behaviour. This is the 25th counter summed into `fatal`.
         self.rust_cognition_client_failures = 0
+        # D118 (REQ-23 to REQ-28): the licence-posture obligation, folded in
+        # following the run_effect_probe/run_sink_attestation registration
+        # pattern (D102), exactly, and additively: no existing counter,
+        # obligation, ordering or message above changes behaviour. This is
+        # the 26th counter summed into `fatal`.
+        self.licence_posture_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -1049,7 +1065,8 @@ def run_rust_actuator(rep: Report) -> None:
     actuator's posture detector at `crates/actuator-git/` proves dependency
     posture (an empty `[dependencies]` table and, unlike `boundary-gjoll`'s
     and `hierarchy-vor`'s own precedent, an empty `[dev-dependencies]` table
-    too, and no `license` manifest field), test and code isolation, the
+    too, and a `license` manifest field equal to exactly
+    `AGPL-3.0-or-later`, D118), test and code isolation, the
     mechanical surface properties of section 4.1 to 4.5
     (`#![forbid(unsafe_code)]` present and unviolated, the two-variant
     operation enum, the non-empty permitted-target allowlist excluding
@@ -1073,7 +1090,8 @@ def run_rust_actuator(rep: Report) -> None:
         rc = rust_actuator_harness.main()
     if rc == 0:
         rep.line("  [PASS] crates/actuator-git/ carries an empty [dependencies] table "
-                  "and no [dev-dependencies] table and no license field, keeps every "
+                  "and no [dev-dependencies] table and license = \"AGPL-3.0-or-later\" "
+                  "(D118), keeps every "
                   "test construct out of src/, carries #![forbid(unsafe_code)] with no "
                   "unsafe keyword anywhere in its source, declares its operation "
                   "vocabulary as exactly two variants, carries a non-empty permitted-"
@@ -1717,6 +1735,354 @@ def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
     rep.line("")
 
 
+# ---------------------------------------------------------------------------------
+# D118 (REQ-23 to REQ-28): licence posture. Structural only (AC-27): presence and
+# position of a fixed identifier string, never a compatibility judgement, never a
+# network fetch. Depends on the filesystem and tomllib only, never on
+# ontology/nornir/ or ontology/yggdrasil/, so it cannot perturb invariant 3.1's
+# guard (REQ-22, AC-27).
+# ---------------------------------------------------------------------------------
+
+REPO_ROOT: Path = Path(__file__).resolve().parents[2]
+
+SPDX_ID = "AGPL-3.0-or-later"
+SPDX_LINE_PY = "# SPDX-License-Identifier: AGPL-3.0-or-later"
+SPDX_LINE_RS = "// SPDX-License-Identifier: AGPL-3.0-or-later"
+SPDX_MAX_LINE = 5  # REQ-24 check 3: accommodates REQ-12's attribute-first
+                    # placement plus a blank line, without accepting a header
+                    # buried arbitrarily deep.
+SUMO_EXCLUDED = "ontology/reference/sumo/"  # REQ-25, load-bearing: never
+                                             # remove this exclusion. Removing
+                                             # it would demand an AGPL header
+                                             # on GPL third-party SUMO files,
+                                             # which would itself be a
+                                             # licensing error (D38, D40).
+LICENCE_MARKERS = ("GNU AFFERO GENERAL PUBLIC LICENSE", "Version 3, 19 November 2007")
+
+
+def _git_tracked_files(repo_root: Path, suffix: str) -> list[str]:
+    """Every git-tracked file under `repo_root` ending in `suffix`, as paths
+    relative to `repo_root`, using POSIX separators. REQ-24.3/REQ-25: discovery
+    is via `git ls-files`, not a filesystem walk, so `.venv/`, `target/` and
+    `__pycache__/` are structurally excluded rather than a maintained list
+    (REQ-15's own discipline, reused here)."""
+    result = subprocess.run(
+        ["git", "ls-files"], cwd=str(repo_root), capture_output=True, text=True,
+    )
+    return [f for f in result.stdout.splitlines() if f.endswith(suffix)]
+
+
+def _has_spdx_header(path: Path, spdx_line: str, max_line: int = SPDX_MAX_LINE) -> bool:
+    """True if `path`'s first `max_line` lines contain a line equal to
+    `spdx_line`. Read failures (missing file, bad encoding) count as no header,
+    never as a raised exception, so one unreadable file cannot mask every other
+    finding."""
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            for _ in range(max_line):
+                line = fh.readline()
+                if not line:
+                    break
+                if line.rstrip("\n") == spdx_line:
+                    return True
+    except OSError:
+        return False
+    return False
+
+
+def _files_missing_spdx(
+    repo_root: Path,
+    py_roots: tuple[str, ...],
+    rs_root: str,
+) -> list[str]:
+    """Return the relative paths of source files carrying no SPDX line in
+    their first SPDX_MAX_LINE lines. Excludes SUMO_EXCLUDED by prefix
+    (REQ-25). `py_roots` and `rs_root` are accepted so the negative control
+    can point this at a disposable scratch tree instead of the real
+    repository (REQ-26)."""
+    missing: list[str] = []
+
+    for rel in _git_tracked_files(repo_root, ".py"):
+        if rel.startswith(SUMO_EXCLUDED):
+            continue
+        if not any(rel == r or rel.startswith(r.rstrip("/") + "/") for r in py_roots):
+            continue
+        if not _has_spdx_header(repo_root / rel, SPDX_LINE_PY):
+            missing.append(rel)
+
+    for rel in _git_tracked_files(repo_root, ".rs"):
+        if not (rel == rs_root or rel.startswith(rs_root.rstrip("/") + "/")):
+            continue
+        if not _has_spdx_header(repo_root / rel, SPDX_LINE_RS):
+            missing.append(rel)
+
+    return sorted(missing)
+
+
+def _check_root_license(repo_root: Path) -> tuple[bool, str]:
+    """REQ-24 check 1: the root LICENSE exists, is non-empty and identifies as
+    the AGPL-3.0 (19 November 2007) by an identity probe, never a full-text
+    comparison (REQ-24 forbids embedding a copy of the licence text in the
+    harness, and forbids a network fetch)."""
+    license_path = repo_root / "LICENSE"
+    if not license_path.exists():
+        return False, "the repository root carries no file named LICENSE"
+    text = license_path.read_text(encoding="utf-8", errors="replace")
+    if not text.strip():
+        return False, "LICENSE exists but is empty"
+    missing_markers = [m for m in LICENCE_MARKERS if m not in text]
+    if missing_markers:
+        return False, (
+            f"LICENSE does not identify as the AGPL-3.0 (19 November 2007): "
+            f"missing marker(s) {missing_markers!r}"
+        )
+    return True, "LICENSE exists, is non-empty and identifies as the AGPL-3.0 (19 November 2007)"
+
+
+def _check_manifest_licences(repo_root: Path) -> list[str]:
+    """REQ-24 check 2: every `crates/*/Cargo.toml` discovered by GLOBBING
+    (never a hardcoded list of six, so a seventh crate is caught by
+    construction, REQ-24.2/LC-8) carries `package.license == "AGPL-3.0-or-later"`.
+    A missing field, a wrong value or a manifest with no [package] table is a
+    violation."""
+    violations: list[str] = []
+    crates_dir = repo_root / "crates"
+    if not crates_dir.is_dir():
+        return [f"{crates_dir} does not exist; cannot check any manifest's licence"]
+    for manifest_path in sorted(crates_dir.glob("*/Cargo.toml")):
+        rel = manifest_path.relative_to(repo_root).as_posix()
+        try:
+            data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            violations.append(f"{rel}: could not be parsed as TOML ({exc})")
+            continue
+        package = data.get("package")
+        if not package:
+            violations.append(f"{rel}: carries no [package] table")
+            continue
+        declared = package.get("license")
+        if declared is None:
+            violations.append(f"{rel}: [package] carries no `license` field (D118)")
+        elif declared != SPDX_ID:
+            violations.append(
+                f'{rel}: [package] declares license = "{declared}", not "{SPDX_ID}" (D118)'
+            )
+    return violations
+
+
+# The real repository's Python roots that must carry the header (REQ-24.3): every
+# tracked .py file outside ontology/reference/sumo/. Expressed as a tuple of
+# directory prefixes plus bare top-level files, mirroring _git_tracked_files'
+# git-ls-files-derived discovery rather than a hardcoded file list, so a NEW file
+# under any of these roots is covered without editing this module (REQ-24.3, LC-9).
+_LICENCE_PY_ROOTS: tuple[str, ...] = ("ontology/", "phase2/", "poc/", "cognition/",
+                                      "spike/")
+_LICENCE_RS_ROOT: str = "crates/"
+
+
+def _licence_posture_control_check() -> list[str]:
+    """Mandatory negative control (invariant 3.10, D10, D101's precedent), run
+    BEFORE any positive assertion in `run_licence_posture` (REQ-26). Operates on
+    disposable scratch files in a temporary directory only, never on a real
+    repository file. Plants:
+
+    - a manifest with no `license` field, and one with `license = "MIT"`;
+    - a `.py` file and a `.rs` file with no SPDX line;
+    - a `.rs` file whose SPDX line sits at line 20 (too deep);
+
+    and asserts each is caught. Also plants COMPLIANT counterparts of each and
+    asserts none is wrongly flagged, so the check is proven not to false-positive
+    (REQ-26)."""
+    import tempfile
+
+    failures: list[str] = []
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch = Path(d)
+
+        # --- Root LICENSE identity probe (check 1) ---
+        no_license_dir = scratch / "no_license_repo"
+        no_license_dir.mkdir()
+        ok, _detail = _check_root_license(no_license_dir)
+        if ok:
+            failures.append(
+                "root-LICENSE control did NOT catch a scratch tree with no LICENSE file"
+            )
+
+        wrong_text_dir = scratch / "wrong_license_repo"
+        wrong_text_dir.mkdir()
+        (wrong_text_dir / "LICENSE").write_text("Some unrelated text, not the AGPL.\n")
+        ok, _detail = _check_root_license(wrong_text_dir)
+        if ok:
+            failures.append(
+                "root-LICENSE control did NOT catch a LICENSE file lacking the AGPL "
+                "identity markers"
+            )
+
+        compliant_license_dir = scratch / "compliant_license_repo"
+        compliant_license_dir.mkdir()
+        (compliant_license_dir / "LICENSE").write_text(
+            "                    GNU AFFERO GENERAL PUBLIC LICENSE\n"
+            "                       Version 3, 19 November 2007\n"
+            "(scratch identity probe only, not the real licence text)\n"
+        )
+        ok, _detail = _check_root_license(compliant_license_dir)
+        if not ok:
+            failures.append(
+                "root-LICENSE control WRONGLY flagged a scratch LICENSE carrying both "
+                "identity markers"
+            )
+
+        # --- Manifest licence field (check 2) ---
+        bad_crates = scratch / "bad_crates_repo" / "crates"
+        (bad_crates / "no-license-crate").mkdir(parents=True)
+        (bad_crates / "no-license-crate" / "Cargo.toml").write_text(
+            '[package]\nname = "no-license-crate"\n'
+        )
+        (bad_crates / "wrong-license-crate").mkdir(parents=True)
+        (bad_crates / "wrong-license-crate" / "Cargo.toml").write_text(
+            '[package]\nname = "wrong-license-crate"\nlicense = "MIT"\n'
+        )
+        violations = _check_manifest_licences(bad_crates.parent)
+        if len(violations) < 2:
+            failures.append(
+                "manifest-licence control did NOT catch both a MISSING license field "
+                "and a WRONG license value (MIT) across two scratch crates"
+            )
+
+        good_crates = scratch / "good_crates_repo" / "crates"
+        (good_crates / "clean-crate").mkdir(parents=True)
+        (good_crates / "clean-crate" / "Cargo.toml").write_text(
+            f'[package]\nname = "clean-crate"\nlicense = "{SPDX_ID}"\n'
+        )
+        violations = _check_manifest_licences(good_crates.parent)
+        if violations:
+            failures.append(
+                "manifest-licence control WRONGLY flagged a scratch crate declaring "
+                f'license = "{SPDX_ID}": {violations}'
+            )
+
+        # --- SPDX header presence and position (check 3) ---
+        header_repo = scratch / "header_repo"
+        (header_repo / "ontology").mkdir(parents=True)
+        (header_repo / "crates" / "some-crate" / "src").mkdir(parents=True)
+
+        no_header_py = header_repo / "ontology" / "no_header.py"
+        no_header_py.write_text('"""A module with no SPDX header at all."""\n')
+
+        no_header_rs = header_repo / "crates" / "some-crate" / "src" / "no_header.rs"
+        no_header_rs.write_text("fn f() {}\n")
+
+        too_deep_rs = header_repo / "crates" / "some-crate" / "src" / "too_deep.rs"
+        too_deep_rs.write_text(
+            "\n".join([f"// filler line {i}" for i in range(19)])
+            + f"\n{SPDX_LINE_RS}\n// Copyright (C) 2026 Jason Huxley and the Heimdall authors.\n"
+        )
+
+        compliant_py = header_repo / "ontology" / "compliant.py"
+        compliant_py.write_text(
+            f"{SPDX_LINE_PY}\n"
+            "# Copyright (C) 2026 Jason Huxley and the Heimdall authors.\n\n"
+            '"""A compliant module."""\n'
+        )
+
+        compliant_rs = header_repo / "crates" / "some-crate" / "src" / "compliant.rs"
+        compliant_rs.write_text(
+            f"{SPDX_LINE_RS}\n"
+            "// Copyright (C) 2026 Jason Huxley and the Heimdall authors.\n\n"
+            "fn g() {}\n"
+        )
+
+        for p, spdx in ((no_header_py, SPDX_LINE_PY), (no_header_rs, SPDX_LINE_RS),
+                        (too_deep_rs, SPDX_LINE_RS)):
+            if _has_spdx_header(p, spdx):
+                failures.append(
+                    f"SPDX-header control did NOT catch {p.name} (missing header, or "
+                    f"a header buried past line {SPDX_MAX_LINE})"
+                )
+        for p, spdx in ((compliant_py, SPDX_LINE_PY), (compliant_rs, SPDX_LINE_RS)):
+            if not _has_spdx_header(p, spdx):
+                failures.append(
+                    f"SPDX-header control WRONGLY flagged a compliant file {p.name} "
+                    f"carrying its header on lines 1-2"
+                )
+
+    return failures
+
+
+def run_licence_posture(rep: Report) -> None:
+    """D118 (REQ-23 to REQ-28). Fatal-gated licence-posture obligation.
+
+    Three checks, and nothing more (REQ-24): the root LICENSE exists and
+    identifies as the AGPL-3.0 (19 November 2007); every crates/*/Cargo.toml
+    carries package.license == "AGPL-3.0-or-later"; every tracked .py outside
+    ontology/reference/sumo/ and every .rs under crates/ carries its
+    language's SPDX comment within its first five lines.
+
+    Runs its mandatory negative control FIRST (D101 precedent), against
+    disposable scratch files only. Structural: presence and position of a
+    fixed string, never a compatibility judgement, never a network fetch
+    (REQ-27). It is a licensing fact only: it advances no invariant and
+    changes no measurement (LC-10), and it does NOT weaken consistency check
+    7's SUMO GPL reference-only boundary (LC-11), which the SUMO_EXCLUDED
+    prefix exclusion below states explicitly rather than leaves silent
+    (REQ-25)."""
+    rep.line("=== D118 Licence posture: root LICENSE identity, every crate manifest's "
+             "`license` field, every tracked source file's SPDX header ===")
+
+    control_failures = _licence_posture_control_check()
+    if control_failures:
+        for cf in control_failures:
+            rep.licence_posture_failures += 1
+            rep.line(f"  [CRITICAL] negative control: {cf}")
+    else:
+        rep.line("  [PASS] negative control: a missing/wrong LICENSE, a missing/wrong "
+                 "manifest license field, and a missing/too-deep SPDX header are all "
+                 "caught, and their compliant counterparts are never wrongly flagged "
+                 "(the checks bite, they are not theatre).")
+
+    rep.line(f"  Exclusion (REQ-25, load-bearing): {SUMO_EXCLUDED!r} is never read, "
+             f"scanned or required to carry a header. It holds unmodified GPL SUMO "
+             f"reference material (D38, D40) and this check must never weaken that "
+             f"boundary.")
+
+    license_ok, license_detail = _check_root_license(REPO_ROOT)
+    if license_ok:
+        rep.line(f"  [PASS] root LICENSE: {license_detail}")
+    else:
+        rep.licence_posture_failures += 1
+        rep.line(f"  [CRITICAL] root LICENSE: {license_detail}")
+
+    manifest_violations = _check_manifest_licences(REPO_ROOT)
+    if manifest_violations:
+        for v in manifest_violations:
+            rep.licence_posture_failures += 1
+            rep.line(f"  [CRITICAL] manifest licence: {v}")
+    else:
+        n_manifests = len(list((REPO_ROOT / "crates").glob("*/Cargo.toml")))
+        rep.line(f"  [PASS] all {n_manifests} crates/*/Cargo.toml carry "
+                 f'package.license == "{SPDX_ID}"')
+
+    missing = _files_missing_spdx(REPO_ROOT, _LICENCE_PY_ROOTS, _LICENCE_RS_ROOT)
+    scanned_py = len([f for f in _git_tracked_files(REPO_ROOT, ".py")
+                       if not f.startswith(SUMO_EXCLUDED)
+                       and any(f == r or f.startswith(r) for r in _LICENCE_PY_ROOTS)])
+    scanned_rs = len([f for f in _git_tracked_files(REPO_ROOT, ".rs")
+                       if f.startswith(_LICENCE_RS_ROOT)])
+    if missing:
+        rep.line(f"  Scanned {scanned_py} Python and {scanned_rs} Rust file(s); "
+                 f"{len(missing)} missing an SPDX header:")
+        for rel in missing:
+            rep.licence_posture_failures += 1
+            rep.line(f"  [CRITICAL] {rel}: no SPDX-License-Identifier line in its "
+                     f"first {SPDX_MAX_LINE} line(s)")
+    else:
+        rep.line(f"  [PASS] all {scanned_py} Python and {scanned_rs} Rust file(s) "
+                 f"carry their language's SPDX header within the first "
+                 f"{SPDX_MAX_LINE} lines")
+    rep.line("")
+
+
 def main() -> int:
     data = json.loads(CORPUS.read_text())
     cases = data["cases"]
@@ -1768,6 +2134,7 @@ def main() -> int:
     run_agentcontext_attestation(rep)
     run_pipeline_score_reporting(rep)
     run_pipeline_score_percentage_regression(rep)
+    run_licence_posture(rep)
 
     rep.dump()
 
@@ -1788,7 +2155,8 @@ def main() -> int:
              + rep.actuator_invocation_failures
              + rep.rust_process_engine_failures
              + rep.rust_target_loop_failures
-             + rep.rust_cognition_client_failures)
+             + rep.rust_cognition_client_failures
+             + rep.licence_posture_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

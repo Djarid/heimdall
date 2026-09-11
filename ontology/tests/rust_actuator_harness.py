@@ -10,7 +10,8 @@ Run from the repo root:
 
 What this proves, and what it does not. A green result here means the crate at
 `crates/actuator-git/` carries an empty `[dependencies]` table and no
-`[dev-dependencies]` table and no `license` field (REQ-2, REQ-4), keeps every
+`[dev-dependencies]` table and a `license` field equal to exactly
+`AGPL-3.0-or-later` (REQ-2, D118), keeps every
 test construct out of `src/` (REQ-5), carries `#![forbid(unsafe_code)]` at file
 scope with no `unsafe` keyword anywhere in its source (REQ-3, AC-54), declares
 its operation vocabulary as exactly two variants (REQ-8), carries a non-empty
@@ -28,8 +29,10 @@ committed source, not about the toolchain:
 
   1. Dependency posture. `[dependencies]` must be empty (REQ-2); UNLIKE
      `boundary-gjoll`'s and `hierarchy-vor`'s own precedent, `[dev-dependencies]`
-     is NOT exempt here and must also be empty, and no `license` manifest field
-     may exist (REQ-4). Reuses (never reimplements)
+     is NOT exempt here and must also be empty, and the `license` manifest
+     field is required and must equal exactly `AGPL-3.0-or-later` (D118, the
+     code-licence settlement; this inverts the prior REQ-4 prohibition, which
+     applied only while the code licence stayed OPEN). Reuses (never reimplements)
      `ontology.tests.rust_gate_harness.check_dependency_posture` for the
      `[dependencies]` half (REQ-43's own instruction: "reusing
      rust_gate_harness.check_dependency_posture by import, never by copy").
@@ -113,10 +116,13 @@ def _strip_line_comments(src: str) -> str:
 
 
 # ---------------------------------------------------------------------------------
-# Check 1: dependency posture (REQ-2, REQ-4). The [dependencies] half reuses
+# Check 1: dependency posture (REQ-2, D118). The [dependencies] half reuses
 # rust_gate_harness.check_dependency_posture directly; the dev-dependencies and
-# license-field halves are this crate's own additional, stricter rules, since
-# REQ-2/REQ-4 give it NO exemption boundary-gjoll and hierarchy-vor both have.
+# license-field halves are this crate's own additional, stricter rules: REQ-2
+# gives [dev-dependencies] NO exemption boundary-gjoll and hierarchy-vor both
+# have, and D118 (the code-licence settlement) now REQUIRES the `license`
+# field to equal exactly "AGPL-3.0-or-later", inverting the prior REQ-4
+# prohibition that applied only while the code licence stayed OPEN.
 # ---------------------------------------------------------------------------------
 
 
@@ -131,7 +137,9 @@ class ManifestPostureResult:
 def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> ManifestPostureResult:
     """REQ-2 (empty [dependencies], reused from rust_gate_harness), REQ-2/REQ-6
     (no [dev-dependencies] at all -- stricter than boundary-gjoll's own
-    exemption), REQ-4 (no `license` manifest field)."""
+    exemption), D118 (a `license` field is now REQUIRED and must equal exactly
+    `AGPL-3.0-or-later`; this inverts the prior REQ-4 prohibition now that the
+    code licence is settled)."""
     if not manifest_path.exists():
         return ManifestPostureResult(
             ok=True, manifest_found=False,
@@ -152,10 +160,16 @@ def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> ManifestPo
             f"boundary-gjoll's/hierarchy-vor's own [dev-dependencies] exemption"
         )
     package = data.get("package", {}) or {}
-    if "license" in package:
+    declared = package.get("license")
+    if declared is None:
         violations.append(
-            "the [package] table carries a `license` field (REQ-4 forbids this: the code "
-            "licence stays OPEN and this step does not settle it)"
+            "the [package] table carries no `license` field (D118 requires "
+            'license = "AGPL-3.0-or-later" on every crate)'
+        )
+    elif declared != "AGPL-3.0-or-later":
+        violations.append(
+            f'the [package] table declares license = "{declared}", not '
+            f'"AGPL-3.0-or-later" (D118)'
         )
     if violations:
         return ManifestPostureResult(
@@ -164,8 +178,8 @@ def check_dependency_posture(manifest_path: Path = CRATE_MANIFEST) -> ManifestPo
         )
     return ManifestPostureResult(
         ok=True, manifest_found=True,
-        detail="[dependencies] is empty, [dev-dependencies] is absent, and no `license` "
-               "field exists.",
+        detail="[dependencies] is empty, [dev-dependencies] is absent, and `license` "
+               '= "AGPL-3.0-or-later" (D118).',
     )
 
 
@@ -522,7 +536,7 @@ def control_check() -> list[str]:
     with tempfile.TemporaryDirectory() as d:
         bad_manifest = Path(d) / "Cargo.toml"
         bad_manifest.write_text(
-            '[package]\nname = "actuator-git"\nlicense = "MIT"\n\n'
+            '[package]\nname = "actuator-git"\n\n'
             '[dependencies]\nserde = "1"\n\n[dev-dependencies]\ntempfile = "3"\n'
         )
         result = check_dependency_posture(bad_manifest)
@@ -530,16 +544,31 @@ def control_check() -> list[str]:
             failures.append(
                 "dependency-posture control did NOT catch a manifest with a populated "
                 "[dependencies] table, a populated [dev-dependencies] table AND a "
-                "license field (expected all three violations)"
+                "MISSING license field (expected all three violations, D118)"
+            )
+
+        wrong_license_manifest = Path(d) / "Cargo-wrong-license.toml"
+        wrong_license_manifest.write_text(
+            '[package]\nname = "actuator-git"\nlicense = "MIT"\n\n[dependencies]\n'
+        )
+        wrong_license_result = check_dependency_posture(wrong_license_manifest)
+        if wrong_license_result.ok:
+            failures.append(
+                "dependency-posture control did NOT catch a manifest declaring "
+                'license = "MIT" instead of "AGPL-3.0-or-later" (D118)'
             )
 
         clean_manifest = Path(d) / "Cargo-clean.toml"
-        clean_manifest.write_text('[package]\nname = "actuator-git"\n\n[dependencies]\n')
+        clean_manifest.write_text(
+            '[package]\nname = "actuator-git"\nlicense = "AGPL-3.0-or-later"\n\n'
+            '[dependencies]\n'
+        )
         clean_result = check_dependency_posture(clean_manifest)
         if not clean_result.ok:
             failures.append(
                 "dependency-posture control WRONGLY flagged a clean manifest with an "
-                "empty [dependencies] table, no [dev-dependencies] and no license field"
+                "empty [dependencies] table, no [dev-dependencies] and "
+                'license = "AGPL-3.0-or-later" (D118)'
             )
 
         bad_src = Path(d) / "src_bad"
