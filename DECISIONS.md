@@ -67,6 +67,11 @@ This log records every material decision taken across the premise PoC and the de
 
 ## 4. Ontology construction decisions
 
+> **Note on numbering:** D37 does not appear in this log. It was skipped
+> when the log was first drafted, not a decision that existed and was
+> later removed. The gap is a harmless numbering artefact, recorded here
+> so a fresh reader does not read it as something dropped.
+
 | ID | Decision | Status | Rationale | Realised in / trigger |
 |----|----------|--------|-----------|-----------------------|
 | D20 | Ontology holds action/constraint **vocabulary** only; per-agent **binding** lives in Himinbjörg's control surface | SETTLED | Correction to an earlier error: action and constraint spaces are agent-specific in binding, shared in vocabulary (HEIMDALL.md principle 5) | `ONTOLOGY_CONSTRUCTION.md` section 2.3 |
