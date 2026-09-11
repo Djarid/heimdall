@@ -2,8 +2,8 @@
   "schema_version": 1,
   "claim": "substrate mechanism parity over a shim record (_ShimCohortRecord, ontology/tools/export_cohort_vectors.py); NOT a real Python cohort's call history, because no Python CohortDefinition exists or ever will (D105 rules the hierarchy plane is Rust; spec section 2.1 question three)",
   "generated_from": {
-    "authorisation_record_py_sha256": "e4a3739d0fd937784a3246aaaf2bcec27f4938ae9720165508034ae74d7df34e",
-    "sink_attestation_py_sha256": "0009a0bbaa409e4e57af00e0e7aee39c320396dba527fa470c029f750fbe97aa"
+    "authorisation_record_py_sha256": "db36e9cfba8e8fccf3f0bca4439b90dd9e5fa2d7a703ef161c9e1c21f07b6fda",
+    "sink_attestation_py_sha256": "3a2a273c9c6ae8bb17b03fb8a916624d3b4e54bbe38c7641790df332e9da896b"
   },
   "fixture_secret_hex": "4e4f4e2d50524f44554354494f4e20666978747572652073656372657420666f7220636f686f72745f766563746f72732e6a736f6e202d2d206e6576657220746865207265616c206865696d64616c6c2d646576207365637265742c20636f6d6d69747465642064656c696265726174656c7920666f7220766563746f72207265706c617920706172697479",
   "fixture_secret_note": "NON-PRODUCTION fixture secret, committed deliberately; the real heimdall-dev secret is never in this repository",
