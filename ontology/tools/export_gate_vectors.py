@@ -534,7 +534,19 @@ def _capture_gate_calls() -> dict[str, dict]:
         ordinal = call_counts.get(count_key, 0) + 1
         call_counts[count_key] = ordinal
         key: CallSite = (relpath, qualname, ordinal)
-        origin = f"{relpath}:{lineno} (in {qualname}, call #{ordinal})"
+        # `origin` is built from the call site's STABLE identity tuple only
+        # (repo-relative file, qualname, ordinal), never the live `lineno`: this is
+        # the same "not by absolute source line number" reasoning the module
+        # docstring's "Call-site identity" section already gives for
+        # `CALL_SITE_MAP` itself, applied consistently to this diagnostic string
+        # too. Before this fix, `origin` embedded `lineno` and drifted on any
+        # unrelated line-number shift in a harness file (an inserted SPDX header,
+        # a rewrapped comment), producing a `generated_from`-digest-adjacent but
+        # untracked diff noise AC-20a's "exactly the four digest values and
+        # nothing else" requirement does not anticipate. `lineno` is still used
+        # below, unchanged, for `check_call_site_identity_hash`'s own line-content
+        # check, which is a different, deliberately line-sensitive mechanism.
+        origin = f"{relpath} (in {qualname}, call #{ordinal})"
         if key in EXCLUDED_CALL_SITES:
             return
         vector_id = CALL_SITE_MAP.get(key)
@@ -568,7 +580,7 @@ def _capture_gate_calls() -> dict[str, dict]:
         bound.apply_defaults()
         a = bound.arguments
         records[vector_id] = {
-            "origin": f"{relpath}:{lineno} (in {qualname})",
+            "origin": f"{relpath} (in {qualname})",
             "kind": kind,
             "proposal": a["proposal"],
             "classified_by_id": a["classified_by_id"],
