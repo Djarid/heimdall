@@ -3,6 +3,7 @@ name = "cognition-client"
 edition.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
+license = "AGPL-3.0-or-later"
 
 # REQ-7 (build-order step seven spec, section 4.2): this crate's
 # [dependencies] table is empty, and so is [dev-dependencies]. It names no

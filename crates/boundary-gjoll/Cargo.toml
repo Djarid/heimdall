@@ -3,6 +3,7 @@ name = "boundary-gjoll"
 edition.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 
