@@ -856,13 +856,44 @@ fn ac38_cognition_rs_constructs_exactly_one_model_authored_proposal_parameter_co
 
 // ---------------------------------------------------------------------------------
 // AC-39 (REQ-37), section 2.2 finding one, EC-41: the real implementation's
-// Ok value is never empty, and a parameterless proposal DOES authorise at
-// the gate -- this second half is the reason REQ-37 exists, documented
-// here as its own test.
+// Ok value is never empty. This test's premise was originally stated as
+// "a parameterless proposal DOES authorise at the gate", reasoning purely
+// from `boundary_gjoll::rule::apply`'s own non-short-circuit property in
+// isolation (an empty `consumes` map never runs the rule's per-parameter
+// loop body, so `reasons` stays empty). That reasoning is TRUE of
+// `rule::apply` taken alone, but INCOMPLETE against the real system: check
+// five's gate call goes through `himinbjorg::validate_proposal`, which
+// runs `boundary_gjoll::declaration::validate_proposal` (via
+// `consequentiality::evaluate`) FIRST, and that function's condition four
+// ("no silent omissions") independently blocks this exact scenario. The
+// real sink registry (`crates/himinbjorg/src/sinks.rs`'s own
+// `SINK_GIT_COMMIT_PARAMETERS`) declares `sink:git.commit` requires a
+// non-empty parameter set (`["v"]`), by a deliberate, compile-time-asserted
+// design choice (REQ-18 item 2's own doc comment there: "so a
+// zero-parameter sink can never become an accidental universal pass
+// through D81's parameter-accounting conditions (EC-10)"). A proposal that
+// declares NO parameters against a sink that declares it REQUIRES one is
+// therefore caught by declaration validation before `rule::apply`'s own
+// per-parameter loop is ever reached at all.
+//
+// Two independent defences exist against an empty-parameters proposal, and
+// this test now proves the first of them against the real registry:
+//   1. D81's declaration-validation "no silent omissions" condition, for
+//      any sink whose declared contract is non-empty (proven live here).
+//   2. `rule::apply`'s own non-short-circuit property (REQ-37's own
+//      rationale, documented separately in this module's header and in
+//      REQ-37 itself), which would STILL catch an empty-parameters
+//      proposal even against a hypothetical future sink that declared
+//      zero required parameters, where defence one above would not apply.
+// This test's own claim is about defence one against the REAL registry
+// only; defence two's own reasoning is not repeated here as a live
+// assertion because no zero-required-parameter sink exists to exercise it
+// against, but it remains true and is not retracted.
 // ---------------------------------------------------------------------------------
 
 #[test]
-fn ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_check_five() {
+fn ac39_a_parameterless_proposal_against_a_sink_with_required_parameters_is_blocked_by_declaration_validation_before_the_rule_core_runs(
+) {
     // Gated behind a real cohort (this file's own header, and AC-17's own
     // precedent): the gate's check five is reached only through
     // himinbjorg::validate_proposal, which needs a real
@@ -870,7 +901,7 @@ fn ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_che
     // one anywhere in this design, REQ-20 of the step-five spec). Prints
     // its own distinct gap message on skip, never silently.
     let Some(cohort) = real_verified_cohort_or_skip(
-        "ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_check_five",
+        "ac39_a_parameterless_proposal_against_a_sink_with_required_parameters_is_blocked_by_declaration_validation_before_the_rule_core_runs",
     ) else {
         return;
     };
@@ -889,29 +920,61 @@ fn ac39_a_proposal_built_from_a_parameterless_cognition_output_authorises_at_che
         }
     }
 
+    // fixture_task's own sink is "sink:git.commit" (see this file's
+    // `fixture_task` above), which is exactly the sink whose declared
+    // contract requires the non-empty parameter set `["v"]"`
+    // (`himinbjorg::sinks::SINK_GIT_COMMIT_PARAMETERS`).
     let task = fixture_task("action:git.commit");
     let cognition = EmptyParametersCognition;
     let outcome = crate::run_sequence_with_cognition(&cohort, &task, &cognition);
 
-    // EC-10's own non-short-circuit property means an empty `consumes` map
-    // never runs the rule's per-parameter loop body at all: `reasons`
-    // stays empty and `authorised` is true. For a member naming a
-    // permitted action and an in-scope target, every one of the six
-    // checks then passes and the sequence proceeds past the gate --
-    // it must NOT land at GateBlocked. This is the failure mode REQ-37
-    // exists to make structurally unreachable from the real
-    // implementation's own Ok value, documented here explicitly (AC-39's
-    // own wording), not smoothed over.
-    assert!(
-        !matches!(outcome, crate::EngineOutcome::GateBlocked { .. }),
-        "AC-39/REQ-37/EC-41: a proposal declaring no parameters must authorise at check \
-         five (taint compatibility), because the rule core's per-parameter loop never \
-         runs over an empty consumes map; got GateBlocked, which would mean this \
-         property no longer holds. This test exists to document why REQ-37 (the real \
-         implementation's Ok value must never carry an empty parameters vector) is \
-         necessary: without it, a model-call failure degrading to an empty parameter \
-         list would turn the designed block into a real, executed commit"
-    );
+    // Confirmed live on main with a real secret provisioned: the sequence
+    // lands at GateBlocked, with check five's own record carrying a
+    // DeclarationInvalid reason -- declaration validation's condition four
+    // ("no silent omissions") refuses the omission of the sink's declared
+    // "v" parameter before rule::apply's own per-parameter loop is ever
+    // reached. This is the doubly-defended, by-design behaviour REQ-18
+    // item 2 and REQ-37 both describe, not a regression and not an
+    // implementation defect.
+    match outcome {
+        crate::EngineOutcome::GateBlocked { checks } => {
+            assert_eq!(
+                checks.len(),
+                6,
+                "AC-39: a gate-blocked outcome must still carry all six CheckRecords"
+            );
+            let (fifth_id, fifth_outcome) = &checks[4];
+            assert_eq!(
+                *fifth_id,
+                himinbjorg::CheckId::TaintCompatible,
+                "AC-39: the fifth check record must be TaintCompatible (check five)"
+            );
+            match fifth_outcome {
+                himinbjorg::CheckOutcome::Fail { reasons } => {
+                    assert!(
+                        reasons.iter().any(|r| r.contains("DeclarationInvalid")),
+                        "AC-39/REQ-18 item 2/REQ-37: check five's own failure reasons must \
+                         carry a DeclarationInvalid reason -- the sink's declared, \
+                         non-empty parameter contract (SINK_GIT_COMMIT_PARAMETERS = \
+                         [\"v\"]) means an empty-parameters proposal is refused by \
+                         declaration validation's own condition four (no silent \
+                         omissions), independently of rule::apply's own non-short-circuit \
+                         property; got reasons {reasons:?}"
+                    );
+                }
+                other => panic!(
+                    "AC-39: expected check five to be CheckOutcome::Fail carrying a \
+                     DeclarationInvalid reason; got {other:?}"
+                ),
+            }
+        }
+        other => panic!(
+            "AC-39/REQ-18 item 2/REQ-37: a parameterless proposal against sink:git.commit \
+             (which declares a non-empty required parameter set) must be GateBlocked, \
+             refused at check five by declaration validation before rule::apply's own \
+             per-parameter loop is ever reached; got {other:?}"
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------------
