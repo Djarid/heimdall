@@ -66,11 +66,15 @@ The purpose of this licence is twofold and non-negotiable:
 This licence covers the **documentation and specification text** in this
 repository.
 
-Should source code be added to this repository in future, it will be released
-under a separate, compatible strong-copyleft software licence (e.g.
-AGPL-3.0-or-later) with its own `LICENSE` file. The intent stated above —
-free forever, improvements returned — applies equally to any future code, and
-no contributor licence agreement (CLA) will be sought, so that the reciprocal
+The code licence is now settled: all source code in this repository is
+released under **AGPL-3.0-or-later**, carried in full at the root `LICENSE`
+file. AGPL-3.0-or-later was chosen over plain GPL specifically to close the
+**network-service loophole**: GPL's copyleft triggers on distribution, so a
+hosted, never-distributed modified version creates no obligation to share
+source; the AGPL's own section 13 closes that gap by extending the obligation
+to running a modified version as a network service. The intent stated above —
+free forever, improvements returned — applies equally to the code, and no
+contributor licence agreement (CLA) will be sought, so that the reciprocal
 guarantee remains permanent and symmetric and cannot be undone by relicensing.
 
 ---

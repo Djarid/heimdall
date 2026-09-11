@@ -317,9 +317,9 @@ here because a component document, not only a decision row, should say so:
 - **The SHA-256 implementation is hand-written on an authorisation path,** verified
   against published known-answer vectors and every golden vector, not
   side-channel hardened (section 3).
-- **The code licence stays OPEN,** matching `boundary-gjoll` and D109. No source
-  file under `crates/` carries an SPDX header, and `hierarchy-vor`'s manifest
-  carries no `license` field.
+- **The code licence is settled, by D118.** `crates/` source now carries an SPDX
+  header throughout, and `hierarchy-vor`'s manifest carries
+  `license = "AGPL-3.0-or-later"`.
 
 ## 9. Test plan
 

@@ -47,8 +47,10 @@ if it narrows what can build this repository.
 
 ## 4. Dependency posture
 
-`boundary-gjoll`'s `[dependencies]` table is empty, and carries no `license` field (the
-licence question is OPEN; see section 7). Dev-dependencies are permitted for test-only
+`boundary-gjoll`'s `[dependencies]` table is empty, and its manifest carries
+`license = "AGPL-3.0-or-later"` (D118; see section 8). Every crate manifest in the
+workspace carries the same field, stated explicitly rather than inherited from
+`[workspace.package]`. Dev-dependencies are permitted for test-only
 concerns (in this crate, JSON vector parsing) and must be version-pinned exactly, not
 range-pinned, so a dependency upgrade is a deliberate, reviewed edit rather than a silent
 drift on the next build.
@@ -392,7 +394,11 @@ This document records conventions a crate should follow; it does not itself auth
 build anything. In particular it does not:
 
 - Decide which future step of D108's build order builds next, or what that crate does.
-- Settle the code licence (section 4), which stays OPEN.
+- **Settle the code licence (section 4). Resolved by D118, not left open:** the code
+  licence is AGPL-3.0-or-later, carried at the root `LICENSE` file, with all six crate
+  manifests carrying the field and all 61 Rust source files under `crates/` carrying
+  the SPDX header, following the "Resolved by D110, not left open" style this section
+  already uses for a bullet a later decision closed.
 - Extend the vector-parity mechanism to a component with no existing Python reference to
   replay against; a genuinely new Rust component needs its own test strategy. **Resolved by
   D110, not left open, for the "existing substrate, no existing concrete Python type" case:**

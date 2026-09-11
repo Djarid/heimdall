@@ -84,7 +84,7 @@ Read [**plans/synthesis-capability-matrix.md**](plans/synthesis-capability-matri
 The specification and all documentation in this repository are licensed under
 **[CC-BY-SA-4.0](LICENSE.md)** — free forever, and any derivative must be shared under the same terms. Improvements return to the commons; the work can never be enclosed. See [LICENSE.md](LICENSE.md) for the plain-language intent.
 
-Any future code will be released under a separate strong-copyleft software licence (AGPL-3.0-or-later) with no contributor licence agreement, so the reciprocal guarantee stays permanent.
+The code in this repository is released under **[AGPL-3.0-or-later](LICENSE)**, a separate strong-copyleft software licence, with no contributor licence agreement, so the reciprocal guarantee stays permanent.
 
 ## Author
 

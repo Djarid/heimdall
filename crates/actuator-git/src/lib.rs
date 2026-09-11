@@ -47,7 +47,11 @@
 //!   - It does not add flow-to-sink transitive reachability or a world
 //!     model. `execute` is a fixed, two-operation entry point, not a general
 //!     command-execution sandbox (deferred item 2).
-//!   - It does not settle the code licence, which stays OPEN (REQ-4).
+//!   - The code licence is settled, by D118: this crate's manifest carries
+//!     `license = "AGPL-3.0-or-later"` and this file carries the SPDX header
+//!     below `#![forbid(unsafe_code)]`. This is a licensing fact only: it
+//!     advances no invariant and makes no claim about this crate's own
+//!     behaviour.
 //!   - Even once its own logic lands, an actuator that can execute, inside a
 //!     crate nothing calls, is not the gate invoked live against a real
 //!     action: this step does not advance invariant 3.6, and does not by
