@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Sink contracts and D81 declaration validation (D109, spec section 5.1, REQ-14,
 //! REQ-15). Re-expresses `ontology/nornir/sink_declaration.py`'s effect-primitive
 //! taxonomy (lines 70 to 93), `SinkRegistry`, `validate_proposal` (its five

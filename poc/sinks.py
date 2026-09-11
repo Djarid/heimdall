@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Downstream sinks for the Heimdall premise proof-of-concept.
 
 This module tests the load-bearing half of the premise: that untrusted

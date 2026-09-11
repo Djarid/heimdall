@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The single positive-match validator (REQ-9, REQ-23 to REQ-26): the only
 //! place in this crate a value received from the child is checked, on
 //! `crates/actuator-git/src/argv.rs`'s own single-validator precedent.

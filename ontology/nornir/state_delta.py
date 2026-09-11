@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """State-delta consequence detection: consequence by what a value would CHANGE.
 
 The false-inert break (D67, measured at about 43 percent in D77) is that inertness is

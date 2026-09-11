@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The cognition seam and the propose-action step (REQ-13 to REQ-19, PE-2,
 //! PE-3, PE-4, PE-10): AC-15 to AC-19, AC-21, and the substitution case of
 //! AC-17 and EC-19 of `.opencode/plans/process-engine-step-five-spec.md`.

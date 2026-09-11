@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The cognition seam (PE-2, PE-10, REQ-13 to REQ-15): a narrow,
 //! one-method trait and the two implementations this step provides.
 //! Cognition is advisory and never adjudicative: everything it proposes

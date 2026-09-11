@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Himinbjörg's own hardcoded sink declarations and `registry()` (REQ-18,
 //! section 5.5 and section 6.2 of `.opencode/plans/himinbjorg-step-three.md`,
 //! section 13 file 8).

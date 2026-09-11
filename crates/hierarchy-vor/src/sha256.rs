@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Pure SHA-256 (FIPS 180-4), hand-written inside this crate.
 //!
 //! Why hand-written rather than a dependency: the workspace's dependency

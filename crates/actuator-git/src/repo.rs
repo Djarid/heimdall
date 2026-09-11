@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Resolution and validation of the working repository the actuator is to
 //! operate on (REQ-18 to REQ-20, section 10 file 8 of
 //! `.opencode/plans/git-actuator-step-four.md`). This module's one

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The one hardcoded cohort, its committed attestation constant and the
 //! crate's single mandatory entry point (section 3.4, REQ-20 to REQ-27;
 //! section 4.1's `cohort.rs` table). This is the module `crate::types` itself

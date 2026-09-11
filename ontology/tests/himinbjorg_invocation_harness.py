@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Himinbjörg's invocation boundary (D111, `.opencode/plans/himinbjorg-step-three.md`
 REQ-28): who actually calls the four public interfaces, who actually calls Gjöll's
 gate through this crate, and whether this crate loads its own verified cohort, on

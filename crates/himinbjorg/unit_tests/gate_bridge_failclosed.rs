@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Check five, the real gate call, and fail-closed/no-fallback behaviour
 //! (REQ-15, REQ-17 to REQ-20), `.opencode/plans/himinbjorg-step-three.md`
 //! section 8.5 and 8.6: AC-24 to AC-33, the gate-refusal and no-fallback cases.

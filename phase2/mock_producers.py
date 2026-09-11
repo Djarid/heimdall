@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Deterministic mock emission-producers for the always-run Phase 2 suite.
 
 The detection logic (Fenrir's structure, Huginn's canary monitor and the

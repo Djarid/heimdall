@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Substrate binding test: the four spike criteria against a LIVE Memgraph store.
 
 This resolves the substrate spike's residual (`OUTCOME.md` section 6): the in-memory

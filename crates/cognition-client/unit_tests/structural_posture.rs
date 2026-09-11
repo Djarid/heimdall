@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The sixth crate's own structural posture (REQ-7 to REQ-13 of
 //! `.opencode/plans/build-order-step-seven-spec.md`; AC-9, AC-10, AC-11,
 //! AC-13, AC-14, AC-15): the empty dependency tables, `#![forbid(unsafe_code)]`

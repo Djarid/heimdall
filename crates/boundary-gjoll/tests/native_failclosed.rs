@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Rust-native tests (REQ-25, REQ-26, REQ-27): the five D81 validation conditions,
 //! the three D89-B fail-closed silence cases, the D10 safe-plus-unsafe control pair
 //! replayed through the public shell (not the vector file), and a native corrupted-

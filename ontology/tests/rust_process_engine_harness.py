@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Process-engine posture detector (`.opencode/plans/process-engine-step-five-spec.md`
 section 4.12, REQ-51; section 5.12, AC-55, AC-56): is `crates/process-engine/`
 dependency-clean (against the ACTUAL, disclosed dependency table, not the

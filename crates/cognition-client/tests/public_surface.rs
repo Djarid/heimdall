@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Public-surface sufficiency for `cognition-client` (REQ-10 of
 //! `.opencode/plans/build-order-step-seven-spec.md`; section 7 row 9), on
 //! `crates/process-engine/tests/public_surface.rs`'s precedent: the one

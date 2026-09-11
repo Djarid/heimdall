@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The authorisation witness (GA-1) and HB-6's audit seam (GA-2): witness
 //! minting, the witness-carrying entry point's mismatch/scope/audit-write
 //! gates, the minimal recorder, and the honest-limit demonstration (REQ-26 to

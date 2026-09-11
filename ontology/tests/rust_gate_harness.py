@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Rust gate drift detector (D109, spec section 3.6): is the Rust re-expression of
 Gjoll's gate current, dependency-clean and passing.
 

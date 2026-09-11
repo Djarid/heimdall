@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The marshalling seam: Fenrir's extraction envelope becomes a typed assertion.
 
 This is the contract of `ONTOLOGY_CONSTRUCTION.md` section 5 and decision D28, made

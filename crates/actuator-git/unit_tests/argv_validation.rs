@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Argument-vector safety: the operation set, value validation and no-shell
 //! guarantee (REQ-8 to REQ-13). Covers AC-7 to AC-14, AC-31, AC-55 of
 //! `.opencode/plans/git-actuator-step-four.md`.

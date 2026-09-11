@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The invocation module (REQ-9, REQ-11 to REQ-13, REQ-31 to REQ-34): the
 //! only module in this crate -- and the second module in the whole
 //! workspace, alongside `crates/actuator-git/src/execute.rs` and `main.rs`'s

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The scheduling seed domain, medium-neutral. The second domain (attach test D29).
 
 This domain exists to prove the domain attach test for real: a second subject-matter

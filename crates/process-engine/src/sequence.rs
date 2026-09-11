@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The fixed five-step sequence itself (PE-7, REQ-9 to REQ-12, REQ-20 to
 //! REQ-24): the closed step vocabulary, the fixed array with its
 //! compile-time length assertion, and the sequencing: the single

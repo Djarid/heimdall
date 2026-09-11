@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The actuator's public-surface sufficiency, real git behaviour against a
 //! throwaway working repository and a local bare `origin` (REQ-46), and every
 //! fail-closed repository-resolution condition that requires mutating the

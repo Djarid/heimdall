@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Value shapes only (REQ-9): the crate's one validated-message type and
 //! its one refusal type. No logic beyond construction and reading lives
 //! here; every check that decides whether a value is accepted at all is

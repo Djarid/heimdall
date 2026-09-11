@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Test harness for promotion corroboration and graded review priority (mitigations 4 and 5).
 
 Run from the repo root:

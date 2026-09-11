@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """True token-level grammar-constrained structural slot extraction (D90).
 
 D86 built the structural slot extraction and D87 demonstrated it with a real model, but by

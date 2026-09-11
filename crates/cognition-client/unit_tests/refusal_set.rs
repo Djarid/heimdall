@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The fail-closed refusal set (REQ-31 to REQ-34 of
 //! `.opencode/plans/build-order-step-seven-spec.md`; AC-34 to AC-37):
 //! every one of REQ-31's eleven conditions returns `Err`, none returns

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The pure rule core (layer one) for the `boundary-gjoll` re-expression (D109,
 //! spec section 5.1, REQ-7). Re-expresses the three-condition rule plus the D89-A
 //! inert-contradiction check from `ontology/nornir/gjoll.py::evaluate`'s per-

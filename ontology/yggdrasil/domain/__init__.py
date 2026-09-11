@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Domain layers: one per subject-matter domain, each extending the BFO spine.
 
 A domain is subject-matter, not medium (D22, D22a). A domain type must be

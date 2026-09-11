@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The false-inert catch: Fenrir + Huginn as D67-fix direction (d).
 
 This is the payoff of the Phase 2 detection layer and the reason it was built now

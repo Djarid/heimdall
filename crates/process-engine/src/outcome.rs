@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The outcome vocabulary and both deferral forms (PE-7, REQ-24, REQ-35,
 //! REQ-36). No logic and no decision lives here (section 9.3's own
 //! statement of this module's one responsibility): every value below is

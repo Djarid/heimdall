@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Test harness for direction C: attest WHO declared a sink, refuse unattested or tampered ones.
 
 Run from the repo root:

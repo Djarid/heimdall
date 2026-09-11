@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Layer-two golden-vector replay (REQ-24 clause 3, REQ-25): the six registry-backed
 //! vectors from `crates/boundary-gjoll/vectors/gate_vectors.json`, replayed against
 //! `boundary_gjoll::consequentiality::evaluate`, the crate's PUBLIC gate entry point,

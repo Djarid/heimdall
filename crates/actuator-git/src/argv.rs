@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The fixed argument shapes for the two [`crate::GitOperation`] variants,
 //! the single value validator, the end-of-options separator placement and
 //! the named length bound (REQ-9, REQ-11 to REQ-13, section 10 file 6 of

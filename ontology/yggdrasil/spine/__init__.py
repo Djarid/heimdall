@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The shared spine: Heimdall-authored types on the BFO upper layer.
 
 Shared across all domains and all media, never per-agent (the per-agent binding is

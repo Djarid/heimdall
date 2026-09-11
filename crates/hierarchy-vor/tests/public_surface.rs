@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The step-three integration test (REQ-39) and the real-cohort verification with
 //! its two markers (REQ-36), section 3.6. Compiled as an EXTERNAL crate importing
 //! `hierarchy_vor`'s public surface only, exactly as any future non-test caller

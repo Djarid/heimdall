@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The finance seed domain, medium-neutral. The third domain (D29 attach test again).
 
 Finance is the domain where the sharpest cross-domain overlap lives, and that is why

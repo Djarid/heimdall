@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! Substrate parity, the SHA-256 known-answer vectors and the mandatory negative
 //! control (REQ-30, REQ-34, REQ-35, REQ-38, section 3.6). Wired into the crate by
 //! `lib.rs`'s `#[path = "../unit_tests/substrate_parity.rs"] mod substrate_parity;`

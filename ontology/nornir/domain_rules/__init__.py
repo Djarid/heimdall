@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Per-domain Nornir rule modules.
 
 Each subject-matter domain contributes its own classification and derivation rules

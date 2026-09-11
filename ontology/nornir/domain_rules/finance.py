@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Finance-domain classification rules. The third sibling (D29), and the sharpest
 test of the D52 priority principle.
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! HB-6's audit seam (GA-2, REQ-31 to REQ-35 of
 //! `.opencode/plans/git-actuator-step-four.md`, section 13 file 15). This
 //! module's one responsibility (section 9.3): define the write contract and

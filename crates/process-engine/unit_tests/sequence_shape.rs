@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The fixed five-step sequence's own shape (REQ-9 to REQ-12, REQ-16, REQ-20,
 //! REQ-24, REQ-34 to REQ-37): AC-9, AC-11 to AC-14, AC-19, AC-23, AC-27,
 //! AC-38 to AC-41 of `.opencode/plans/process-engine-step-five-spec.md`.

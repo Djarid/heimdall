@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The no-sanitising-path property (REQ-26 of
 //! `.opencode/plans/build-order-step-seven-spec.md`; AC-29): no function in
 //! this crate removes, replaces, strips, filters or maps characters of a

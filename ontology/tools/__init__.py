@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Build-time tooling, deliberately separate from `ontology/tests/`.
 
 Nothing here is a pass/fail obligation of `ontology/tests/harness.py`'s `main()`

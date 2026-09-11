@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Nornir's four rule kinds, authored as deterministic data-plus-checks.
 
 No model authors or runs these (invariant 3.1). Each rule is human-authored, plain

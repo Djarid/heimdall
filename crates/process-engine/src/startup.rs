@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The binary's fail-closed startup contract (PE-5, REQ-26 to REQ-29;
 //! build-order step six ST6-3, REQ-14 to REQ-22): resolving the three
 //! environment-named preconditions before any step of the sequence runs,

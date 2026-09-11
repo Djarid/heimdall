@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Direction D: verify a sink's declared effect primitive against its ACTUAL behaviour.
 
 The place this sits in the seam. `ADVERSARIAL_REVIEW.md` 5.1 is the root: sink and flow

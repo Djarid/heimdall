@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Direction C: attest WHO declared a sink, and refuse an unattested or tampered declaration.
 
 Where this sits in the seam, and what it is NOT. `ADVERSARIAL_REVIEW.md` 5.1 is the root: sink

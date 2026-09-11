@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The operation, outcome and refusal vocabularies (REQ-8, REQ-25). No logic
 //! and no decision anywhere in this module: every item below is a plain,
 //! closed data shape. `crate::argv` decides how an operation's argument

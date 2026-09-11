@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Export Gjoll's golden gate vectors for the Rust re-expression (D109, spec section 3.4).
 
 Run from the repo root:

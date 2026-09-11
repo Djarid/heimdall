@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Phase 2 detection-layer harness: deterministic tests of Fenrir + Huginn.
 
 Run from the repo root with any Python 3.11+, no third-party dependency:

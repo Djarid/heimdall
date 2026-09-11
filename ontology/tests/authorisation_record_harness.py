@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Test harness for D103's shared attested-record substrate (REQ-1 to REQ-7).
 
 Run from the repo root:

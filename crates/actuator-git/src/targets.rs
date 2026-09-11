@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The permitted remote-and-ref allowlist for pushes, its compile-time
 //! non-emptiness assertion, the pair-membership function, and the
 //! defence-in-depth protected-ref arm (REQ-14 to REQ-16, section 10 file 7 of

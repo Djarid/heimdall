@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """End-to-end test: real model extraction -> marshalling -> classification -> gate.
 
 Everything else in the ontology suite feeds Nornir hand-authored MarshalledAssertion

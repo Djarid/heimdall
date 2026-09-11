@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """D103: the shared attested-record substrate, extending D94's authoriser-plus-
 keyed-digest pattern to ANY authorisation-path record, generically.
 

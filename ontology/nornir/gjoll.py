@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Gjoll: the action-time gate that authorises or blocks a consequential action.
 
 This connects two already-proven halves into invariant 3.6's action-critical gate:

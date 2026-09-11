@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The publication seed domain, medium-neutral. The fourth domain, and the one that
 covers the largest real threat surface: open-web and published content.
 

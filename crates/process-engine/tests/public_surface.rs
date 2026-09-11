@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The external integration test proving the public surface is sufficient
 //! (REQ-54, AC-59), both directions of PE-9 (REQ-32 to REQ-34, AC-35 to
 //! AC-37), the witness-obtained-at-most-once property (REQ-45, AC-49), and

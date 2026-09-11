@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The secret loader's seven fail-closed refusal conditions (REQ-14 to REQ-18) and
 //! the test-isolation discipline of REQ-37 (section 3.6). Wired into the crate by
 //! `lib.rs`'s `#[path = "../unit_tests/loader_failclosed.rs"] mod loader_failclosed;`

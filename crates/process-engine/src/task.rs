@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The task shape the entry point accepts, and the structural
 //! well-formedness predicate the accept-task step consults (REQ-32,
 //! REQ-34, section 9.3's own statement of this module's one

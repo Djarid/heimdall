@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Media: taint-class-to-type bindings. Medium sets taint, domain sets type.
 
 Media are how content arrived, not what it is about (D22, D22a). This module holds

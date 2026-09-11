@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Huginn: canary monitoring and the attempt-introspection tripwire.
 
 Huginn observes every Fenrir emission and COMPUTES a fail-closed verdict over it. It never

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Yggdrasil: the loaded ontology, authored as a property graph.
 
 This package is the runnable, substrate-neutral form of Heimdall's ontology

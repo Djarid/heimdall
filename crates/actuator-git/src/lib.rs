@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! `actuator-git` crate root: the repository's fourth Rust crate and, once
 //! wired behind `himinbjorg`'s witness-carrying entry point (a later phase of
 //! `.opencode/plans/git-actuator-step-four.md`), the first crate in this

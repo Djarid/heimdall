@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The propose-action step (REQ-16): the one function that turns a task
 //! plus a cognition output into a `himinbjorg::Proposal`, and the only
 //! `Proposal` construction site in the crate.

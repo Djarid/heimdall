@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 //! The registry-mandatory consequentiality shell (layer two, D109, spec section
 //! 5.1, REQ-13). Produces an authorisation decision from a registry-backed
 //! proposal by validating (`declaration::validate_proposal`, D81), deriving

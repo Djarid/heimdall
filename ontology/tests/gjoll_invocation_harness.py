@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Invariant 3.6's invocation boundary: who actually calls Gjoll's gate (D96).
 
 Run from the repo root:

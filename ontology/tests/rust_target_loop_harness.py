@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Target-loop structural detector (`.opencode/plans/build-order-step-six-spec.md`
 section 4.6, REQ-36 to REQ-45; section 5.6, AC-41 to AC-50), on
 `ontology/tests/rust_process_engine_harness.py`'s exact shape: a module

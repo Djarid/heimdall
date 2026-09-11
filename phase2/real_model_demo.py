@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Optional real-model demonstration of the attempt-introspection catch.
 
 The deterministic harness (`phase2/tests/harness.py`) proves the detection LOGIC against

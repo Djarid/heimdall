@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """The git actuator's invocation boundary
 (`.opencode/plans/git-actuator-step-four.md` REQ-44): who actually calls
 `actuator_git::execute`, and who actually calls `himinbjorg`'s witness-carrying

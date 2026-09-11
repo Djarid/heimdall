@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jason Huxley and the Heimdall authors.
+
 """Ontology test harness: the four obligations of invariant 3.11.
 
 An audit artefact in the spirit of poc/harness.py and spike/substrate/harness.py
