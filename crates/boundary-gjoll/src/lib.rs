@@ -44,3 +44,22 @@ pub mod types;
 #[cfg(test)]
 #[path = "../unit_tests/layer_one_parity.rs"]
 mod layer_one_parity;
+
+// REQ-39: promotion-gate test wiring, added ahead of the implementation
+// (.opencode/plans/rust-promotion-gate-spec.md), on the same discipline
+// unit_tests/layer_one_parity.rs's own header states for the D109 precedent:
+// these declarations, and the test bodies they wire in, are written before
+// crate::gate_policy and crate::rule::{apply_with_policy, PromotionEvidence}
+// exist, so the crate currently FAILS TO COMPILE under `cargo test`. That is
+// expected and correct at this stage.
+#[cfg(test)]
+#[path = "../unit_tests/rank_and_lattice.rs"]
+mod rank_and_lattice;
+
+#[cfg(test)]
+#[path = "../unit_tests/rank_change_vector_regression.rs"]
+mod rank_change_vector_regression;
+
+#[cfg(test)]
+#[path = "../unit_tests/gate_policy_failclosed.rs"]
+mod gate_policy_failclosed;

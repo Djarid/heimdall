@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "claim": "substrate mechanism parity over a shim promotion record (_ShimPromotionRecord, ontology/tools/export_cohort_vectors.py's additive promotion-record emission section, REQ-42); NOT a real Python PromotionRecord's call history, because no Python PromotionRecord class exists or will (D105 rules the hierarchy plane is Rust; spec section 4.4)",
+  "generated_from": {
+    "authorisation_record_py_sha256": "db36e9cfba8e8fccf3f0bca4439b90dd9e5fa2d7a703ef161c9e1c21f07b6fda"
+  },
+  "fixture_secret_hex": "4e4f4e2d50524f44554354494f4e20666978747572652073656372657420666f722070726f6d6f74696f6e5f766563746f72732e6a736f6e202d2d206e6576657220746865207265616c206865696d64616c6c2d646576207365637265742c20636f6d6d69747465642064656c696265726174656c7920666f7220766563746f72207265706c617920706172697479",
+  "fixture_secret_note": "NON-PRODUCTION fixture secret, committed deliberately; the real heimdall-dev secret is never in this repository",
+  "expected_count": 5,
+  "vectors": [
+    {
+      "id": "P-1",
+      "case": "a well-formed promotion record, attested under the fixture secret (never the real production secret)",
+      "record_type": "promotion_record",
+      "fields": [
+        [
+          "assertion_id",
+          "vor-promotion-vector-well-formed"
+        ],
+        [
+          "content_digest",
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd"
+        ],
+        [
+          "promoted_to",
+          "TRUSTED"
+        ],
+        [
+          "valid_from",
+          "1000"
+        ],
+        [
+          "valid_until",
+          "2000"
+        ],
+        [
+          "authoriser",
+          "vor-promotion-vector-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d70726f6d6f74696f6e5f7265636f72640a617373657274696f6e5f69643d766f722d70726f6d6f74696f6e2d766563746f722d77656c6c2d666f726d65640a636f6e74656e745f6469676573743d30313233343536373839616263646566303132333435363738396162636465663031323334353637383961626364656630313233343536373839616263640a70726f6d6f7465645f746f3d545255535445440a76616c69645f66726f6d3d313030300a76616c69645f756e74696c3d323030300a617574686f72697365723d766f722d70726f6d6f74696f6e2d766563746f722d617574686f7269736572",
+      "attestation": "ee7548e373c427fb7f4dce8d6a44cff0052dde4f001b4d79dce3aa06285d9b6f"
+    },
+    {
+      "id": "P-2",
+      "case": "a non-ASCII assertion_id, pinning UTF-8 byte-identical encoding on both sides (REQ-9 applied to promotion records)",
+      "record_type": "promotion_record",
+      "fields": [
+        [
+          "assertion_id",
+          "vor-promotion-vector-\u00e9\u00e8\u4e2d\u6587"
+        ],
+        [
+          "content_digest",
+          "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebab"
+        ],
+        [
+          "promoted_to",
+          "CANONICAL"
+        ],
+        [
+          "valid_from",
+          "0"
+        ],
+        [
+          "valid_until",
+          "9999999999"
+        ],
+        [
+          "authoriser",
+          "vor-promotion-vector-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d70726f6d6f74696f6e5f7265636f72640a617373657274696f6e5f69643d766f722d70726f6d6f74696f6e2d766563746f722dc3a9c3a8e4b8ade696870a636f6e74656e745f6469676573743d6361666562616265636166656261626563616665626162656361666562616265636166656261626563616665626162656361666562616265636166656261620a70726f6d6f7465645f746f3d43414e4f4e4943414c0a76616c69645f66726f6d3d300a76616c69645f756e74696c3d393939393939393939390a617574686f72697365723d766f722d70726f6d6f74696f6e2d766563746f722d617574686f7269736572",
+      "attestation": "fddefd505accbb1fcdeb310c2ab36a383d6dab07c9cc53a7a01fbb17f8ce274e"
+    },
+    {
+      "id": "P-3",
+      "case": "cross-type replay pairing 1 of 2 (REQ-19, EC-18): this promotion_record's own attestation must NOT verify when presented as a cohort_definition's attestation, even under the same authoriser and the same secret",
+      "record_type": "promotion_record",
+      "fields": [
+        [
+          "assertion_id",
+          "vor-promotion-vector-cross-type"
+        ],
+        [
+          "content_digest",
+          "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+        ],
+        [
+          "promoted_to",
+          "VOUCHED"
+        ],
+        [
+          "valid_from",
+          "500"
+        ],
+        [
+          "valid_until",
+          "600"
+        ],
+        [
+          "authoriser",
+          "vor-promotion-vector-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d70726f6d6f74696f6e5f7265636f72640a617373657274696f6e5f69643d766f722d70726f6d6f74696f6e2d766563746f722d63726f73732d747970650a636f6e74656e745f6469676573743d646561646265656664656164626565666465616462656566646561646265656664656164626565666465616462656566646561646265656664656164626565660a70726f6d6f7465645f746f3d564f55434845440a76616c69645f66726f6d3d3530300a76616c69645f756e74696c3d3630300a617574686f72697365723d766f722d70726f6d6f74696f6e2d766563746f722d617574686f7269736572",
+      "attestation": "8cc6f5dd99e6ca5c31f60bf91096008a89c749107942d91e57de301eb4ba7371"
+    },
+    {
+      "id": "P-4",
+      "case": "cross-type replay pairing 2 of 2 (REQ-19, EC-18): this cohort_definition's own attestation must NOT verify when presented as a promotion_record's attestation, even under the same authoriser and the same secret",
+      "record_type": "cohort_definition",
+      "fields": [
+        [
+          "cohort_id",
+          "vor-promotion-vector-cross-type-cohort"
+        ],
+        [
+          "permitted_actions",
+          "action:git.commit"
+        ],
+        [
+          "trust_ceiling",
+          "TAINTED"
+        ],
+        [
+          "consequential_sinks",
+          "sink:git.commit"
+        ],
+        [
+          "authoriser",
+          "vor-promotion-vector-authoriser"
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d636f686f72745f646566696e6974696f6e0a636f686f72745f69643d766f722d70726f6d6f74696f6e2d766563746f722d63726f73732d747970652d636f686f72740a7065726d69747465645f616374696f6e733d616374696f6e3a6769742e636f6d6d69740a74727573745f6365696c696e673d5441494e5445440a636f6e73657175656e7469616c5f73696e6b733d73696e6b3a6769742e636f6d6d69740a617574686f72697365723d766f722d70726f6d6f74696f6e2d766563746f722d617574686f7269736572",
+      "attestation": "5b9f19ae42f1fd94299345b56637c764f6bb42895ae84eb406b5662062921cb7"
+    },
+    {
+      "id": "P-5",
+      "case": "an unattested promotion record (empty authoriser), pinning canonical bytes only -- no attestation field emitted",
+      "record_type": "promotion_record",
+      "fields": [
+        [
+          "assertion_id",
+          "vor-promotion-vector-unattested"
+        ],
+        [
+          "content_digest",
+          "0000000000000000000000000000000000000000000000000000000000000f"
+        ],
+        [
+          "promoted_to",
+          "TAINTED"
+        ],
+        [
+          "valid_from",
+          "1"
+        ],
+        [
+          "valid_until",
+          "2"
+        ],
+        [
+          "authoriser",
+          ""
+        ]
+      ],
+      "canonical_bytes_hex": "6865696d64616c6c2e617574686f7269736174696f6e5f7265636f72642e7631007265636f72645f747970653d70726f6d6f74696f6e5f7265636f72640a617373657274696f6e5f69643d766f722d70726f6d6f74696f6e2d766563746f722d756e61747465737465640a636f6e74656e745f6469676573743d30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030660a70726f6d6f7465645f746f3d5441494e5445440a76616c69645f66726f6d3d310a76616c69645f756e74696c3d320a617574686f72697365723d",
+      "attestation": null
+    }
+  ]
+}

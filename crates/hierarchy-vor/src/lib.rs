@@ -71,3 +71,13 @@ mod substrate_parity;
 #[cfg(test)]
 #[path = "../unit_tests/loader_failclosed.rs"]
 mod loader_failclosed;
+
+// REQ-39: the promotion-substrate test wiring, added ahead of the
+// implementation (.opencode/plans/rust-promotion-gate-spec.md), on the same
+// discipline unit_tests/substrate_parity.rs's own header states: this
+// declaration, and the test body it wires in, are written before
+// crate::promotion exists, so the crate currently FAILS TO COMPILE under
+// `cargo test`. That is expected and correct at this stage.
+#[cfg(test)]
+#[path = "../unit_tests/promotion_substrate.rs"]
+mod promotion_substrate;

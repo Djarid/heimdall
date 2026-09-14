@@ -266,3 +266,129 @@ fn environment_mutating_req14_case_1_env_var_absent_or_empty_is_refused() {
 // directly) is the same shape: attempting `hierarchy_vor::TrustedAuthoriserSet { .. }`
 // or any public constructor taking secret bytes must fail to compile, expected
 // error E0423/E0616, captured the same way.
+
+// ---------------------------------------------------------------------------------
+// ADDITIVE (REQ-20, REQ-23, REQ-40): the promotion surface's public-only tests,
+// AC-21's compile-boundary confirmations, AC-24's opacity confirmations, and
+// AC-40's public-surface-only success and refusal paths. Written from
+// `.opencode/plans/rust-promotion-gate-spec.md` alone. THIS BLOCK WILL FAIL TO
+// COMPILE until `hierarchy_vor::{VerifiedPromotion, PromotionRefusal,
+// load_verified_promotion}` are re-exported at the crate root (REQ-21's spec
+// section 4.2 lib.rs note) and `hierarchy_vor::promotion::VerifiedPromotion`
+// resolves to the same type. No existing assertion above is changed.
+// ---------------------------------------------------------------------------------
+
+/// A fixture secret used only by this block, kept separate from the cohort
+/// fixtures above so the two surfaces' tests do not share mutable state of
+/// any kind (there is none to share, but the separation is deliberate).
+const PROMOTION_FIXTURE_SECRET: &[u8] = b"public-surface-promotion-fixture-secret-32byte!";
+const PROMOTION_FIXTURE_AUTHORISER: &str = "surface-fixture-authoriser";
+
+/// A pinned attestation for a well-formed promotion record (assertion_id
+/// "surface-fixture-v", content_digest "feedface", promoted_to "TRUSTED",
+/// window [500, 600]), computed offline under `PROMOTION_FIXTURE_SECRET`
+/// (see `unit_tests/gate_policy_failclosed.rs` in `boundary-gjoll` for the
+/// same discipline, applied there for the same reason: this is an external
+/// integration-test crate and cannot reach `compute_record_attestation`,
+/// which is `pub(crate)` to `hierarchy-vor`, REQ-13).
+const PROMOTION_FIXTURE_ATTESTATION: &str =
+    "821fc321b26c9c76bb656a05141289b077f9eef050ad236332f1be44f458493d";
+
+#[cfg(unix)]
+fn promotion_trusted_set() -> hierarchy_vor::TrustedAuthoriserSet {
+    let dir = scratch_dir("promotion-trusted-set");
+    let path = dir.join("secret");
+    fs::write(&path, PROMOTION_FIXTURE_SECRET).expect("failed to write fixture secret file");
+    #[cfg(unix)]
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+        .expect("failed to set fixture secret file permissions");
+    hierarchy_vor::load_trusted_set_from_path(PROMOTION_FIXTURE_AUTHORISER, &path)
+        .expect("the promotion fixture secret file must load")
+}
+
+// AC-40: obtain a VerifiedPromotion through load_verified_promotion only,
+// through the public surface alone.
+#[cfg(unix)]
+#[test]
+fn ac40_public_surface_obtains_a_verified_promotion_success_path() {
+    let trusted = promotion_trusted_set();
+    let witness = hierarchy_vor::load_verified_promotion(
+        "surface-fixture-v",
+        "feedface",
+        "TRUSTED",
+        500,
+        600,
+        PROMOTION_FIXTURE_AUTHORISER,
+        PROMOTION_FIXTURE_ATTESTATION,
+        &trusted,
+        550,
+    )
+    .expect("the well-formed fixture promotion must verify through the public surface");
+
+    assert_eq!(witness.assertion_id(), "surface-fixture-v");
+    assert_eq!(witness.content_digest(), "feedface");
+    assert_eq!(witness.promoted_to(), "TRUSTED");
+}
+
+// AC-40: at least one refusal path through the public surface alone.
+#[cfg(unix)]
+#[test]
+fn ac40_public_surface_refusal_path_wrong_secret_never_returns_a_promotion() {
+    let dir = scratch_dir("promotion-wrong-secret");
+    let path = dir.join("secret");
+    fs::write(&path, b"an-entirely-different-32-byte-secret-value!!!!")
+        .expect("failed to write fixture secret file");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+        .expect("failed to set fixture secret file permissions");
+    let wrong_trusted =
+        hierarchy_vor::load_trusted_set_from_path(PROMOTION_FIXTURE_AUTHORISER, &path)
+            .expect("the wrong-secret fixture file must still load structurally");
+
+    let outcome = hierarchy_vor::load_verified_promotion(
+        "surface-fixture-v",
+        "feedface",
+        "TRUSTED",
+        500,
+        600,
+        PROMOTION_FIXTURE_AUTHORISER,
+        PROMOTION_FIXTURE_ATTESTATION, // attested under the ORIGINAL secret
+        &wrong_trusted,
+        550,
+    );
+    assert!(
+        outcome.is_err(),
+        "AC-40: an attestation computed under a different secret than the trusted \
+         set holds must refuse, never verify"
+    );
+}
+
+// AC-21: no way to name a secret-carrying type or a bare record type from
+// this external crate. This is a documented, uncomment-to-confirm block
+// exactly matching the cohort confirmations above: left commented so this
+// crate continues to build. Un-commenting any line below is expected to
+// fail to compile with E0433 (unresolved module/`record`/`verify` are not
+// `pub`) or E0603 (private item):
+//
+// ```rust,ignore
+// let _bad = hierarchy_vor::record::AttestedRecord; // `record` is not `pub`
+// let _bad = hierarchy_vor::verify::verify_record; // `verify` is not `pub`
+// let _bad = hierarchy_vor::PromotionRecord { .. }; // never re-exported; pub(crate) only
+// let _bad = hierarchy_vor::TrustedAuthoriserSet::secret_for; // pub(crate) only
+// ```
+
+// AC-24: VerifiedPromotion is opaque from this external crate: no public
+// constructor, no Clone/Copy/Default, no From/TryFrom/Deref to
+// PromotionRecord. Left commented for the same reason as the block above and
+// the cohort's own equivalent block at the top of this file:
+//
+// ```rust,ignore
+// // (a) No public constructor.
+// let _bad = hierarchy_vor::VerifiedPromotion { /* fields, if any were visible */ };
+//
+// // (b) No Clone/Copy/Default.
+// // let _bad = witness.clone();
+//
+// // (c) No public From/TryFrom/Deref to PromotionRecord (PromotionRecord itself is
+// // pub(crate), so this would also fail on that ground alone).
+// // let _bad: hierarchy_vor::PromotionRecord = witness.into();
+// ```
