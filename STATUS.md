@@ -12,10 +12,56 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D118)
+## 0. Resume here (handoff, last updated after D120 to D123)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
+
+**Gjöll's promotion-requirement gate is built in Rust (D120 to D123), closing the mechanism-level
+gap the completed seven-step walking skeleton left open, and its own limits are stated plainly,
+never smoothed over.** `crates/boundary-gjoll/src/gate_policy.rs` (`GatePolicy`, `GateResult`, a
+closed four-variant `GateName` enum with the three unbuilt gates hard-BLOCKed by exhaustive
+dispatch) and `crates/hierarchy-vor/src/promotion.rs` (a second `AttestedRecord` type,
+`PromotionRecord`, verified through the crate's existing four-case fail-closed procedure into an
+opaque `VerifiedPromotion` witness) together give invariant 3.6 a pass path for the first time:
+before this build, no branch of the gate, Python or Rust, could produce a PASS for an
+action-critical, untrusted-derived value under any input, so the invariant's own "has not passed
+the gate" clause was vacuously true; now a `GatePolicy` naming the promotion-requirement gate,
+given a valid `VerifiedPromotion`, can PASS. A precondition fix lands alongside it: both arms of
+`crates/boundary-gjoll/src/rule.rs` test untrusted-derivation by rank against a new
+`TRUSTED_THRESHOLD` (`types.rs`) rather than by equality against `TrustLevel::Tainted` alone, so a
+`Vouched` value, explicitly documented as "not yet fully trusted", is now correctly treated as
+untrusted-derived rather than silently passing, closing the residual D115 named and D109 through
+D119 each carried forward unaddressed. Himinbjörg's own `gate_bridge.rs` supplies the policy at
+its one call site of the widened `evaluate_with_policy`, requiring the promotion gate and,
+honestly, supplying no evidence, because nothing on any live path can mint any. **The status word
+is DEMONSTRATED under harness and test invocation only, never PROVEN, stated together with the
+change and not separated from it: nothing in this repository can mint a real promotion
+attestation at runtime, because a promotion is per-value and per-instant and the live authoring
+path is Gjallarhorn's protected channel, which is unbuilt.** A new detector,
+`ontology/tests/promotion_invocation_harness.py`, reports this live rather than in prose that can
+go stale: zero non-test call sites of the two new entry points (`load_verified_promotion`,
+`evaluate_policy`), mirroring `gjoll_invocation_harness.py`'s own six-test/zero-non-test reading of
+the older Python gate functions, which this build leaves completely unchanged (no line under
+`ontology/nornir/` or `ontology/yggdrasil/` was touched). Three of the four re-validation gates
+`plans/dd/gjoll.md` section 5 names (corroboration, re-derivation, semantic constraint) stay
+specified and unimplemented by design, visibly BLOCKed rather than silently absent. D121 records
+D107's ruling (that the gate would reuse `promotion_policy.py`'s existing decision output) as
+AMENDED, not complied with: that function returns `promoted=True` for a non-consequential slot,
+a fail-open path if delegated to directly, found independently by the 22 August Python spec's own
+REQ-39 and by this build's own brainstorm, so the gate instead verifies a structural, per-value
+`PromotionRecord` inside `hierarchy-vor`'s own substrate. D122 records the resulting path
+dependency, `boundary-gjoll` on `hierarchy-vor` (never the reverse), as the fourth such ruling on
+this workspace's own precedent (HB3-3, D112, D113). D123 sharpens, rather than satisfies,
+`DefaultCognitionStep`'s expiry-trigger doc comment (D116), distinguishing "a promotion gate
+exists and is harness-demonstrated" (true of this build) from "a promotion gate is live-wired and
+PROVEN" (the actual, unreached, retirement trigger). `cargo test --workspace` now passes 307
+tests, up from D115's 258; `python3 -m ontology.tests.harness` stays at exactly 22 critical
+findings, all false-inert, unchanged; the invariant 3.1 guard stays at 34 scanned files and 13
+allowed import roots; `pipeline_score_harness` stays at 48 percent layer-one and 33 of 33
+containment. R-1 (D73) is not engaged: no new actuator, sink, action name or credential scope is
+added. See D120 to D123 in `DECISIONS.md`, `.opencode/plans/rust-promotion-gate-spec.md` for the
+build spec, and `NEUROSYMBOLIC_FILTER_INVARIANTS.md` 3.6 for the invariant's own updated entry.
 
 **Build-order step seven of `plans/synthesis-bootstrap.md` (D108) is complete, and it is the
 last of the seven steps that document names.** A genuine Qwen2.5-7B-Instruct-4bit call now
@@ -657,33 +703,60 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
 
 **The next piece of work, in priority order (detail in section 6):**
 
-1. **Build the promotion gate: Gjöll's own missing re-validation and promotion mechanism
-   (Approach E, D96), the mechanism-level gap the now-complete seven-step walking skeleton
-   itself leaves open, promoted to priority item one now that the skeleton is done.** All seven
-   steps of `plans/synthesis-bootstrap.md`'s build order (D109 Gjöll re-expressed in Rust, D110
-   Vör's minimal single-cohort form, D111 Himinbjörg's minimal four-interface slice, D112 the
-   git actuator filling `broker_action`'s one slot, D113 the process engine sequencing task in
-   to result out, D114 the target loop run end to end, D115 to D117 a genuine model call joined
-   behind the cognition seam) are now complete: the target loop has run, once, on a fixture, with
-   a real commit made reachable in a real remote's history by a real push, three deliberately
-   disallowed actions blocked by the same governed path at three structurally distinct depths
-   (step six), and a genuinely model-authored proposal blocked at a fourth structurally distinct
-   depth by the identical pipeline (step seven), satisfying both halves of D108's own definition
-   of done and then exercising the gate against real cognition for the first time. **This closes
-   the seven-step order that document names; it does not itself name an eighth step, and this
-   page does not invent one.** What the walking skeleton's own completion surfaces instead is the
-   gap it was always going to leave open: `GatePolicy`, `GateResult` and the promotion-requirement
-   gate (`plans/dd/gjoll.md` section 5.1, lines 86-90; section 8; section 10) still do not exist,
-   so invariant 3.6's "has not passed the gate" clause is still vacuous, and `Vouched` and every
-   higher trust level are still meaningless declarations no mechanism can honestly reach: step
-   seven's own trust declaration is `Tainted` precisely because nothing in this repository can
-   yet promote a value past it. Building this gate is no longer merely queued behind the external
-   test (item 2 below is delegated, not in flight in a way that blocks starting): it is the
-   concrete mechanism-level work the completed skeleton points at next. Item 6 below (the D97
-   follow-on) already extended the identical authoriser-plus-keyed-digest pattern to the control
-   surface; this gate is the corresponding extension to the ACTION-TIME determination itself.
-   Design question carried forward from item 5's original wording, still open: whether the gate
-   reuses `promotion_policy.py`'s corroboration logic or is a separate mechanism.
+1. **CLOSED AT THIS BOUND: the promotion gate is built (D120 to D123).** Gjöll's own missing
+   re-validation and promotion mechanism (Approach E, D96), the mechanism-level gap the
+   seven-step walking skeleton left open, is now built in Rust: `crates/boundary-gjoll/src/gate_policy.rs`
+   (`GatePolicy`, `GateResult`, a closed four-variant `GateName` enum, the three unbuilt gates
+   hard-BLOCKed by exhaustive dispatch) and `crates/hierarchy-vor/src/promotion.rs` (`PromotionRecord`,
+   a second `AttestedRecord` type, verified into an opaque `VerifiedPromotion` witness), threaded
+   through `crates/boundary-gjoll/src/consequentiality.rs`'s `evaluate_with_policy` and wired at
+   Himinbjörg's own single call site (`gate_bridge.rs`). The precondition fix lands with it: both
+   arms of `rule.rs` now test untrusted-derivation by rank against `TRUSTED_THRESHOLD`, not by
+   equality against `TrustLevel::Tainted` alone, closing the `Vouched`-silently-passes gap D115's
+   own row named. Invariant 3.6's "has not passed the gate" clause is **no longer vacuous**: a
+   `GatePolicy` naming the promotion-requirement gate, given a valid `VerifiedPromotion`, can now
+   PASS, reachable from a test only. The bound on that closure is stated together with it, not
+   separately: the status word is **DEMONSTRATED under harness and test invocation only, never
+   PROVEN**, because nothing in this repository can mint a `VerifiedPromotion` at runtime, and
+   `Vouched` and every higher trust level remain declarations no LIVE mechanism can honestly
+   reach. Three of the four re-validation gates (corroboration, re-derivation, semantic
+   constraint) stay specified and unimplemented, visibly BLOCKed rather than silently absent. D121
+   records D107's ruling (reuse `promotion_policy.py`'s decision output) as AMENDED, not complied
+   with, since that function's `promoted=True` fail-open branch for a non-consequential slot was
+   found independently by both the 22 August Python spec's REQ-39 and this build's own brainstorm;
+   the gate instead verifies a structural, per-value `PromotionRecord` inside `hierarchy-vor`'s
+   own substrate. See item one's own former text, preserved below as historical record of what
+   this closes, and see D120 to D123 in `DECISIONS.md` for the full build record.
+
+   **The next honest next-step, named rather than guessed, per
+   `.opencode/plans/rust-promotion-gate-spec.md` section 11's own deferred-item table.** The
+   load-bearing blocker on the live-minting path (deferral 1 of that table) is **Gjallarhorn**:
+   human promotion on its protected channel is the only path by which a promotion attestation
+   could ever be authored at runtime for a specific value at a specific instant, and it is
+   unbuilt. Until Gjallarhorn exists, `promotion_invocation_harness.py` will keep reporting zero
+   non-test callers, correctly, because there is genuinely nothing to call it from outside a
+   test. Two further named items, not started, not guessed: **the standing-grant and
+   attendance-surface work** (`.opencode/plans/attendance-surface-and-gate-policy-spec.md` REQ-5
+   to REQ-33) stays explicitly out of scope by instruction, its disposition recorded in the
+   Rust build's own brainstorm section 8 rather than re-derived; and **substrate extraction into a
+   shared crate** (the brainstorm's Approach C) stays deferred until a THIRD record type needs
+   attestation outside `crates/hierarchy-vor/`, a trigger this spec's own section 11.2 calls
+   likely rather than hypothetical, naming `synthesis-resolutions.md` ruling three's load-time-attested
+   hierarchy manifest and the attendance-attestation/standing-grant record types as three
+   candidates that would each independently spring it. A smaller, immediate item also carried
+   forward unmet: the audit obligation for a gate pass (writing it to Hliðskjálf before an
+   allowed action fires) and `CheckRecord` gaining pass evidence both share deferral 1's own
+   trigger, since a gate pass has no live producer to audit until Gjallarhorn exists.
+
+   **What this item's former text asked, preserved as the historical record of the gap this row
+   closes, so a fresh reader can see what changed rather than only the new state:** *"Building
+   the promotion gate is no longer merely queued behind the external test: it is the concrete
+   mechanism-level work the completed skeleton points at next. Item 6 below (the D97 follow-on)
+   already extended the identical authoriser-plus-keyed-digest pattern to the control surface;
+   this gate is the corresponding extension to the ACTION-TIME determination itself. Design
+   question carried forward: whether the gate reuses `promotion_policy.py`'s corroboration logic
+   or is a separate mechanism."* That design question is now answered, by D121: it is a separate
+   mechanism, not a reuse, and the reasoning for the amendment is recorded there.
 
    **Also inherited from step six and step seven, and still open:** governed staging.
    `plans/dd/process-engine.md` section 12 names it explicitly, triggered the moment cognition
@@ -993,6 +1066,29 @@ code licence was OPEN at this step, now covering six crates, and is settled by D
 See D115 to D117 in `DECISIONS.md` and `COGNITION_EVIDENCE.md` for the full transcript and
 breakdown.
 
+**D120 to D123 then build Gjöll's promotion-requirement gate, the mechanism-level gap the
+completed skeleton left open.** `crates/boundary-gjoll/src/gate_policy.rs` and
+`crates/hierarchy-vor/src/promotion.rs` give invariant 3.6's "has not passed the gate" clause a
+real pass path for the first time: a `GatePolicy` naming the promotion-requirement gate, given a
+valid `VerifiedPromotion` (an opaque witness earned only by verifying a per-value attested
+`PromotionRecord`), can now PASS. The precondition fix that had to land first, and had sat
+unaddressed since D115's own row named it: both arms of `rule.rs` now test untrusted-derivation
+by RANK against a new `TRUSTED_THRESHOLD`, not by equality against `TrustLevel::Tainted` alone,
+so a `Vouched` value is correctly treated as untrusted-derived rather than silently passing. The
+status word is DEMONSTRATED under harness and test invocation only, never PROVEN: nothing
+anywhere in this repository can mint a `VerifiedPromotion` at runtime, because the live authoring
+path is Gjallarhorn's protected channel, which is unbuilt, and a new detector
+(`promotion_invocation_harness.py`) reports that live rather than in prose. Three of the four
+re-validation gates stay specified and unimplemented, visibly BLOCKed. D121 records D107's
+original ruling (reuse `promotion_policy.py`'s decision output) as AMENDED: that function's
+`promoted=True` branch for a non-consequential slot is fail-open, found independently by the 22
+August Python spec's own REQ-39 and this build's brainstorm, so the gate instead verifies a
+structural per-value record inside `hierarchy-vor`'s own substrate. D122 records the resulting
+`boundary-gjoll`-on-`hierarchy-vor` path dependency as the fourth such ruling on this workspace's
+precedent; D123 sharpens `DefaultCognitionStep`'s expiry trigger to distinguish
+harness-demonstrated from live-wired-and-PROVEN. No line under `ontology/nornir/` or
+`ontology/yggdrasil/` changed; `cargo test --workspace` now passes 307 tests, up from 258.
+
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
 into `engine.py` and `gjoll.py`, so the pipeline-score harness reads the engine's own runtime
@@ -1074,7 +1170,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `COGNITION_EVIDENCE.md` | The committed record of build-order step seven's one real run: a real Qwen2.5-7B-Instruct-4bit call producing the advisory content on the engine's own non-test cognition path, blocked at Gjöll's own check five for the model-bound members, with the stub-bound positive control still executing live in the same build, and the honest statement of what the run does and does not claim (D115) |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 119 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot, D113 the process engine crate giving Himinbjörg's other three interfaces and Vör's `load_verified_cohort` their first genuine non-test callers, D114 the target loop's one real run end to end on a fixture (a genuine commit and push reachable in a real remote, three deliberately disallowed actions blocked at three distinct depths, and three pre-existing test defects found and fixed once a real secret was first provisioned), D115 a genuine Qwen2.5-7B-Instruct-4bit call on the process engine's own non-test cognition path, blocked at Gjöll's check five for the model-bound members, D116 amending D108's own "replace" wording since the cognition stub is retained as a positive control rather than replaced, D117 reopening D112's one-crate `std::process` ruling for the cognition-client sidecar's fixed-argv spawn, D118 settling the code licence as AGPL-3.0-or-later across all six crates, and D119 naming and fixing a genuine pre-existing test-defect masked by a secret-gated skip, the same class as D114's own three) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 123 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot, D113 the process engine crate giving Himinbjörg's other three interfaces and Vör's `load_verified_cohort` their first genuine non-test callers, D114 the target loop's one real run end to end on a fixture (a genuine commit and push reachable in a real remote, three deliberately disallowed actions blocked at three distinct depths, and three pre-existing test defects found and fixed once a real secret was first provisioned), D115 a genuine Qwen2.5-7B-Instruct-4bit call on the process engine's own non-test cognition path, blocked at Gjöll's check five for the model-bound members, D116 amending D108's own "replace" wording since the cognition stub is retained as a positive control rather than replaced, D117 reopening D112's one-crate `std::process` ruling for the cognition-client sidecar's fixed-argv spawn, D118 settling the code licence as AGPL-3.0-or-later across all six crates, D119 naming and fixing a genuine pre-existing test-defect masked by a secret-gated skip, the same class as D114's own three, D120 building Gjöll's promotion-requirement gate in Rust with the equality-to-rank precondition fix, D121 recording D107's ruling as amended rather than complied with, D122 the fourth in-workspace path-dependency ruling (`boundary-gjoll` on `hierarchy-vor`), and D123 sharpening `DefaultCognitionStep`'s expiry-trigger doc comment) plus the still-open D67-fix layer-one break, with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -1387,6 +1483,43 @@ named remaining refinement, contained by Gjoll at action time, not here.
   settle the licence question before merge, not before build, and that choice is executed at
   D118. See `plans/dd/cognition-client.md` for the full design and `DECISIONS.md` D115 to D117
   for the line-budget breakdown.
+- **Gjöll's promotion-requirement gate (D120 to D123): the mechanism-level gap the completed
+  walking skeleton left open is now built, inside the existing crates rather than a seventh.**
+  `crates/boundary-gjoll/src/gate_policy.rs` (new): `GatePolicy`, `GateResult`, a closed
+  four-variant `GateName` enum (`PromotionRequirement`, `Corroboration`, `Rederivation`,
+  `SemanticConstraint`), a conjunction reading over the required-gate set, an empty set BLOCKing,
+  and the three unimplemented gates BLOCKing by exhaustive dispatch with no wildcard arm.
+  `crates/hierarchy-vor/src/promotion.rs` (new): `PromotionRecord`, a second `AttestedRecord`
+  type on the substrate the crate already owns (assertion id, a content digest, an opaque
+  promoted-to string, a validity window, the attested pair), verified through the crate's
+  existing four-case fail-closed `verify_record` procedure into an opaque `VerifiedPromotion`
+  witness with no public constructor. The precondition fix: `crates/boundary-gjoll/src/types.rs`
+  gains `TrustLevel::rank()` (exhaustive, no wildcard) and a named `TRUSTED_THRESHOLD`, and both
+  arms of `rule.rs`'s `apply` now test untrusted-derivation by rank comparison rather than by
+  equality against `TrustLevel::Tainted` alone, so `Vouched` (documented on the enum itself as
+  "not yet fully trusted") is correctly untrusted-derived. The 22 existing gate vectors replay
+  byte-identical on the parity surface; five new Rust-native promotion vectors are added, plus a
+  cross-checked canonical-bytes/digest pair against Python's `FIXTURE_SECRET`. The evidence
+  bundle threads through `crates/boundary-gjoll/src/consequentiality.rs`'s new
+  `evaluate_with_policy`, and Himinbjörg's own `gate_bridge.rs` supplies the policy at its one
+  call site, requiring the promotion gate and, honestly, supplying no evidence. `crates/boundary-gjoll/`'s
+  `[dependencies]` table gains its first entry, a path dependency on `hierarchy-vor` (the
+  reverse direction refused; `hierarchy-vor`'s own manifest and strict zero-dependency check
+  stay untouched). **This does not advance invariant 3.6 beyond a narrower, new claim than any
+  earlier row makes, stated plainly:** the gate's "has not passed" clause is no longer vacuous
+  (a PASS is now reachable, from a test), but the status word is DEMONSTRATED under harness and
+  test invocation only, never PROVEN, and a new detector (`ontology/tests/promotion_invocation_harness.py`)
+  reports zero non-test call sites of the two new entry points, exactly mirroring
+  `gjoll_invocation_harness.py`'s own reading of the older Python gate functions (six test call
+  sites, zero non-test, unaffected by this build). Two crates gain new sub-harnesses
+  (`ontology/tests/rust_promotion_gate_harness.py` for digest drift, dependency posture, the
+  no-clock scan and test/code isolation; `ontology/tests/promotion_invocation_harness.py` for the
+  invocation boundary), both folded additively into `ontology/tests/harness.py`. `cargo test
+  --workspace` passes 307 tests, up from D115's 258, zero failures; the invariant 3.1 guard,
+  the 22-critical-finding RED bar and `pipeline_score_harness`'s 48 percent/33-of-33 figures are
+  all unaffected, since no line under `ontology/nornir/` or `ontology/yggdrasil/` changed. See
+  `plans/dd/gjoll.md` sections 5.1 and 10 for the full design and `DECISIONS.md` D120 to D123 for
+  the build record.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -1410,6 +1543,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
 | **D118 settles the code licence: AGPL-3.0-or-later, for all code.** D109 to D117 recorded this as a genuinely open blocker across the whole seven-step build order, growing from five crates to six as build-order step seven (D115) landed `crates/cognition-client/` and the top-level `cognition/` Python package, still unsettled; the operator was asked explicitly whether to settle before that sixth crate landed (the build spec's own step 0, EC-52) and chose explicitly to proceed with the build and settle before merge, not before build, a choice this row's predecessors recorded rather than smoothed over. D118 executes that choice: a root `LICENSE` file carries the AGPL-3.0 text verbatim; all six crate manifests (`crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml`, `crates/process-engine/Cargo.toml`, `crates/cognition-client/Cargo.toml`) carry `license = "AGPL-3.0-or-later"`; and every tracked source file outside `ontology/reference/sumo/` carries an SPDX header, 89 Python files and 61 Rust files, 150 in total, mechanically checked by `ontology/tests/harness.py::run_licence_posture`. `LICENSE.md` covers documentation only (CC-BY-SA-4.0) and is unaffected; `ontology/reference/sumo/`'s GPL reference-only quarantine (D38, D40) is a separate and independent matter, untouched by this settlement, and remains true exactly as before | SETTLED (D118) | No longer blocks publication on this item. `LICENSE.md`'s Scope section now states the settlement rather than naming AGPL-3.0-or-later as an example (`e.g.`); the licence question is a one-way door now closed, and the historical rows (D109 to D117, and the consistency checks resting on them) keep their original "OPEN at that step" wording with a forward pointer to this row rather than being rewritten |
+| **D120 to D123 build Gjöll's promotion-requirement gate; the live-minting path is named as the actual open item, not the mechanism itself.** The mechanism (`GatePolicy`, `GateResult`, `PromotionRecord`, `VerifiedPromotion`) is built and DEMONSTRATED under harness and test invocation only. What remains open, and what forces closing it, is stated plainly rather than left implicit: nothing can mint a `VerifiedPromotion` at runtime because the live authoring path is **Gjallarhorn's protected channel, which is unbuilt**; the corroboration, re-derivation and semantic-constraint gates stay specified and unimplemented; the substrate stays unshared between `PromotionRecord` and `CohortDefinition`; and the standing-grant/attendance-surface work stays out of scope by instruction | OPEN (Gjallarhorn: unbuilt; the three gates: specified, not built; substrate sharing: deferred with a named trigger) | Gjallarhorn being built is deferral 1 of `.opencode/plans/rust-promotion-gate-spec.md` section 11.2: until then, `promotion_invocation_harness.py` correctly and permanently reports zero non-test callers, because there is nothing to call it from outside a test. The corroboration/re-derivation/semantic-constraint gates trigger on the capability set growing to where their respective evidence class becomes genuinely available (`plans/dd/gjoll.md` section 10's own "built as the capability set grows"). Substrate extraction (brainstorm Approach C) triggers on a THIRD record type needing attestation outside `hierarchy-vor`, named as likely rather than hypothetical (three candidates already named: the hierarchy manifest, attendance attestation, standing-grant records) |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
@@ -1529,17 +1663,22 @@ corpus the author never saw.
    cost first), or a fail-closed advisory model that only routes to review. "Accept a small
    residual" is ruled out (the layer-one rate is 48 percent, not small), and more keywords
    are barred (invariant 3.5).
-5. **Promoted to item one above (Approach E, D96), no longer queued behind the walking
-   skeleton.** `GatePolicy`, `GateResult` and the promotion-requirement gate
-   (`plans/dd/gjoll.md` section 5.1, lines 86-90; section 8; section 10) still do not exist,
-   so invariant 3.6's "has not passed the gate" clause is still vacuous. This item was
-   originally queued rather than started because it touches the authorisation path while the
-   external test (item 2 below) is in flight and while the seven-step build order (item 7
-   below, now complete) was still in progress; both those reasons for deferring the START have
-   now resolved (the skeleton is done; the external test remains delegated and out-of-band,
-   which is not the same as blocking an in-repo start), so this item is restated as item one
-   rather than left here duplicated. See item one for the full statement and the design
-   question it carries forward.
+5. **CLOSED AT THIS BOUND (Approach E, D96, built by D120 to D123). See item one above for the
+   full statement.** `GatePolicy`, `GateResult` and the promotion-requirement gate now exist
+   (`crates/boundary-gjoll/src/gate_policy.rs`, `crates/hierarchy-vor/src/promotion.rs`), and
+   invariant 3.6's "has not passed the gate" clause is no longer vacuous: a `GatePolicy` naming
+   the promotion-requirement gate, given a valid `VerifiedPromotion`, can now PASS. This item was
+   originally queued rather than started because it touched the authorisation path while the
+   external test (item 2 below) was in flight and while the seven-step build order (item 7
+   below) was still in progress; both those reasons for deferring the START resolved (the
+   skeleton finished; the external test stayed delegated and out-of-band, which was never the
+   same as blocking an in-repo start), and the item was restated as item one, built, and is now
+   recorded as closed at its own honest bound there: DEMONSTRATED under harness and test
+   invocation only, never PROVEN, because nothing can mint a `VerifiedPromotion` at runtime while
+   Gjallarhorn is unbuilt. The design question this item once carried forward, whether the gate
+   reuses `promotion_policy.py`'s corroboration logic or is a separate mechanism, is answered by
+   D121: it is a separate mechanism, recorded as an amendment to D107 rather than compliance with
+   it.
 6. **Built: the D97 follow-on on the control surface, `AgentContext` attestation, on its
    identity/integrity axis (D103).** D97 named two follow-ons; D100 built the first (the
    no-registry `agent_consequential_sinks` residual, narrowed rather than requiring

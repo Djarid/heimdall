@@ -317,6 +317,74 @@ paired with real asymmetric signing, and it performs no zeroisation, because
 zeroisation a compiler cannot elide needs either `unsafe` or a dependency, both
 forbidden by this baseline.
 
+**The fourth path-dependency ruling (D122), following HB3-3/D111, D112 and
+D113's precedent but reasoned fresh for this crate pairing rather than
+reusing their text.** `crates/boundary-gjoll/`'s `[dependencies]` table stops
+being empty for the first time since D109: it gains **exactly one**
+in-workspace path dependency, on `hierarchy-vor`. The direction is resolved
+deliberately, and the reverse is refused; `crates/hierarchy-vor/`'s own
+`[dependencies]` table stays literally empty and its manifest is not touched
+at all. Four grounds, specific to this pairing.
+
+1. **The type dependency fixes the direction, not convenience.** The gate
+   policy evaluator (`crates/boundary-gjoll/src/gate_policy.rs`) must **name**
+   the promotion witness type in its own signature
+   (`Option<&hierarchy_vor::VerifiedPromotion>`), while the verifier inside
+   `hierarchy-vor` must **name no Gjöll type at all**, because a record type
+   needs no rule core to be attested. The type dependency therefore points
+   from Gjöll to Vör, and the manifest edge must follow it. Reversing it
+   would require moving `VerifiedPromotion` into `boundary-gjoll`, the very
+   thing this build's own operator ruling (OR-1) forbids, because
+   verification must happen where the secret already lives; and with the
+   gate policy still naming `VerifiedPromotion`, the reverse edge would be a
+   dependency cycle, which Cargo forbids outright, not merely discourages.
+2. **`hierarchy-vor`'s own REQ-13 secret boundary is violated by the reverse
+   direction and untouched by this one.** Verification stays inside
+   `hierarchy-vor`; the secret never crosses the boundary, only an opaque
+   witness does. The reverse direction would force either
+   `compute_record_attestation` to become public (violating REQ-13 directly)
+   or a second SHA-256 and a second attestation implementation to appear on
+   an authorisation path, which this section's own SHA-256-in-crate ruling
+   above (D110) never extends to a second implementation: that ruling is
+   scoped to one hash, written once, in one crate.
+3. **`hierarchy-vor` is the lower crate on every existing reading of this
+   workspace.** It carries the substrate, the hash, the secret loader and the
+   one verified cohort, four of its modules are `pub(crate)` by design, and
+   it is already depended upon by `himinbjorg` and `process-engine` while
+   depending on nothing. Making it depend on the rule core would invert the
+   only layering this workspace has, a cost none of the three prior
+   path-dependency rulings in this section needed to weigh, because none of
+   them involved a crate this low in the stack depending upward.
+4. **The cost is the one this section has already priced three times (HB3-3,
+   D112, D113), paid a fourth.** An empty `[dependencies]` table was never
+   the load-bearing property; the load-bearing property is that no crate on
+   the authorisation path reaches a model call or a network call.
+   `hierarchy-vor` has an empty runtime table and `#![forbid(unsafe_code)]`,
+   so the new edge introduces no new reachability whatsoever.
+   `check_dependency_posture`'s strict empty default stays untouched:
+   `boundary-gjoll`'s own caller widens by an explicit one-name allowlist
+   (`permitted_path_dependencies={"hierarchy-vor"}`, in the new
+   `ontology/tests/rust_promotion_gate_harness.py`), never by default, so
+   `hierarchy-vor`'s own check (`ontology/tests/rust_cohort_harness.py`)
+   keeps its behaviour byte for byte, unaffected.
+
+**The cost stated rather than smoothed, on this pairing's own terms.**
+`crates/boundary-gjoll/`'s zero-dependency posture had been quoted in this
+document and in `DECISIONS.md` across four prior rows (D109, and by
+comparison in D111 to D113's own reasoning about `himinbjorg`) as a property
+distinguishing it from the crates that widened; that distinction ends here,
+deliberately, and is paid rather than deferred. The substrate stays unshared
+between `hierarchy-vor`'s two record types (`CohortDefinition`,
+`PromotionRecord`): a **third** record type appearing outside
+`hierarchy-vor` would reopen this exact question and make extracting the
+substrate into a shared crate (Approach C, `.opencode/plans/rust-promotion-gate-brainstorm.md`
+section 5.2) the cheaper path rather than hygiene, a named trigger rather
+than a hypothetical one (`.opencode/plans/rust-promotion-gate-spec.md`
+section 11.2 names three live candidates). Adding a **fifth** kind of
+dependency to any future crate's gate-adjacent path remains a deliberate
+trust-boundary decision requiring its own `DECISIONS.md` row, exactly as
+HB3-3, D112 and D113 each already required in turn. See `DECISIONS.md` D122.
+
 ## 5. The two-layer module pattern
 
 `boundary-gjoll` splits into four modules, following a Single Responsibility discipline
