@@ -4,10 +4,11 @@
 //! `action_critical_for` (the only reader of
 //! `hierarchy_vor::CohortSurface::consequential_sinks`), the translation into
 //! `boundary_gjoll`'s input shapes, the single
-//! `boundary_gjoll::consequentiality::evaluate` call site, and the mapping of
-//! `GateDecision` to a `CheckOutcome` (REQ-15, REQ-17, REQ-19, section 5.5
-//! and section 6.2 of `.opencode/plans/himinbjorg-step-three.md`, section 13
-//! file 9).
+//! `boundary_gjoll::consequentiality::evaluate_with_policy` call site (REQ-29,
+//! REQ-30 of `.opencode/plans/rust-promotion-gate-spec.md`; previously
+//! `evaluate`), and the mapping of `GateDecision` to a `CheckOutcome`
+//! (REQ-15, REQ-17, REQ-19, section 5.5 and section 6.2 of
+//! `.opencode/plans/himinbjorg-step-three.md`, section 13 file 9).
 //!
 //! **Two binding rules, each held by exactly one function in this module and
 //! nowhere else in the crate:**
@@ -23,16 +24,28 @@
 //!    module describes or implements the membership test as reachability.
 //!    `action_critical_for` must not, and does not, derive its answer by
 //!    routing the cohort's set into
-//!    [`boundary_gjoll::consequentiality::evaluate`], must not, and does
-//!    not, read `hierarchy_vor::cohort::CONSEQUENTIAL_SINKS` directly in
+//!    [`boundary_gjoll::consequentiality::evaluate_with_policy`], must not,
+//!    and does not, read `hierarchy_vor::cohort::CONSEQUENTIAL_SINKS` directly in
 //!    place of the verified projection, and must not, and does not, take it
 //!    from any sink self-declaration (`sinks::registry()` is never consulted
 //!    here at all).
 //! 2. [`evaluate_taint_compatibility`] is the ONLY place in the crate that
-//!    calls [`boundary_gjoll::consequentiality::evaluate`] (REQ-15), called
-//!    exactly once per proposal evaluation. There is no branch in this
-//!    function that reaches a `CheckOutcome` without that call, and no
-//!    branch that reconstructs the gate's rule locally.
+//!    calls [`boundary_gjoll::consequentiality::evaluate_with_policy`]
+//!    (REQ-15, REQ-29), called exactly once per proposal evaluation. There
+//!    is no branch in this function that reaches a `CheckOutcome` without
+//!    that call, and no branch that reconstructs the gate's rule locally.
+//!    This is the crate's single call site of `boundary_gjoll`'s
+//!    consequentiality entry point: previously `evaluate`, now
+//!    `evaluate_with_policy` (REQ-29, REQ-30 of
+//!    `.opencode/plans/rust-promotion-gate-spec.md`). The policy supplied
+//!    REQUIRES the promotion-requirement gate
+//!    (`GateName::PromotionRequirement`) and the evidence supplied is
+//!    empty (`PromotionEvidence::new()`), because nothing on this crate's
+//!    live path can mint a verified promotion yet (Gjallarhorn's protected
+//!    channel is unbuilt). Check five therefore continues to BLOCK every
+//!    `Tainted` or `Vouched`, action-critical, action-consumed parameter at
+//!    a consequential sink, exactly as it did before this switch: the
+//!    observable behaviour of every live proposal is unchanged (REQ-30).
 //!
 //! **The mapping (section 7's table), owned here and nowhere else:**
 //!
@@ -114,10 +127,16 @@ fn format_reason(reason: boundary_gjoll::types::Reason) -> String {
 }
 
 /// Check five, taint compatibility (REQ-15, section 6.2, literally). The
-/// ONLY call site of [`boundary_gjoll::consequentiality::evaluate`] in this
-/// crate, called exactly once per call to this function (REQ-15, REQ-28).
-/// `surface` and `registry` are both plain references, never `Option`
-/// (REQ-20), matching the gate's own registry-mandatory shape.
+/// ONLY call site of [`boundary_gjoll::consequentiality::evaluate_with_policy`]
+/// in this crate, called exactly once per call to this function (REQ-15,
+/// REQ-28, REQ-29). `surface` and `registry` are both plain references,
+/// never `Option` (REQ-20), matching the gate's own registry-mandatory
+/// shape. The policy supplied requires the promotion-requirement gate and
+/// the evidence supplied is empty (REQ-30): nothing on this crate's live
+/// path can mint a verified promotion, so this call continues to BLOCK
+/// every `Tainted` or `Vouched`, action-critical, action-consumed
+/// parameter at a consequential sink, unchanged from the pre-switch
+/// behaviour.
 pub(crate) fn evaluate_taint_compatibility(
     proposal: &Proposal,
     surface: &hierarchy_vor::CohortSurface<'_>,
@@ -145,11 +164,27 @@ pub(crate) fn evaluate_taint_compatibility(
         declared_safe: false,
     };
 
-    // The single, mandatory call site (REQ-15, REQ-28). No branch above or
-    // below this line reaches a CheckOutcome without it, and no branch
-    // reconstructs the gate's rule locally.
-    let decision =
-        boundary_gjoll::consequentiality::evaluate(&action_proposal, &classified, registry);
+    // The single, mandatory call site (REQ-15, REQ-28, REQ-29). No branch
+    // above or below this line reaches a CheckOutcome without it, and no
+    // branch reconstructs the gate's rule locally.
+    //
+    // REQ-30: the policy REQUIRES the promotion-requirement gate, and the
+    // evidence supplied is empty, because nothing in this crate's live
+    // path can mint a verified promotion yet. This continues to BLOCK
+    // every Tainted or Vouched, action-critical, action-consumed
+    // parameter at a consequential sink, exactly as the unconditional
+    // rank-comparison rule did before this switch.
+    let policy = boundary_gjoll::gate_policy::GatePolicy::new(vec![
+        boundary_gjoll::gate_policy::GateName::PromotionRequirement,
+    ]);
+    let evidence = boundary_gjoll::rule::PromotionEvidence::new();
+    let decision = boundary_gjoll::consequentiality::evaluate_with_policy(
+        &action_proposal,
+        &classified,
+        registry,
+        &policy,
+        &evidence,
+    );
 
     if decision.authorised {
         CheckOutcome::Pass

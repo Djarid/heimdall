@@ -50,8 +50,8 @@
 //!
 //! **Check five, taint compatibility (REQ-15).** Delegates entirely to
 //! [`crate::gate_bridge::evaluate_taint_compatibility`], the crate's one
-//! call site of `boundary_gjoll::consequentiality::evaluate` (REQ-15,
-//! REQ-28). This module does not reimplement, branch around, or otherwise
+//! call site of `boundary_gjoll::consequentiality::evaluate_with_policy`
+//! (REQ-15, REQ-28, REQ-29, REQ-30). This module does not reimplement, branch around, or otherwise
 //! reconstruct the gate's rule locally: it supplies the registry
 //! ([`crate::sinks::registry`]) and the cohort surface and reads back
 //! whatever [`crate::types::CheckOutcome`] `gate_bridge` already produced.
@@ -191,8 +191,9 @@ fn check_blast_radius_within_bound(
 
 /// Check five (REQ-15): taint compatibility, the real Gjöll gate call.
 /// Delegates entirely to [`crate::gate_bridge::evaluate_taint_compatibility`]
-/// -- the crate's one call site of `boundary_gjoll::consequentiality::evaluate`
-/// -- supplying [`crate::sinks::registry`]'s own registry and the effective
+/// -- the crate's one call site of
+/// `boundary_gjoll::consequentiality::evaluate_with_policy` -- supplying
+/// [`crate::sinks::registry`]'s own registry and the effective
 /// surface's cohort projection. No branch here reaches an outcome without
 /// that call, and no branch reconstructs the gate's rule locally.
 fn check_taint_compatible(surface: &EffectiveSurface<'_>, proposal: &Proposal) -> CheckOutcome {
