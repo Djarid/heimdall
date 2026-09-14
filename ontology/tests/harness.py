@@ -105,6 +105,10 @@ class Report:
         self.property_failures = 0
         self.gjoll_failures = 0
         self.false_inert_failures = 0
+        # D124: the executable half of the anti-rot condition. Counts failures of
+        # the disposition obligation only; it never adds to, and never subtracts
+        # from, false_inert_failures.
+        self.false_inert_disposition_failures = 0
         self.guard_failures = 0
         self.mitigation_failures = 0
         self.gjoll_invocation_failures = 0
@@ -1747,6 +1751,112 @@ def run_false_inert(nornir: Nornir, rep: Report, INERT_TYPES: frozenset,
     rep.line("")
 
 
+# D124 baselines (REQ-12.2). Verified by a live run before this spec was written.
+# A count that RISES is not a failure; a count that FALLS is.
+FALSE_INERT_DISPOSITION_BASELINE: dict[str, int] = {
+    "false_inert_adversarial.json": 17,   # self-authored, D67/D69/D72
+    "false_inert_independent.json": 33,   # scenario-authored, D77/D83/D85
+    "false_inert_thirdparty.json": 36,    # blind-authored, D88
+}
+FALSE_INERT_FINDINGS_BASELINE: int = 22
+
+
+def run_false_inert_disposition(rep: Report) -> None:
+    """D124: assert the layer-one false-inert MEASUREMENT still runs and has not
+    regressed. Declining to FIX is not declining to MEASURE. This obligation does
+    NOT turn the bar green and must never reduce `rep.false_inert_failures`; a
+    green layer-one bar would itself be the finding.
+
+    Two checks, both fatal-gated via `rep.false_inert_disposition_failures`
+    (never `rep.false_inert_failures`, which belongs to `run_false_inert` alone):
+
+    1. Each of the three corpus files exists and parses as JSON with a non-empty
+       `cases` list. A missing or unparseable corpus is a FAILURE: deleting a
+       corpus to quieten the bar now breaks the suite louder than the corpus did.
+    2. Each corpus's consequential-case count is at least its D124 baseline, and
+       the total false-inert finding count is at least the D124 baseline of 22.
+       A count that FALLS below baseline is a failure; a count that RISES above
+       baseline is not (a corpus may honestly grow, and a rising finding count
+       is the bar doing its job, not a regression in this obligation).
+    """
+    rep.line("=== False-inert disposition (D124: DECLINED at layer one; measurement asserted) ===")
+    corpora = [
+        (FALSE_INERT_CORPUS, "false_inert_adversarial.json"),
+        (FALSE_INERT_INDEPENDENT_CORPUS, "false_inert_independent.json"),
+        (FALSE_INERT_THIRDPARTY_CORPUS, "false_inert_thirdparty.json"),
+    ]
+
+    per_corpus_counts: dict[str, int] = {}
+    any_missing = False
+    for corpus_path, name in corpora:
+        if not corpus_path.exists():
+            rep.false_inert_disposition_failures += 1
+            any_missing = True
+            rep.line(f"  [CRITICAL] D124: missing corpus {name} at {corpus_path}; "
+                     f"the false-inert measurement cannot run without it")
+            continue
+        try:
+            data = json.loads(corpus_path.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            rep.false_inert_disposition_failures += 1
+            any_missing = True
+            rep.line(f"  [CRITICAL] D124: corpus {name} failed to parse as JSON ({exc}); "
+                     f"the false-inert measurement cannot run without it")
+            continue
+        cases = data.get("cases") if isinstance(data, dict) else None
+        if not cases:
+            rep.false_inert_disposition_failures += 1
+            any_missing = True
+            rep.line(f"  [CRITICAL] D124: corpus {name} has an empty or missing 'cases' list; "
+                     f"the false-inert measurement cannot run without it")
+            continue
+        consequential = [c for c in cases if c.get("ground_truth") == "consequential"]
+        per_corpus_counts[name] = len(consequential)
+
+    if not any_missing:
+        rep.line("  [PASS] all three corpora exist and parse with a non-empty case list.")
+
+    total_findings = 0
+    regressed = False
+    for corpus_path, name in corpora:
+        if name not in per_corpus_counts:
+            continue
+        baseline = FALSE_INERT_DISPOSITION_BASELINE[name]
+        count = per_corpus_counts[name]
+        if count < baseline:
+            regressed = True
+            rep.false_inert_disposition_failures += 1
+            rep.line(f"  [CRITICAL] D124: {name} consequential-case count regressed: "
+                     f"{count} < baseline {baseline}")
+        else:
+            rep.line(f"  [PASS] D124: {name} consequential-case count {count} "
+                     f"is at least baseline {baseline}"
+                     + (" (grown)" if count > baseline else ""))
+
+    # The total false-inert finding count is read off rep.false_inert_failures,
+    # which run_false_inert (called earlier, for all three corpora) has already
+    # populated by the time this obligation runs. Read-only: never modified here.
+    total_findings = rep.false_inert_failures
+    if total_findings < FALSE_INERT_FINDINGS_BASELINE:
+        regressed = True
+        rep.false_inert_disposition_failures += 1
+        rep.line(f"  [CRITICAL] D124: total false-inert finding count regressed: "
+                 f"{total_findings} < baseline {FALSE_INERT_FINDINGS_BASELINE}")
+    elif not any_missing:
+        rep.line(f"  [PASS] D124: total false-inert finding count {total_findings} "
+                 f"is at least baseline {FALSE_INERT_FINDINGS_BASELINE}"
+                 + (" (risen)" if total_findings > FALSE_INERT_FINDINGS_BASELINE else ""))
+
+    if not any_missing and not regressed:
+        rep.line("  [PASS] D124: the layer-one false-inert measurement still runs and has not "
+                 "regressed below its recorded baseline.")
+    rep.line("  D124: the disposition is DECLINED at layer one, on cost-and-invariant grounds, "
+             "not a repair. This obligation does NOT turn the bar green: it asserts the "
+             "measurement keeps running and has not regressed, nothing more. A green layer-one "
+             "bar would itself be the finding.")
+    rep.line("")
+
+
 # ---------------------------------------------------------------------------------
 # D118 (REQ-23 to REQ-28): licence posture. Structural only (AC-27): presence and
 # position of a fixed identifier string, never a compatibility judgement, never a
@@ -2210,6 +2320,7 @@ def main() -> int:
                     "independent scenario-authored corpus, D77")
     run_false_inert(nornir, rep, inert, FALSE_INERT_THIRDPARTY_CORPUS,
                     "blind-authored corpus (fresh sub-agent, no rule access), D88")
+    run_false_inert_disposition(rep)          # D124, REQ-13
     run_mitigations(rep)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
@@ -2241,6 +2352,7 @@ def main() -> int:
 
     fatal = (rep.critical_failures + rep.soundness_failures + rep.flow_failures
              + rep.property_failures + rep.gjoll_failures + rep.false_inert_failures
+             + rep.false_inert_disposition_failures      # D124, REQ-13
              + rep.guard_failures + rep.mitigation_failures
              + rep.gjoll_invocation_failures + rep.control_surface_failures
              + rep.anchor_failures + rep.effect_probe_failures
@@ -2275,7 +2387,7 @@ def main() -> int:
     if rep.false_inert_failures and fatal == rep.false_inert_failures:
         print()
         print("The only failures are false-inert findings from the three adversarial corpora")
-        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77, D88). This red bar is")
+        print("(ADVERSARIAL_REVIEW 5.2, decisions D67, D69, D72, D77, D88, D124). This red bar is")
         print("EXPECTED and RECORDED: consequential content that positively earns an inert signal")
         print("defeats the fail-closed default, because inertness is earned by a content pattern")
         print("an attacker can also satisfy. THREE measurements, all lower bounds: the self-authored")
@@ -2293,6 +2405,10 @@ def main() -> int:
         print("consequence from a genuine informational statement without world knowledge, which")
         print("invariant 3.1 keeps off the classification path. It is left red deliberately: a")
         print("suite that names a real break is worth more than a green one that never tested it.")
+        print("The layer-one fix is DECLINED at layer one (D124), on cost-and-invariant grounds,")
+        print("not accepted as a small residual and no smallness claim is made; the three corpora")
+        print("keep running by ASSERTION (run_false_inert_disposition), not by convention, so a")
+        print("fresh session cannot retire this tripwire by reading 'decided' as 'done'.")
         print()
         print("This is LAYER ONE only, and it is the pessimistic figure. Since D84 the D79-D82")
         print("mitigations are imported by engine.py and gjoll.py, and D85 closed the last")
