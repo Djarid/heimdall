@@ -17,8 +17,8 @@
 
 use std::collections::HashMap;
 
-use crate::declaration::{intrinsically_consequential, validate_proposal, SinkRegistry};
-use crate::rule::{apply, ConsequentialityVerdict};
+use crate::declaration::{SinkRegistry, intrinsically_consequential, validate_proposal};
+use crate::rule::{ConsequentialityVerdict, PromotionEvidence, apply, apply_with_policy};
 use crate::types::{ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision};
 
 /// The provenance of one verdict's derivation (REQ-17). Exactly **two**
@@ -113,9 +113,48 @@ pub fn evaluate(
             action_id: proposal.action_id.clone(),
             authorised: false,
             reasons: validation.reasons,
+            gate_evaluations: Vec::new(),
         };
     }
 
     let (verdict, _source) = derive_consequentiality(&proposal.sink, registry);
     apply(verdict, proposal, classified)
+}
+
+/// The policy-aware consequentiality shell (REQ-26; spec section 4.1).
+/// Identical to [`evaluate`] except that, once D81 validation passes, it
+/// delegates to [`apply_with_policy`] (not [`apply`]) with `policy` and
+/// `evidence`. The D81 validation stage still runs FIRST and is still
+/// unreachable-past on failure: a validation failure returns a blocked
+/// decision carrying only declaration-invalid reasons and an empty
+/// `gate_evaluations`, and `apply_with_policy` -- and therefore the policy
+/// and the evidence -- is never reached in control flow on that path.
+pub fn evaluate_with_policy(
+    proposal: &ActionProposal,
+    classified: &HashMap<String, ClassifiedParameter>,
+    registry: &SinkRegistry,
+    policy: &crate::gate_policy::GatePolicy,
+    evidence: &PromotionEvidence<'_>,
+) -> GateDecision {
+    let known_ids: std::collections::HashSet<String> = classified.keys().cloned().collect();
+    let consumes_raw: HashMap<String, String> = proposal
+        .consumes
+        .iter()
+        .map(|(param_id, mode)| (param_id.clone(), consume_mode_to_str(*mode)))
+        .collect();
+
+    let validation = validate_proposal(&proposal.sink, &consumes_raw, registry, &known_ids);
+    if !validation.reasons.is_empty() {
+        // D81 validation failed: block here, before the rule -- and
+        // therefore the policy and the evidence -- is ever reached.
+        return GateDecision {
+            action_id: proposal.action_id.clone(),
+            authorised: false,
+            reasons: validation.reasons,
+            gate_evaluations: Vec::new(),
+        };
+    }
+
+    let (verdict, _source) = derive_consequentiality(&proposal.sink, registry);
+    apply_with_policy(verdict, proposal, classified, policy, evidence)
 }

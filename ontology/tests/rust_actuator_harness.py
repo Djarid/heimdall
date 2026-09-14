@@ -474,7 +474,31 @@ def check_mechanical_surface() -> SurfaceCheckResult:
 # ---------------------------------------------------------------------------------
 # Check 4: cross-harness regression (AC-51). rust_gateway_harness's allowlist
 # carries exactly three names, and rust_gate_harness's own DEFAULT behaviour
-# (no allowlist argument) is unchanged for boundary-gjoll and hierarchy-vor.
+# (no allowlist argument) is unchanged for crates that never gained a path
+# dependency.
+#
+# STALE-TEST FIX (issue #103, this crate's own build landed after commit
+# e24f034): this check used to name `boundary-gjoll` as its second strict-default
+# example alongside `hierarchy-vor`. REQ-2 of
+# `.opencode/plans/rust-promotion-gate-spec.md` legitimately gave `boundary-gjoll`
+# its one, deliberate, in-workspace path dependency on `hierarchy-vor` (commit
+# e24f034), so `boundary-gjoll`'s manifest now carries a non-empty [dependencies]
+# table, and `check_dependency_posture`'s DEFAULT (no allowlist) correctly reports
+# a violation for it now -- that is the intended new behaviour, not a bug.
+# `rust_gate_harness.py`'s own `GJOLL_PERMITTED_PATH_DEPENDENCIES` allowlist is
+# the correct, already-fixed way to check `boundary-gjoll` (see
+# `rust_gate_harness.main()`'s own call), so re-testing `boundary-gjoll` under the
+# DEFAULT here was never this check's honest purpose in the first place: AC-51's
+# actual claim is that widening `rust_gateway_harness.PERMITTED_PATH_DEPENDENCIES`
+# for `himinbjorg` did not also, silently, widen `check_dependency_posture`'s own
+# DEFAULT for crates that carry no path dependency at all. `hierarchy-vor` (REQ-3:
+# "must not be modified in any respect") and `actuator-git` (REQ-2: empty
+# `[dependencies]`, no exceptions) are the two crates that genuinely stay
+# strict-empty under the default and are never checked with an allowlist
+# override anywhere in this repository, so they are the honest pair for this
+# regression check to use. `boundary-gjoll` is dropped from this check entirely,
+# not replaced one-for-one with a third name, because its strict-default
+# behaviour is no longer the claim being defended here.
 # ---------------------------------------------------------------------------------
 
 
@@ -494,16 +518,16 @@ def check_ac51_cross_harness_regression() -> SurfaceCheckResult:
             f"expected exactly {sorted(expected_three)}"
         )
 
-    boundary_gjoll_manifest = REPO_ROOT / "crates" / "boundary-gjoll" / "Cargo.toml"
     hierarchy_vor_manifest = REPO_ROOT / "crates" / "hierarchy-vor" / "Cargo.toml"
-    for manifest in (boundary_gjoll_manifest, hierarchy_vor_manifest):
+    actuator_git_manifest = REPO_ROOT / "crates" / "actuator-git" / "Cargo.toml"
+    for manifest in (hierarchy_vor_manifest, actuator_git_manifest):
         result = rust_gate_harness.check_dependency_posture(manifest)
         if not result.ok:
             violations.append(
                 f"rust_gate_harness.check_dependency_posture's DEFAULT (no allowlist "
                 f"argument) wrongly reports {manifest} as a violation: {result.detail} "
-                f"(AC-51 requires boundary-gjoll and hierarchy-vor to keep their strict "
-                f"behaviour byte for byte)"
+                f"(AC-51 requires hierarchy-vor and actuator-git, which carry no path "
+                f"dependency of any kind, to keep their strict behaviour byte for byte)"
             )
     if violations:
         return SurfaceCheckResult(ok=False, violations=violations, detail=f"{len(violations)} violation(s)")
@@ -511,7 +535,7 @@ def check_ac51_cross_harness_regression() -> SurfaceCheckResult:
         ok=True,
         detail=f"rust_gateway_harness's allowlist carries exactly {sorted(permitted)}, and "
                f"rust_gate_harness.check_dependency_posture's default remains strict for "
-               f"boundary-gjoll and hierarchy-vor.",
+               f"hierarchy-vor and actuator-git.",
     )
 
 

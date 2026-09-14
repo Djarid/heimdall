@@ -164,14 +164,26 @@ const _: () = assert!(
 /// `DefaultCognitionStep` exists to supply that one **positive control**
 /// the real implementation cannot supply while the honest declaration
 /// blocks every model-authored proposal. Its **expiry trigger** is
-/// Gjöll's own promotion and re-validation gate landing: once a logged
-/// promotion event can carry a value from `Tainted` to a level check
-/// five passes, a real, model-authored proposal can reach the execute
-/// step on its own merits, and at that point deleting this stub is a
-/// single, clean edit rather than a load-bearing change. It is a named
-/// positive control with a stated expiry trigger this whole doc comment
-/// gives, deliberately, so no reader mistakes its retention for
-/// something simply forgotten and left in place.
+/// narrower than "a promotion gate exists", and the two conditions below
+/// are stated as distinct on purpose, because this build satisfies only
+/// the first. (i) Gjöll's own promotion and re-validation gate now
+/// exists and is **harness-demonstrated**: under harness and test
+/// invocation it can carry a logged promotion event from `Tainted` to a
+/// level check five passes. That existence is real but is deliberately
+/// **not** the trigger. (ii) The trigger is the stronger condition that
+/// this build does not reach: the gate must be **live-wired and
+/// PROVEN**, such that a verified promotion can carry a model-authored
+/// value past check five end to end on a non-test path, with no harness
+/// or test invocation standing in for the live minting step. Gjallarhorn,
+/// the intended live authoring path for a promotion attestation, is
+/// unbuilt, so nothing today can mint one at runtime; until condition
+/// (ii) holds, this stub remains the pipeline's only live positive
+/// control and deleting it would be a load-bearing change, not a clean
+/// one. It is a named positive control with a stated expiry trigger this
+/// whole doc comment gives, deliberately, so no reader mistakes its
+/// retention for something simply forgotten and left in place, and so no
+/// reader mistakes condition (i), already true of this build, for
+/// condition (ii), which is the actual retirement trigger.
 pub struct DefaultCognitionStep;
 
 impl DefaultCognitionStep {
@@ -242,30 +254,35 @@ impl CognitionStep for DefaultCognitionStep {
 ///    promotion event that never happened.
 /// 3. **Every proposal carrying this parameter blocks at check five,
 ///    which is the designed outcome of this step, not a defect.**
-///    `boundary_gjoll::rule::apply` tests `c.trust_level ==
-///    TrustLevel::Tainted` in both the `Inert` arm and the `Action` arm;
-///    with [`REAL_CONSUME_MODE`] fixed at `Action`, this parameter raises
-///    `ActionOnActionCriticalTainted` at every action-critical sink.
+///    `boundary_gjoll::rule::apply` tests `c.trust_level.is_untrusted_derived()`
+///    (a rank comparison against `TRUSTED_THRESHOLD`) in both the `Inert`
+///    arm and the `Action` arm; with [`REAL_CONSUME_MODE`] fixed at
+///    `Action`, this parameter raises `ActionOnActionCriticalTainted` at
+///    every action-critical sink.
 /// 4. **What would have to exist to justify anything higher:** Gjöll's
 ///    own promotion and re-validation gate. Until a logged promotion
 ///    event exists and can carry a value upward, no level above `Tainted`
 ///    is an honest declaration for model output, regardless of how
 ///    tightly its structure is constrained.
 ///
-/// **A named residual this constant's own pin exists to detect (EC-40,
-/// section 2.1's second finding).** `rule::apply` tests
-/// untrusted-derivation by equality against `Tainted` alone, not by a
-/// rank comparison against the lattice's own `TRUST_ORDER`. A parameter
-/// declared `Vouched` -- one step up and still explicitly "not yet fully
-/// trusted" -- would pass check five silently under both arms. Nothing
-/// exercises that today, because every parameter constructed anywhere in
-/// `crates/` is `Canonical` before this step and `Tainted` after it. This
-/// step neither closes, narrows nor mitigates that gap, and changes no
-/// line of `crates/boundary-gjoll/` (REQ-5): the mitigation is this
-/// constant's own value being pinned by
-/// `ontology/tests/rust_cognition_client_harness.py` (REQ-4), a detection
-/// mitigation rather than a fix, so a later softening to `Vouched` is a
-/// build-visible, reviewed edit rather than a silent one.
+/// **A named residual this constant's own pin was watching for is now
+/// CLOSED, not open (EC-40, section 2.1's second finding).** `rule::apply`
+/// used to test untrusted-derivation by equality against `Tainted` alone,
+/// not by a rank comparison against the lattice's own `TRUST_ORDER`: a
+/// parameter declared `Vouched` -- one step up and still explicitly "not
+/// yet fully trusted" -- would have passed check five silently under both
+/// arms. Nothing exercised that at the time, because every parameter
+/// constructed anywhere in `crates/` was `Canonical` before this step and
+/// `Tainted` after it, but the gap was real and undetected by any test.
+/// It is closed by the rust-promotion-gate build's precondition fix
+/// (REQ-5 to REQ-9 of `.opencode/plans/rust-promotion-gate-spec.md`,
+/// issue #97, commit `0bfc626` on this branch): `crates/boundary-gjoll/src/rule.rs`'s
+/// `apply` now tests untrusted-derivation via `c.trust_level.is_untrusted_derived()`,
+/// a rank comparison against `TRUSTED_THRESHOLD`, in both the `Inert` and
+/// `Action` arms, not by equality against `TrustLevel::Tainted` alone.
+/// `Vouched` is therefore untrusted-derived too, and no longer passes
+/// check five silently. See `DECISIONS.md`'s D120 row for the build that
+/// closed this.
 pub const REAL_TRUST_LEVEL: boundary_gjoll::types::TrustLevel = boundary_gjoll::types::TrustLevel::Tainted;
 
 /// The model-authored parameter's declared consume mode (REQ-2). A

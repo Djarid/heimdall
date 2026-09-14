@@ -68,10 +68,17 @@ Three symbol groups tracked, each answering a different question:
      bound in this file's own scope by a `use himinbjorg::<name> [as alias];` or
      `use himinbjorg::{..., <name>, ...};` import. `boundary-gjoll`'s own
      `declaration::validate_proposal` binds no such name and is never counted.
-  2. `boundary_gjoll::consequentiality::evaluate`, scanned across the WHOLE repo.
-     Expected EXACTLY ONE non-test call site, inside `crates/himinbjorg/src/gate_bridge.rs`
-     (check five, REQ-15). This is an EXPLICIT ALLOWLISTED COUNT CHECK
-     (`GATE_CALL_ALLOWLIST`), on `ALLOWED_IMPORT_ROOTS`'s (D71) and
+  2. `boundary_gjoll::consequentiality::evaluate_with_policy`, scanned across the
+     WHOLE repo. Expected EXACTLY ONE non-test call site, inside
+     `crates/himinbjorg/src/gate_bridge.rs` (check five, REQ-15). **Symbol updated by
+     `.opencode/plans/rust-promotion-gate-spec.md` REQ-29/REQ-30 (commit 20d62a38):**
+     `gate_bridge.rs`'s single call site was intentionally switched from
+     `consequentiality::evaluate` to `consequentiality::evaluate_with_policy`, so this
+     is the symbol this obligation now tracks; `evaluate` itself still exists in
+     `boundary-gjoll` (used directly by that crate's own tests and by
+     `crates/himinbjorg/unit_tests/gate_bridge_failclosed.rs`) but is no longer the
+     function Himinbjörg's own non-test code calls. This is an EXPLICIT ALLOWLISTED
+     COUNT CHECK (`GATE_CALL_ALLOWLIST`), on `ALLOWED_IMPORT_ROOTS`'s (D71) and
      `gjoll_invocation_harness.NON_TEST_ALLOWLIST`'s (D96) own polarity, but inverted in
      degree: those two allowlists permit UP TO a named set of entries; this one requires
      EXACTLY the one entry it names, so both a second unlisted call site AND the
@@ -79,12 +86,13 @@ Three symbol groups tracked, each answering a different question:
      call site is a reviewed act, never a silent one (EC-18).
 
      Resolved the same way group 1 is: a fully or partially qualified call
-     (`consequentiality::evaluate(`, reached through any prefix ending in that module
-     path) always counts; a bare `evaluate(...)` counts only when this file's own scope
-     bound that name from a `use ...consequentiality::evaluate [as alias];` or
-     `use ...consequentiality::{..., evaluate, ...};` import, because `evaluate` alone
-     is far too common a bare name to scan for unresolved (`boundary-gjoll`'s own crate
-     defines it, and nothing rules out an unrelated `evaluate` fn appearing elsewhere).
+     (`consequentiality::evaluate_with_policy(`, reached through any prefix ending in
+     that module path) always counts; a bare `evaluate_with_policy(...)` counts only
+     when this file's own scope bound that name from a
+     `use ...consequentiality::evaluate_with_policy [as alias];` or
+     `use ...consequentiality::{..., evaluate_with_policy, ...};` import, because a bare
+     name is not scanned for unresolved (an unrelated fn of the same bare name is not
+     ruled out appearing elsewhere).
   3. `hierarchy_vor::load_verified_cohort`, scanned ONLY inside `crates/himinbjorg/`
      (REQ-28's own scoping: "expected to be zero inside this crate"). Expected zero
      non-test call sites: step three takes an already-verified cohort by reference and
@@ -159,13 +167,14 @@ _HIMINBJORG_CRATE_DIR: tuple[str, ...] = ("crates", "himinbjorg")
 
 @dataclass(frozen=True)
 class NonTestAllowlistEntry:
-    """A designated non-test call site of `boundary_gjoll::consequentiality::evaluate`
-    permitted to exist, on `gjoll_invocation_harness.NonTestAllowlistEntry`'s own shape
-    (D96, itself on `ALLOWED_IMPORT_ROOTS`'s/D71's polarity). Unlike that allowlist,
-    which permits UP TO its named entries, `GATE_CALL_ALLOWLIST` below requires EXACTLY
-    the one entry it names (REQ-28): the check this module runs fails if the live count
-    of non-test call sites is anything other than one, whether that is because a second,
-    unlisted site appeared, or because the one allowlisted site vanished."""
+    """A designated non-test call site of
+    `boundary_gjoll::consequentiality::evaluate_with_policy` permitted to exist, on
+    `gjoll_invocation_harness.NonTestAllowlistEntry`'s own shape (D96, itself on
+    `ALLOWED_IMPORT_ROOTS`'s/D71's polarity). Unlike that allowlist, which permits UP TO
+    its named entries, `GATE_CALL_ALLOWLIST` below requires EXACTLY the one entry it
+    names (REQ-28): the check this module runs fails if the live count of non-test call
+    sites is anything other than one, whether that is because a second, unlisted site
+    appeared, or because the one allowlisted site vanished."""
 
     path: str            # repo-relative path, e.g. "crates/himinbjorg/src/gate_bridge.rs"
     justification: str   # why this call site is a deliberate, reviewed wiring
@@ -181,9 +190,12 @@ GATE_CALL_ALLOWLIST: tuple[NonTestAllowlistEntry, ...] = (
     NonTestAllowlistEntry(
         path="crates/himinbjorg/src/gate_bridge.rs",
         justification=(
-            "check five's real call into boundary_gjoll::consequentiality::evaluate "
-            "(REQ-15, REQ-17 of the himinbjorg step-three spec): the crate's one, "
-            "deliberately singular, non-test call site of the gate"
+            "check five's real call into "
+            "boundary_gjoll::consequentiality::evaluate_with_policy (REQ-15, REQ-17 of "
+            "the himinbjorg step-three spec; switched from evaluate to "
+            "evaluate_with_policy by REQ-29/REQ-30 of the rust-promotion-gate spec, "
+            "commit 20d62a38): the crate's one, deliberately singular, non-test call "
+            "site of the gate"
         ),
         decision_ref="D111",
     ),
@@ -514,27 +526,30 @@ def _interface_call_sites(cleaned: str, rel_path: str) -> list[int]:
 
 
 # ---------------------------------------------------------------------------------
-# Group 2: boundary_gjoll::consequentiality::evaluate (REQ-28 bullet 2, EC-18).
+# Group 2: boundary_gjoll::consequentiality::evaluate_with_policy (REQ-28 bullet 2,
+# EC-18). Symbol updated by REQ-29/REQ-30 of `.opencode/plans/rust-promotion-gate-spec.md`
+# (commit 20d62a38): gate_bridge.rs's single call site was intentionally switched from
+# `evaluate` to `evaluate_with_policy`.
 # ---------------------------------------------------------------------------------
 
-_QUALIFIED_EVALUATE_CALL_RE = re.compile(r"consequentiality::evaluate\s*\(")
+_QUALIFIED_EVALUATE_CALL_RE = re.compile(r"consequentiality::evaluate_with_policy\s*\(")
 _USE_EVALUATE_SINGLE_RE = re.compile(
-    r"use\s+[\w:]*consequentiality::evaluate(?:\s+as\s+(\w+))?\s*;"
+    r"use\s+[\w:]*consequentiality::evaluate_with_policy(?:\s+as\s+(\w+))?\s*;"
 )
 _USE_EVALUATE_GROUP_RE = re.compile(r"use\s+[\w:]*consequentiality::\{([^}]*)\}\s*;")
 
 
 def _evaluate_bound_names(cleaned: str) -> set[str]:
     """Names bound in this file's own scope that resolve to
-    `boundary_gjoll::consequentiality::evaluate` via a `use ...consequentiality::
-    evaluate [as alias];` or `use ...consequentiality::{..., evaluate, ...};`
-    import. `evaluate` alone is far too common a bare name to scan for unresolved
-    (`boundary-gjoll` itself defines the only `fn evaluate` in the crates tree, but
-    nothing rules out an unrelated one appearing elsewhere later), so a bare call
-    counts only when this resolution step actually bound it."""
+    `boundary_gjoll::consequentiality::evaluate_with_policy` via a
+    `use ...consequentiality::evaluate_with_policy [as alias];` or
+    `use ...consequentiality::{..., evaluate_with_policy, ...};` import. A bare
+    name is not scanned for unresolved (nothing rules out an unrelated fn of the
+    same bare name appearing elsewhere), so a bare call counts only when this
+    resolution step actually bound it."""
     bound: set[str] = set()
     for alias in _USE_EVALUATE_SINGLE_RE.findall(cleaned):
-        bound.add(alias or "evaluate")
+        bound.add(alias or "evaluate_with_policy")
     for group_body in _USE_EVALUATE_GROUP_RE.findall(cleaned):
         for item in group_body.split(","):
             item = item.strip()
@@ -543,17 +558,18 @@ def _evaluate_bound_names(cleaned: str) -> set[str]:
             parts = [p.strip() for p in item.split(" as ")]
             name = parts[0]
             alias = parts[1] if len(parts) > 1 else None
-            if name == "evaluate":
-                bound.add(alias or "evaluate")
+            if name == "evaluate_with_policy":
+                bound.add(alias or "evaluate_with_policy")
     return bound
 
 
 def _evaluate_call_sites(cleaned: str) -> list[int]:
-    """Line numbers of every call to `boundary_gjoll::consequentiality::evaluate`
-    in this already-stripped file, whether reached by a fully or partially
-    qualified path (any prefix ending in `consequentiality::evaluate(`) or by a
-    bare call after this file's own scope bound that name from a `use` import
-    naming the `consequentiality` module specifically."""
+    """Line numbers of every call to
+    `boundary_gjoll::consequentiality::evaluate_with_policy` in this
+    already-stripped file, whether reached by a fully or partially qualified path
+    (any prefix ending in `consequentiality::evaluate_with_policy(`) or by a bare
+    call after this file's own scope bound that name from a `use` import naming
+    the `consequentiality` module specifically."""
     hits: set[int] = set()
     for m in _QUALIFIED_EVALUATE_CALL_RE.finditer(cleaned):
         hits.add(cleaned.count("\n", 0, m.start()) + 1)
@@ -709,35 +725,37 @@ def control_check() -> list[str]:
         )
 
     # Group 2 must-catch: a fully qualified call, and a bare call bound by a
-    # genuine `use ...consequentiality::evaluate;` import.
+    # genuine `use ...consequentiality::evaluate_with_policy;` import.
     hits_i, hits_e, _c, bad = _scan_source(
-        'let d = boundary_gjoll::consequentiality::evaluate(&p, &c, &r);\n'
-    )
-    if bad or not hits_e:
-        failures.append("group 2 FAILED to catch a qualified consequentiality::evaluate(...) call")
-
-    hits_i, hits_e, _c, bad = _scan_source(
-        'use boundary_gjoll::consequentiality::evaluate;\n'
-        'let d = evaluate(&p, &c, &r);\n'
+        'let d = boundary_gjoll::consequentiality::evaluate_with_policy(&p, &c, &r, &pol, &ev);\n'
     )
     if bad or not hits_e:
         failures.append(
-            "group 2 FAILED to catch a bare evaluate(...) call bound by a genuine "
-            "`use ...consequentiality::evaluate;` import"
+            "group 2 FAILED to catch a qualified consequentiality::evaluate_with_policy(...) call"
         )
 
-    # Group 2 must-not-catch: an unrelated bare `evaluate(...)` with no
-    # consequentiality import in scope at all.
     hits_i, hits_e, _c, bad = _scan_source(
-        'fn evaluate(x: i32) -> i32 { x }\n'
-        'let y = evaluate(1);\n'
+        'use boundary_gjoll::consequentiality::evaluate_with_policy;\n'
+        'let d = evaluate_with_policy(&p, &c, &r, &pol, &ev);\n'
+    )
+    if bad or not hits_e:
+        failures.append(
+            "group 2 FAILED to catch a bare evaluate_with_policy(...) call bound by a "
+            "genuine `use ...consequentiality::evaluate_with_policy;` import"
+        )
+
+    # Group 2 must-not-catch: an unrelated bare `evaluate_with_policy(...)` with
+    # no consequentiality import in scope at all.
+    hits_i, hits_e, _c, bad = _scan_source(
+        'fn evaluate_with_policy(x: i32) -> i32 { x }\n'
+        'let y = evaluate_with_policy(1);\n'
     )
     if bad:
         failures.append("group 2 reported UNSCANNABLE for a benign, tokenisable source")
     elif hits_e:
         failures.append(
-            "group 2 WRONGLY flagged an unrelated bare evaluate(...) call with no "
-            "consequentiality import in scope"
+            "group 2 WRONGLY flagged an unrelated bare evaluate_with_policy(...) call "
+            "with no consequentiality import in scope"
         )
 
     # Group 3 must-catch and must-not-catch: a real call, and a comment-only
@@ -856,7 +874,8 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
     allowed_paths = {e.path for e in GATE_CALL_ALLOWLIST}
     unallowlisted = [f for f in non_test_files_e if f not in allowed_paths]
     print()
-    print(f"HIMINBJORG INVOCATION BOUNDARY -- boundary_gjoll::consequentiality::evaluate: "
+    print(f"HIMINBJORG INVOCATION BOUNDARY -- "
+          f"boundary_gjoll::consequentiality::evaluate_with_policy: "
           f"{len(test_files_e)} test call site(s) (file(s)), "
           f"{total_non_test_evaluate_sites} non-test call site(s) total, expected "
           f"EXACTLY ONE (REQ-28, EC-18).")
@@ -874,12 +893,13 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
     if total_non_test_evaluate_sites != 1:
         ok = False
         print(f"  [CRITICAL] expected exactly one non-test call site of "
-              f"consequentiality::evaluate, found {total_non_test_evaluate_sites} "
-              f"(EC-18: a count other than one is fatal, whether that is a second, "
-              f"unlisted site or the allowlisted site vanishing).")
+              f"consequentiality::evaluate_with_policy, found "
+              f"{total_non_test_evaluate_sites} (EC-18: a count other than one is "
+              f"fatal, whether that is a second, unlisted site or the allowlisted "
+              f"site vanishing).")
     elif not unallowlisted:
-        print("  [PASS] exactly one non-test call site of consequentiality::evaluate, "
-              "and it is the allowlisted one.")
+        print("  [PASS] exactly one non-test call site of "
+              "consequentiality::evaluate_with_policy, and it is the allowlisted one.")
     print()
     print("  STATED PLAINLY (REQ-28, section 10 of the step-three spec): one non-test")
     print("  Rust caller of the gate inside a crate that ITSELF has zero non-test")
@@ -913,10 +933,10 @@ def print_invocation_banner(repo_root: "Path | None" = None) -> bool:
 # sites of Himinbjörg's own interfaces. Proves, against SYNTHETIC temporary
 # trees (never this repository's own working tree), that:
 #
-#   1. Group two's (`consequentiality::evaluate`) existing exactly-one-
-#      required allowlist polarity still bites in both directions: a second,
-#      unlisted non-test call site alongside the genuine allowlisted one, and
-#      the allowlisted site disappearing (count falls to zero).
+#   1. Group two's (`consequentiality::evaluate_with_policy`) existing
+#      exactly-one-required allowlist polarity still bites in both directions:
+#      a second, unlisted non-test call site alongside the genuine allowlisted
+#      one, and the allowlisted site disappearing (count falls to zero).
 #   2. Group one (the public interfaces) and group three
 #      (`load_verified_cohort`, scoped to `crates/himinbjorg/`) -- both
 #      carrying NO allowlist mechanism yet -- still report any non-test call
@@ -942,24 +962,26 @@ def synthetic_widening_control() -> list[str]:
 
     allowlisted_gate_bridge_rs = (
         "fn f() {\n"
-        "    let _ = boundary_gjoll::consequentiality::evaluate(&p, &c, &r);\n"
+        "    let _ = boundary_gjoll::consequentiality::evaluate_with_policy(&p, &c, &r, &pol, &ev);\n"
         "}\n"
     )
 
     # Group 2, direction 1: an extra, UNLISTED non-test call site of
-    # consequentiality::evaluate alongside the genuine allowlisted one.
+    # consequentiality::evaluate_with_policy alongside the genuine allowlisted one.
     root = _write_synthetic_tree({
         "crates/himinbjorg/src/gate_bridge.rs": allowlisted_gate_bridge_rs,
         "crates/himinbjorg/src/other_module.rs": (
-            "fn g() {\n    let _ = boundary_gjoll::consequentiality::evaluate(&p2, &c2, &r2);\n}\n"
+            "fn g() {\n    let _ = boundary_gjoll::consequentiality::evaluate_with_policy"
+            "(&p2, &c2, &r2, &pol2, &ev2);\n}\n"
         ),
     })
     try:
         if print_invocation_banner(root):
             failures.append(
                 "synthetic control FAILED: a second, unlisted non-test call site of "
-                "consequentiality::evaluate alongside the allowlisted one was not "
-                "reported as critical (EC-18's own exactly-one-required polarity)")
+                "consequentiality::evaluate_with_policy alongside the allowlisted one "
+                "was not reported as critical (EC-18's own exactly-one-required "
+                "polarity)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -971,8 +993,9 @@ def synthetic_widening_control() -> list[str]:
         if print_invocation_banner(root):
             failures.append(
                 "synthetic control FAILED: the allowlisted call site of "
-                "consequentiality::evaluate vanishing (count falls to zero) was not "
-                "reported as critical (EC-10's own disappearance-is-fatal polarity)")
+                "consequentiality::evaluate_with_policy vanishing (count falls to "
+                "zero) was not reported as critical (EC-10's own "
+                "disappearance-is-fatal polarity)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

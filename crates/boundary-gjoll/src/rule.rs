@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use crate::types::{
-    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind, TrustLevel,
+    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind,
 };
 
 /// An already-resolved consequentiality verdict: whether the proposal's sink is
@@ -79,7 +79,7 @@ pub fn apply(
                 // provenance at all has nothing to contradict: it is genuinely
                 // inert.
                 if let Some(c) = c {
-                    let untrusted_derived = c.trust_level == TrustLevel::Tainted;
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
                     if verdict.is_consequential() && untrusted_derived && c.action_critical {
                         reasons.push(Reason {
                             kind: ReasonKind::InertContradictsReachability,
@@ -113,7 +113,7 @@ pub fn apply(
                     });
                 }
                 Some(c) => {
-                    let untrusted_derived = c.trust_level == TrustLevel::Tainted;
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
                     if verdict.is_consequential() && untrusted_derived && c.action_critical {
                         reasons.push(Reason {
                             kind: ReasonKind::ActionOnActionCriticalTainted,
@@ -137,5 +137,166 @@ pub fn apply(
         action_id: proposal.action_id.clone(),
         authorised,
         reasons,
+        gate_evaluations: Vec::new(),
+    }
+}
+
+/// The evidence bundle threaded into [`apply_with_policy`] (spec section 4.1):
+/// `assertion_id -> (content_digest, verified promotion)`. A plain reference
+/// on `apply_with_policy`'s own signature, never an `Option` (REQ-15). An
+/// **empty** bundle is the live state today -- nothing in a deployment can
+/// mint a promotion yet -- and an empty bundle BLOCKs every action-critical,
+/// untrusted-derived parameter exactly as before, which is the point (REQ-30).
+pub struct PromotionEvidence<'a> {
+    entries: HashMap<String, (String, &'a hierarchy_vor::VerifiedPromotion)>,
+}
+
+impl<'a> PromotionEvidence<'a> {
+    /// An empty bundle: no promotion evidence for any assertion id.
+    pub fn new() -> Self {
+        PromotionEvidence {
+            entries: HashMap::new(),
+        }
+    }
+
+    /// Consuming builder: returns `self` with one more `assertion_id` bound
+    /// to `(content_digest, promotion)`. A later `.with()` call for the same
+    /// `assertion_id` overwrites the earlier entry.
+    pub fn with(
+        mut self,
+        assertion_id: String,
+        content_digest: String,
+        promotion: &'a hierarchy_vor::VerifiedPromotion,
+    ) -> Self {
+        self.entries
+            .insert(assertion_id, (content_digest, promotion));
+        self
+    }
+
+    /// Looks up the evidence bound to `assertion_id`, if any.
+    fn get(&self, assertion_id: &str) -> Option<(&str, &'a hierarchy_vor::VerifiedPromotion)> {
+        self.entries
+            .get(assertion_id)
+            .map(|(digest, promotion)| (digest.as_str(), *promotion))
+    }
+}
+
+impl<'a> Default for PromotionEvidence<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// The policy-aware rule core (REQ-25, REQ-27; spec section 4.1). Identical
+/// to [`apply`] in every respect -- including the D89-A `Inert` arm, which no
+/// gate policy or promotion evidence may ever launder (REQ-25) -- **except**
+/// that in the `Action` arm, a parameter that would otherwise BLOCK as
+/// [`ReasonKind::ActionOnActionCriticalTainted`] is given one further chance:
+/// its `assertion_id` is looked up in `evidence`, [`crate::gate_policy::evaluate_policy`]
+/// is called against `policy` with that entry's content digest and witness
+/// (or `None` if no entry exists), and if
+/// [`crate::gate_policy::policy_satisfied`] reports `true` for the resulting
+/// evaluations, that parameter PASSES instead of blocking. Otherwise it
+/// still blocks with its original reason, unchanged.
+///
+/// The loop never short-circuits (REQ-27): every parameter is evaluated and
+/// contributes its own reason (or none), regardless of what any other
+/// parameter's own gate evaluation produced.
+pub fn apply_with_policy(
+    verdict: ConsequentialityVerdict,
+    proposal: &ActionProposal,
+    classified: &HashMap<String, ClassifiedParameter>,
+    policy: &crate::gate_policy::GatePolicy,
+    evidence: &PromotionEvidence<'_>,
+) -> GateDecision {
+    let mut reasons: Vec<Reason> = Vec::new();
+    let mut gate_evaluations: Vec<crate::gate_policy::GateResult> = Vec::new();
+
+    for (param_id, mode) in &proposal.consumes {
+        let c = classified.get(param_id);
+
+        match mode {
+            ConsumeMode::Inert => {
+                // REQ-25: the D89-A block is NOT passable by any gate policy
+                // or promotion evidence, under any circumstances. This arm
+                // is byte-identical to `apply`'s own Inert arm.
+                if let Some(c) = c {
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
+                    if verdict.is_consequential() && untrusted_derived && c.action_critical {
+                        reasons.push(Reason {
+                            kind: ReasonKind::InertContradictsReachability,
+                            parameter_id: param_id.clone(),
+                            sink: proposal.sink.clone(),
+                            detail: format!(
+                                "consequential sink {:?} declares untrusted-derived, \
+                                 action-critical value {:?} (type {}) as CONSUME_INERT, \
+                                 which contradicts its flow reachability to a \
+                                 consequential effect; the inert claim is not trusted \
+                                 over the derived action-critical status (fail closed, \
+                                 D89-A)",
+                                proposal.sink, param_id, c.type_name,
+                            ),
+                        });
+                    }
+                }
+            }
+            ConsumeMode::Action => match c {
+                None => {
+                    // Unknown-origin: no known provenance. Fail closed
+                    // regardless of the verdict, the policy, or any
+                    // evidence.
+                    reasons.push(Reason {
+                        kind: ReasonKind::NoKnownProvenance,
+                        parameter_id: param_id.clone(),
+                        sink: proposal.sink.clone(),
+                        detail: format!(
+                            "parameter {param_id:?} consumed as ACTION has no known \
+                             provenance; fail closed"
+                        ),
+                    });
+                }
+                Some(c) => {
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
+                    if verdict.is_consequential() && untrusted_derived && c.action_critical {
+                        // This parameter would otherwise BLOCK. Consult the
+                        // gate policy with whatever evidence (if any) is
+                        // bound to this exact assertion id.
+                        let (content_digest, promotion) = match evidence.get(&c.assertion_id) {
+                            Some((digest, promotion)) => (digest, Some(promotion)),
+                            None => ("", None),
+                        };
+                        let results = crate::gate_policy::evaluate_policy(
+                            policy,
+                            c,
+                            content_digest,
+                            promotion,
+                        );
+                        gate_evaluations.extend(results.clone());
+                        if !crate::gate_policy::policy_satisfied(&results) {
+                            reasons.push(Reason {
+                                kind: ReasonKind::ActionOnActionCriticalTainted,
+                                parameter_id: param_id.clone(),
+                                sink: proposal.sink.clone(),
+                                detail: format!(
+                                    "consequential sink {:?} consumes untrusted-derived, \
+                                     action-critical value {:?} (type {}) as an ACTION \
+                                     instruction, and the gate policy was not satisfied \
+                                     for it",
+                                    proposal.sink, param_id, c.type_name,
+                                ),
+                            });
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    let authorised = reasons.is_empty();
+    GateDecision {
+        action_id: proposal.action_id.clone(),
+        authorised,
+        reasons,
+        gate_evaluations,
     }
 }

@@ -38,6 +38,16 @@
 //! so both `hierarchy_vor::VerifiedCohort` and `hierarchy_vor::cohort::VerifiedCohort`
 //! resolve to the same type.
 //!
+//! `promotion` is likewise `pub mod` (issue #98,
+//! `.opencode/plans/rust-promotion-gate-spec.md` section 3.4, REQ-17 to
+//! REQ-24): none of its public items take or expose a secret, so this is
+//! consistent with REQ-20's own scope, exactly as `cohort`'s own reasoning
+//! above states for the same shape. `VerifiedPromotion`, `PromotionRefusal`
+//! and `load_verified_promotion` are additionally re-exported at the crate
+//! root below, so both `hierarchy_vor::VerifiedPromotion` and
+//! `hierarchy_vor::promotion::VerifiedPromotion` resolve to the same type,
+//! exactly as `VerifiedCohort` already does.
+//!
 //! REQ-26, confirmed directly rather than merely asserted: this crate's
 //! manifest carries an empty `[dependencies]` table (`crates/hierarchy-vor/Cargo.toml`)
 //! and no source file under `src/` names, imports or re-exports anything from
@@ -47,6 +57,7 @@
 
 mod authoriser;
 pub mod cohort;
+pub mod promotion;
 mod record;
 mod sha256;
 mod types;
@@ -57,6 +68,7 @@ pub use authoriser::{
     load_trusted_set_from_env, load_trusted_set_from_path,
 };
 pub use cohort::{CohortRefusal, VerifiedCohort, load_verified_cohort};
+pub use promotion::{PromotionRefusal, VerifiedPromotion, load_verified_promotion};
 pub use sha256::digest_hex;
 pub use types::CohortSurface;
 pub use verify::RecordRefusal;
@@ -71,3 +83,10 @@ mod substrate_parity;
 #[cfg(test)]
 #[path = "../unit_tests/loader_failclosed.rs"]
 mod loader_failclosed;
+
+// REQ-39: the promotion-substrate unit-test wiring (issue #98,
+// `.opencode/plans/rust-promotion-gate-spec.md`). `crate::promotion` now
+// exists (declared above), so this module compiles and runs.
+#[cfg(test)]
+#[path = "../unit_tests/promotion_substrate.rs"]
+mod promotion_substrate;

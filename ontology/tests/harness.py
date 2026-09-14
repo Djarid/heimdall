@@ -166,6 +166,15 @@ class Report:
         # obligation, ordering or message above changes behaviour. This is
         # the 26th counter summed into `fatal`.
         self.licence_posture_failures = 0
+        # REQ-44 (`.opencode/plans/rust-promotion-gate-spec.md`): the
+        # promotion-gate drift/posture/no-clock/isolation detector and its
+        # own live invocation-boundary detector, folded in following the
+        # run_rust_cohort/run_vor_invocation_boundary registration pattern
+        # above, exactly, and additively: no existing counter, obligation,
+        # ordering or message above changes behaviour. These are the 27th
+        # and 28th counters summed into `fatal`.
+        self.rust_promotion_gate_failures = 0
+        self.promotion_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -2086,6 +2095,93 @@ def run_licence_posture(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_promotion_gate(rep: Report) -> None:
+    """REQ-43 (`.opencode/plans/rust-promotion-gate-spec.md`): the promotion-gate
+    drift/posture/no-clock/isolation detector, covering `crates/boundary-gjoll/`'s
+    and `crates/hierarchy-vor/`'s promotion-gate surface: source-digest drift
+    first, dependency posture second (REQ-4's one-name allowlist for
+    boundary-gjoll, the strict empty default unchanged for hierarchy-vor), the
+    no-clock text scan of REQ-22 third, the test/code isolation grep of REQ-39
+    fourth, and the Rust test run last. It does NOT advance invariant 3.6's
+    live-invocation status, which `run_promotion_invocation_boundary` below
+    governs separately, and it is not a functional test of the gate's own
+    decisions (the Rust suite it invokes in its own step 5 covers that). Wired
+    in following the `run_rust_cohort` precedent: this standalone sub-harness's
+    own `main()` already returns a real pass/fail code (0 clean, 1 on failure),
+    so a failure here is folded into the main suite's fatal count rather than
+    left unregistered. Run it directly for detail (`python -m
+    ontology.tests.rust_promotion_gate_harness`)."""
+    import contextlib
+    import io
+    from . import rust_promotion_gate_harness
+
+    rep.line("=== REQ-43 Rust promotion-gate detector: digest drift, dependency "
+              "posture, no-clock scan, test/code isolation, Rust suite -- not "
+              "invariant 3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_promotion_gate_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] the promotion-gate surface at crates/boundary-gjoll/ and "
+                  "crates/hierarchy-vor/ has no source drift, boundary-gjoll's "
+                  "manifest carries exactly the one-name path-dependency allowlist "
+                  "while hierarchy-vor's stays strict and empty, no clock source is "
+                  "named in either crate's src/, test code stays isolated from "
+                  "implementation code, and the Rust suite passes (or a loud skip "
+                  "if no Rust toolchain is present). This proves the promotion-gate "
+                  "surface's structural posture, not invariant 3.6's live-invocation "
+                  "status, which run_promotion_invocation_boundary governs "
+                  "separately (run the module directly for detail)")
+    else:
+        rep.rust_promotion_gate_failures += 1
+        rep.line("  [CRITICAL] Rust promotion-gate detector FAILED (run it directly "
+                  "for detail)")
+    rep.line("")
+
+
+def run_promotion_invocation_boundary(rep: Report) -> None:
+    """REQ-34 to REQ-36 (`.opencode/plans/rust-promotion-gate-spec.md`): the live
+    invocation-boundary detector for the promotion-verification entry point
+    (`hierarchy_vor::load_verified_promotion`) and the promotion-gate policy
+    evaluator (`boundary_gjoll::gate_policy::evaluate_policy`), on
+    `vor_invocation_harness`'s own precedent (D96, inherited a fourth time).
+    Reports a non-zero count of TEST call sites and zero NON-TEST call sites
+    against an EMPTY allowlist at this build (REQ-34): nothing outside
+    `unit_tests/` or `tests/` may call either symbol, because the live minting
+    path (human promotion on Gjallarhorn's protected channel) is unbuilt. It
+    does NOT advance invariant 3.6's live-invocation status beyond that
+    honest bound, does NOT close D103's limit two, and does NOT change
+    `AgentContext`'s opt-in default in Python. Wired in following the
+    `run_vor_invocation_boundary` precedent: this standalone sub-harness's own
+    `main()` already returns a real pass/fail code (0 clean, 1 on failure), so
+    a failure here is folded into the main suite's fatal count rather than left
+    unregistered. Run it directly for detail (`python -m
+    ontology.tests.promotion_invocation_harness`)."""
+    import contextlib
+    import io
+    from . import promotion_invocation_harness
+
+    rep.line("=== REQ-34 to REQ-36 Promotion gate invocation boundary: a token "
+              "scan, weaker than an AST scan, not invariant 3.6 beyond its "
+              "honest bound, not D103's limit two, not AgentContext's opt-in "
+              "default ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = promotion_invocation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] zero non-test call sites of the promotion-verification "
+                  "entry point or the promotion-gate policy evaluator today; the "
+                  "negative controls prove the scanner bites (in both the direct "
+                  "and the synthetic-widening forms) and does not over-report. "
+                  "This proves a promotion cannot be obtained, and a gate policy "
+                  "cannot be satisfied, without their own verification having run, "
+                  "reachable from a test only; it does not advance invariant 3.6 "
+                  "beyond that honest bound (run the module directly for detail)")
+    else:
+        rep.promotion_invocation_failures += 1
+        rep.line("  [CRITICAL] Promotion gate invocation boundary detector FAILED "
+                  "(run it directly for detail)")
+    rep.line("")
+
+
 def main() -> int:
     data = json.loads(CORPUS.read_text())
     cases = data["cases"]
@@ -2138,6 +2234,8 @@ def main() -> int:
     run_pipeline_score_reporting(rep)
     run_pipeline_score_percentage_regression(rep)
     run_licence_posture(rep)
+    run_rust_promotion_gate(rep)
+    run_promotion_invocation_boundary(rep)
 
     rep.dump()
 
@@ -2159,7 +2257,9 @@ def main() -> int:
              + rep.rust_process_engine_failures
              + rep.rust_target_loop_failures
              + rep.rust_cognition_client_failures
-             + rep.licence_posture_failures)
+             + rep.licence_posture_failures
+             + rep.rust_promotion_gate_failures
+             + rep.promotion_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")

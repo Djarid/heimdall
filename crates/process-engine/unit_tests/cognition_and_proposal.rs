@@ -743,36 +743,64 @@ fn ac4_neither_doc_comment_claims_the_declared_value_reaches_an_argument_vector(
 }
 
 // ---------------------------------------------------------------------------------
-// AC-6 (REQ-5): boundary-gjoll's own rule.rs is untouched -- both arms still
-// test equality against Tainted, never a rank comparison. This crate
-// cannot literally diff against `main`, so the strongest check available
-// here is that the file's own known-committed shape (the equality test)
-// still holds byte for byte -- the same live source this spec's own
-// section 2.1 reads from.
+// AC-6 (originally REQ-5, build-order step seven, D115-D117): this test used to
+// pin a residual, not a defect. At build-order step seven, boundary-gjoll's
+// rule.rs tested untrusted-derivation by equality against `Tainted` alone in
+// both the Inert and Action arms, never by a rank comparison against the
+// lattice's own TRUST_ORDER. D115 named that shape explicitly as a residual
+// this test pinned rather than closed: a parameter declared `Vouched` -- one
+// step up and still explicitly "not yet fully trusted" -- would have passed
+// check five silently under both arms, and nothing exercised that gap because
+// every parameter constructed anywhere in `crates/` was `Canonical` before
+// cognition and `Tainted` after it. `cognition.rs`'s own doc comment (around
+// lines 255-268) records the same residual and names its trigger: Gjöll's own
+// promotion and re-validation gate landing.
+//
+// That trigger has now been met. `.opencode/plans/rust-promotion-gate-spec.md`
+// (issue #97) REQ-5 to REQ-9 add `TrustLevel::rank()`, a `TRUSTED_THRESHOLD`
+// constant and `TrustLevel::is_untrusted_derived()` (REQ-6), and REQ-7 requires
+// both arms of `rule::apply` to call `is_untrusted_derived()` rather than test
+// equality against `Tainted`. This is a deliberate, reviewed widening --
+// `Tainted` and `Vouched` are now both untrusted-derived; `Trusted` and
+// `Canonical` are both trusted -- not a regression of the property this test
+// used to pin. The residual named in D115-D117 is CLOSED by that change, and
+// this test is inverted to assert the closed state rather than the open one it
+// used to assert. The historical shape it used to require (exactly two
+// `c.trust_level == TrustLevel::Tainted` equality tests, zero rank-based
+// comparison) is recorded here rather than deleted, per this repository's own
+// documentation discipline of naming what changed and why.
 // ---------------------------------------------------------------------------------
 
 #[test]
-fn ac6_boundary_gjoll_rule_rs_still_tests_tainted_by_equality_not_by_rank_comparison() {
+fn ac6_boundary_gjoll_rule_rs_now_tests_tainted_by_rank_comparison_not_equality() {
     let rule_rs_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("crates/process-engine has a parent (crates/)")
         .join("boundary-gjoll")
         .join("src")
         .join("rule.rs");
-    let rule_rs = std::fs::read_to_string(&rule_rs_path)
-        .expect("expected crates/boundary-gjoll/src/rule.rs to exist and be unchanged (REQ-5)");
-    let occurrences = rule_rs.matches("c.trust_level == TrustLevel::Tainted").count();
-    assert_eq!(
-        occurrences, 2,
-        "AC-6/REQ-5: crates/boundary-gjoll/src/rule.rs must still carry exactly two \
-         occurrences of the equality test `c.trust_level == TrustLevel::Tainted` (the \
-         Inert arm and the Action arm), never widened to a rank comparison against \
-         TRUST_ORDER; found {occurrences}"
+    let rule_rs = std::fs::read_to_string(&rule_rs_path).expect(
+        "expected crates/boundary-gjoll/src/rule.rs to exist (promotion-gate spec REQ-7)",
     );
+    let equality_occurrences = rule_rs
+        .matches("c.trust_level == TrustLevel::Tainted")
+        .count();
+    assert_eq!(
+        equality_occurrences, 0,
+        "AC-6/REQ-7 (promotion-gate spec, issue #97): crates/boundary-gjoll/src/rule.rs \
+         must carry ZERO occurrences of the equality test \
+         `c.trust_level == TrustLevel::Tainted` in either the Inert arm or the Action \
+         arm of `apply`; this residual, named in D115-D117 and in cognition.rs's own \
+         doc comment (lines 255-268), is closed by REQ-7's rank-comparison rewrite; \
+         found {equality_occurrences}"
+    );
+    let rank_occurrences = rule_rs.matches(".is_untrusted_derived(").count();
     assert!(
-        !rule_rs.contains(".rank"),
-        "AC-6/REQ-5: crates/boundary-gjoll/src/rule.rs must not compare trust levels by \
-         rank anywhere; this step changes no line of boundary-gjoll"
+        rank_occurrences >= 1,
+        "AC-6/REQ-7 (promotion-gate spec, issue #97): crates/boundary-gjoll/src/rule.rs \
+         must call `.is_untrusted_derived(` at least once, replacing the old equality \
+         test with a rank comparison against TRUSTED_THRESHOLD in both arms of `apply`; \
+         found {rank_occurrences}"
     );
 }
 

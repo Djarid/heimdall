@@ -93,6 +93,7 @@ from ontology.nornir import sink_attestation
 from ontology.nornir.authorisation_record import (
     RECORD_TYPE_AGENT_CONTEXT,
     RECORD_TYPE_COHORT_DEFINITION,
+    RECORD_TYPE_PROMOTION,
     canonical_record_bytes,
     compute_record_attestation,
 )
@@ -101,6 +102,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 AUTHORISATION_RECORD_PY = REPO_ROOT / "ontology" / "nornir" / "authorisation_record.py"
 SINK_ATTESTATION_PY = REPO_ROOT / "ontology" / "nornir" / "sink_attestation.py"
 VECTOR_FILE = REPO_ROOT / "crates" / "hierarchy-vor" / "vectors" / "cohort_vectors.json"
+
+# REQ-42 (`.opencode/plans/rust-promotion-gate-spec.md`): the promotion-record
+# vector file this ADDITIVE section emits, alongside (never in place of) the
+# ten existing cohort vectors above. A distinct file, a distinct fixture
+# secret (below) and a distinct shim class (`_ShimPromotionRecord`), so
+# nothing in this section touches a single byte of the cohort export path.
+PROMOTION_VECTOR_FILE = REPO_ROOT / "crates" / "hierarchy-vor" / "vectors" / "promotion_vectors.json"
+PROMOTION_SCHEMA_VERSION = 1
+EXPECTED_PROMOTION_VECTOR_COUNT = 5
 
 SCHEMA_VERSION = 1
 
@@ -137,6 +147,22 @@ REAL_AUTHORISER_ID = "heimdall-dev-authoriser"
 FIXTURE_SECRET = (
     b"NON-PRODUCTION fixture secret for cohort_vectors.json -- never the real "
     b"heimdall-dev secret, committed deliberately for vector replay parity"
+)
+
+
+# REQ-42: the promotion-record section's own NON-PRODUCTION fixture secret,
+# on `FIXTURE_SECRET`'s own convention (same structure and same "never the
+# real heimdall-dev secret" discipline, adapted to name promotion_vectors.json
+# rather than cohort_vectors.json, exactly as that file's own committed
+# fixture_secret_hex already fixes byte for byte -- this constant reproduces
+# the already-committed `crates/hierarchy-vor/vectors/promotion_vectors.json`
+# exactly, never a second, incompatible secret). Never used by
+# `attest_real_cohort`, and never mixed with the cohort section's own
+# `FIXTURE_SECRET` above.
+PROMOTION_FIXTURE_SECRET = (
+    b"NON-PRODUCTION fixture secret for promotion_vectors.json -- never the "
+    b"real heimdall-dev secret, committed deliberately for vector replay "
+    b"parity"
 )
 
 
@@ -205,6 +231,69 @@ class _ShimCohortRecord:
             ("permitted_actions", ",".join(sorted(self.permitted_actions))),
             ("trust_ceiling", self.trust_ceiling),
             ("consequential_sinks", ",".join(sorted(self.consequential_sinks))),
+            ("authoriser", self.authoriser or ""),
+        )
+
+
+# ---------------------------------------------------------------------------------
+# REQ-42 (`.opencode/plans/rust-promotion-gate-spec.md`): the promotion-record
+# shim, additive and parallel to `_ShimCohortRecord` above, never sharing a
+# class with it (the two record shapes have different field sets; `authoriser`
+# is a constructor default here as it is there, and `record_type` is likewise
+# a constructor parameter, not hardcoded, so the SAME class can build the two
+# cross-type replay pairing vectors -- P-3, tagged promotion_record, and
+# alongside a separately-built `_ShimCohortRecord` for P-4's cohort_definition
+# side -- without a second shim class for the promotion side of the pairing).
+# ---------------------------------------------------------------------------------
+
+
+class _ShimPromotionRecord:
+    """The exporter's own stand-in for a real `PromotionRecord` (which exists
+    only in Rust, `crates/hierarchy-vor/src/promotion.rs`; no Python class for
+    it exists or will, D105). Honours the same two-method `AttestedRecord`-
+    equivalent interface `authorisation_record.py` requires
+    (`record_type()`, `canonical_fields()`), on `_ShimCohortRecord`'s own
+    pattern.
+
+    Field order and per-field encoding match
+    `.opencode/plans/rust-promotion-gate-spec.md` section 4.3's schema table
+    exactly: `assertion_id`, `content_digest`, `promoted_to` (an opaque
+    string here too, exactly as it is opaque in `crates/hierarchy-vor/`),
+    `valid_from`, `valid_until` (both rendered as their plain decimal string,
+    no separators), `authoriser` (empty string when absent). `attestation` is
+    deliberately excluded from `canonical_fields()`, exactly as
+    `_ShimCohortRecord` excludes it: it is the digest being computed or
+    checked, not part of what it covers."""
+
+    def __init__(
+        self,
+        assertion_id: str,
+        content_digest: str,
+        promoted_to: str,
+        valid_from: int,
+        valid_until: int,
+        authoriser: "str | None" = None,
+        *,
+        record_type: str = RECORD_TYPE_PROMOTION,
+    ) -> None:
+        self.assertion_id = assertion_id
+        self.content_digest = content_digest
+        self.promoted_to = promoted_to
+        self.valid_from = valid_from
+        self.valid_until = valid_until
+        self.authoriser = authoriser
+        self._record_type = record_type
+
+    def record_type(self) -> str:
+        return self._record_type
+
+    def canonical_fields(self) -> "tuple[tuple[str, str], ...]":
+        return (
+            ("assertion_id", self.assertion_id),
+            ("content_digest", self.content_digest),
+            ("promoted_to", self.promoted_to),
+            ("valid_from", str(self.valid_from)),
+            ("valid_until", str(self.valid_until)),
             ("authoriser", self.authoriser or ""),
         )
 
@@ -544,16 +633,26 @@ def build_vectors() -> dict:
     }
 
 
-def _write_atomically(data: dict, target: Path) -> None:
+def _write_atomically(
+    data: dict, target: Path, *, ensure_ascii: bool = False, prefix: str = ".cohort_vectors."
+) -> None:
     """Write to a temp file in the same directory, then move into place (REQ-33):
-    a partial file that happens to parse would be a silently narrowed parity claim."""
+    a partial file that happens to parse would be a silently narrowed parity claim.
+
+    `ensure_ascii` and `prefix` are additive, optional parameters (REQ-42):
+    the cohort export above never passes either, so its own call site
+    (`export_vectors`) reproduces the original behaviour byte for byte
+    (`ensure_ascii=False`, the original hardcoded temp-file prefix). Only the
+    promotion export's own call site (`export_promotion_vectors`) passes
+    `ensure_ascii=True`, matching the already-committed
+    `promotion_vectors.json`'s own non-ASCII-escaped encoding exactly."""
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(
-        dir=str(target.parent), prefix=".cohort_vectors.", suffix=".json.tmp"
+        dir=str(target.parent), prefix=prefix, suffix=".json.tmp"
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(data, f, indent=2, ensure_ascii=ensure_ascii)
             f.write("\n")
         os.replace(tmp_name, target)
     except BaseException:
@@ -568,6 +667,217 @@ def export_vectors() -> dict:
     (REQ-29, REQ-33)."""
     data = build_vectors()
     _write_atomically(data, VECTOR_FILE)
+    return data
+
+
+# ---------------------------------------------------------------------------------
+# REQ-42: the promotion-record vectors. Additive, parallel to the cohort
+# section above, and written to a SEPARATE file
+# (`crates/hierarchy-vor/vectors/promotion_vectors.json`) under a SEPARATE
+# fixture secret (`PROMOTION_FIXTURE_SECRET`). Five cases (P-1 to P-5),
+# matching the already-committed vector file's own `expected_count`: a
+# well-formed record (P-1), a non-ASCII `assertion_id` (P-2), the two
+# cross-type replay pairings of REQ-19 (P-3 promotion side, P-4 cohort side),
+# and an unattested record pinning the empty-authoriser encoding (P-5).
+# ---------------------------------------------------------------------------------
+
+def _promotion_vector(
+    vector_id: str,
+    case: str,
+    record,
+    *,
+    attested: bool,
+) -> dict:
+    """Build one promotion vector entry by calling the substrate's own
+    functions, never reimplementing them, on `_vector`'s own pattern above."""
+    canonical_bytes = canonical_record_bytes(record)
+    attestation = (
+        compute_record_attestation(record, PROMOTION_FIXTURE_SECRET) if attested else None
+    )
+    return {
+        "id": vector_id,
+        "case": case,
+        "record_type": record.record_type(),
+        "fields": [list(pair) for pair in record.canonical_fields()],
+        "canonical_bytes_hex": canonical_bytes.hex(),
+        "attestation": attestation,
+    }
+
+
+def _build_promotion_vectors() -> list[dict]:
+    """The five REQ-42 promotion cases (P-1 to P-5), matching
+    `crates/hierarchy-vor/vectors/promotion_vectors.json`'s own committed
+    content exactly: this function's job is to prove those committed vectors
+    CAN be regenerated from this exporter byte for byte, never to introduce a
+    sixth case or to narrow one of the five."""
+    vectors: list[dict] = []
+
+    # P-1: a well-formed promotion record, attested under the (promotion-
+    # section-specific) fixture secret.
+    vectors.append(
+        _promotion_vector(
+            "P-1",
+            "a well-formed promotion record, attested under the fixture secret "
+            "(never the real production secret)",
+            _ShimPromotionRecord(
+                "vor-promotion-vector-well-formed",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd",
+                "TRUSTED",
+                1000,
+                2000,
+                "vor-promotion-vector-authoriser",
+            ),
+            attested=True,
+        )
+    )
+
+    # P-2: a non-ASCII assertion_id, pinning UTF-8 byte-identical encoding on
+    # both sides (REQ-9's discipline, applied to promotion records).
+    vectors.append(
+        _promotion_vector(
+            "P-2",
+            "a non-ASCII assertion_id, pinning UTF-8 byte-identical encoding on "
+            "both sides (REQ-9 applied to promotion records)",
+            _ShimPromotionRecord(
+                "vor-promotion-vector-\u00e9\u00e8\u4e2d\u6587",
+                "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebab",
+                "CANONICAL",
+                0,
+                9999999999,
+                "vor-promotion-vector-authoriser",
+            ),
+            attested=True,
+        )
+    )
+
+    # P-3 / P-4: the two cross-type replay pairings of REQ-19. P-3 is the
+    # promotion side (tagged promotion_record); P-4 is the cohort side
+    # (tagged cohort_definition, built through `_ShimCohortRecord`, never
+    # through `_ShimPromotionRecord`, because the two record shapes genuinely
+    # differ and a real PromotionRecord could never carry cohort_definition's
+    # field set). Content deliberately differs between the two (a promotion
+    # record and a cohort definition do not share a field set), so this
+    # pairing demonstrates the record-TYPE-TAG barrier (the prefix in
+    # `canonical_record_bytes`), not a same-content-different-tag pairing
+    # (that narrower demonstration is `export_cohort_vectors`'s own V-7a/V-7b
+    # pair above, over the cohort's own field set).
+    vectors.append(
+        _promotion_vector(
+            "P-3",
+            "cross-type replay pairing 1 of 2 (REQ-19, EC-18): this "
+            "promotion_record's own attestation must NOT verify when presented "
+            "as a cohort_definition's attestation, even under the same "
+            "authoriser and the same secret",
+            _ShimPromotionRecord(
+                "vor-promotion-vector-cross-type",
+                "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                "VOUCHED",
+                500,
+                600,
+                "vor-promotion-vector-authoriser",
+            ),
+            attested=True,
+        )
+    )
+    # `_promotion_vector` reads only `record.record_type()` and
+    # `record.canonical_fields()` (via `canonical_record_bytes`), exactly like
+    # `canonical_record_bytes` itself, so it works unchanged over a
+    # `_ShimCohortRecord` too: no third, near-duplicate vector-building
+    # function is needed for P-4's cohort-shaped side of the pairing.
+    vectors.append(
+        _promotion_vector(
+            "P-4",
+            "cross-type replay pairing 2 of 2 (REQ-19, EC-18): this "
+            "cohort_definition's own attestation must NOT verify when presented "
+            "as a promotion_record's attestation, even under the same "
+            "authoriser and the same secret",
+            _ShimCohortRecord(
+                "vor-promotion-vector-cross-type-cohort",
+                ("action:git.commit",),
+                "TAINTED",
+                ("sink:git.commit",),
+                "vor-promotion-vector-authoriser",
+            ),
+            attested=True,
+        )
+    )
+    if vectors[-2]["attestation"] == vectors[-1]["attestation"]:
+        raise ExporterError(
+            "P-3 and P-4's attestations collide: cross-type replay separation "
+            "is not demonstrated (REQ-19)"
+        )
+
+    # P-5: an unattested promotion record (empty authoriser), pinning canonical
+    # bytes only -- no attestation field emitted, on V-6's own pattern above.
+    vectors.append(
+        _promotion_vector(
+            "P-5",
+            "an unattested promotion record (empty authoriser), pinning "
+            "canonical bytes only -- no attestation field emitted",
+            _ShimPromotionRecord(
+                "vor-promotion-vector-unattested",
+                "0000000000000000000000000000000000000000000000000000000000000f",
+                "TAINTED",
+                1,
+                2,
+                None,
+            ),
+            attested=False,
+        )
+    )
+
+    return vectors
+
+
+def build_promotion_vectors() -> dict:
+    """Assemble the full promotion-vector document (REQ-42). Raises
+    `ExporterError` (never emits a partial result) on a vector-count mismatch
+    or a demonstration that failed to show the separation it claims, on
+    `build_vectors`'s own pattern above."""
+    vectors = _build_promotion_vectors()
+
+    if len(vectors) != EXPECTED_PROMOTION_VECTOR_COUNT:
+        raise ExporterError(
+            f"built {len(vectors)} promotion vector(s), expected "
+            f"{EXPECTED_PROMOTION_VECTOR_COUNT} "
+            f"(EXPECTED_PROMOTION_VECTOR_COUNT); update the named constant only "
+            f"after deliberately adding or removing a REQ-42 case, never silently"
+        )
+
+    return {
+        "schema_version": PROMOTION_SCHEMA_VERSION,
+        "claim": (
+            "substrate mechanism parity over a shim promotion record "
+            "(_ShimPromotionRecord, ontology/tools/export_cohort_vectors.py's "
+            "additive promotion-record emission section, REQ-42); NOT a real "
+            "Python PromotionRecord's call history, because no Python "
+            "PromotionRecord class exists or will (D105 rules the hierarchy "
+            "plane is Rust; spec section 4.4)"
+        ),
+        "generated_from": {
+            "authorisation_record_py_sha256": _sha256_of(AUTHORISATION_RECORD_PY),
+        },
+        "fixture_secret_hex": PROMOTION_FIXTURE_SECRET.hex(),
+        "fixture_secret_note": (
+            "NON-PRODUCTION fixture secret, committed deliberately; the real "
+            "heimdall-dev secret is never in this repository"
+        ),
+        "expected_count": EXPECTED_PROMOTION_VECTOR_COUNT,
+        "vectors": vectors,
+    }
+
+
+def export_promotion_vectors() -> dict:
+    """Build every REQ-42 promotion case, self-check the separation claim, and
+    write the result atomically to
+    `crates/hierarchy-vor/vectors/promotion_vectors.json` (REQ-29, REQ-33's
+    own atomic-write discipline, reused via `_write_atomically`, never a
+    second implementation). Additive: never touches `VECTOR_FILE`
+    (`cohort_vectors.json`) or any of the ten existing cohort vectors."""
+    data = build_promotion_vectors()
+    _write_atomically(
+        data, PROMOTION_VECTOR_FILE, ensure_ascii=True, prefix=".promotion_vectors."
+    )
     return data
 
 
@@ -741,6 +1051,23 @@ def main(argv: "list[str] | None" = None) -> int:
     print(
         f"  sink_attestation.py sha256:     "
         f"{data['generated_from']['sink_attestation_py_sha256']}"
+    )
+
+    # REQ-42: the additive promotion-record export, run in the same
+    # invocation, alongside (never in place of) the cohort export above.
+    try:
+        promotion_data = export_promotion_vectors()
+    except ExporterError as exc:
+        print(f"PROMOTION VECTOR EXPORT FAILED: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        f"Exported {len(promotion_data['vectors'])} promotion vector(s) to "
+        f"{PROMOTION_VECTOR_FILE.relative_to(REPO_ROOT)}"
+    )
+    print(
+        f"  authorisation_record.py sha256: "
+        f"{promotion_data['generated_from']['authorisation_record_py_sha256']}"
     )
     return 0
 

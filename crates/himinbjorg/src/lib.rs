@@ -19,8 +19,9 @@
 //! 5.3 of the step-three spec). `validate_proposal` is real fidelity as of
 //! step three: it sequences all six checks of `plans/dd/himinbjorg.md`
 //! section 5.1, including a genuine call into
-//! `boundary_gjoll::consequentiality::evaluate` at check five
-//! (`gate_bridge::evaluate_taint_compatibility`, REQ-15), and now also mints
+//! `boundary_gjoll::consequentiality::evaluate_with_policy` at check five
+//! (`gate_bridge::evaluate_taint_compatibility`, REQ-15, REQ-29, REQ-30 of
+//! `.opencode/plans/rust-promotion-gate-spec.md`), and now also mints
 //! an [`Authorisation`] witness if and only if that sequence's decision is
 //! `Allow` (REQ-27, step four).
 //!
