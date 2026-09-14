@@ -164,14 +164,26 @@ const _: () = assert!(
 /// `DefaultCognitionStep` exists to supply that one **positive control**
 /// the real implementation cannot supply while the honest declaration
 /// blocks every model-authored proposal. Its **expiry trigger** is
-/// Gjöll's own promotion and re-validation gate landing: once a logged
-/// promotion event can carry a value from `Tainted` to a level check
-/// five passes, a real, model-authored proposal can reach the execute
-/// step on its own merits, and at that point deleting this stub is a
-/// single, clean edit rather than a load-bearing change. It is a named
-/// positive control with a stated expiry trigger this whole doc comment
-/// gives, deliberately, so no reader mistakes its retention for
-/// something simply forgotten and left in place.
+/// narrower than "a promotion gate exists", and the two conditions below
+/// are stated as distinct on purpose, because this build satisfies only
+/// the first. (i) Gjöll's own promotion and re-validation gate now
+/// exists and is **harness-demonstrated**: under harness and test
+/// invocation it can carry a logged promotion event from `Tainted` to a
+/// level check five passes. That existence is real but is deliberately
+/// **not** the trigger. (ii) The trigger is the stronger condition that
+/// this build does not reach: the gate must be **live-wired and
+/// PROVEN**, such that a verified promotion can carry a model-authored
+/// value past check five end to end on a non-test path, with no harness
+/// or test invocation standing in for the live minting step. Gjallarhorn,
+/// the intended live authoring path for a promotion attestation, is
+/// unbuilt, so nothing today can mint one at runtime; until condition
+/// (ii) holds, this stub remains the pipeline's only live positive
+/// control and deleting it would be a load-bearing change, not a clean
+/// one. It is a named positive control with a stated expiry trigger this
+/// whole doc comment gives, deliberately, so no reader mistakes its
+/// retention for something simply forgotten and left in place, and so no
+/// reader mistakes condition (i), already true of this build, for
+/// condition (ii), which is the actual retirement trigger.
 pub struct DefaultCognitionStep;
 
 impl DefaultCognitionStep {
