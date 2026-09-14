@@ -135,9 +135,19 @@ pub struct Reason {
 /// The gate's decision. **No** `notes` field (REQ-16: the D100 no-registry branch
 /// that field existed to serve is designed out of this crate) and **no** `fired`
 /// flag (REQ-27: no public `Actuator` or `enforce` equivalent in step 1).
+///
+/// `gate_evaluations` (`.opencode/plans/rust-promotion-gate-spec.md` section
+/// 4.1, REQ-16, REQ-28) carries every [`crate::gate_policy::GateResult`]
+/// consulted while producing this decision. It defaults to empty on every
+/// construction path that does not consult a gate policy -- in particular,
+/// the existing `rule::apply`/`consequentiality::evaluate` entry points,
+/// which never build a non-empty value here -- so callers reading only
+/// `action_id`, `authorised` and `reasons` are unaffected by this field's
+/// addition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GateDecision {
     pub action_id: String,
     pub authorised: bool,
     pub reasons: Vec<Reason>,
+    pub gate_evaluations: Vec<crate::gate_policy::GateResult>,
 }

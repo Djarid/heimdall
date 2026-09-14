@@ -36,6 +36,7 @@
 
 pub mod consequentiality;
 pub mod declaration;
+pub mod gate_policy;
 pub mod rule;
 pub mod types;
 
