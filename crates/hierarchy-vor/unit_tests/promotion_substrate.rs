@@ -128,6 +128,7 @@ struct PromotionVectorFile {
 #[derive(Deserialize)]
 struct PromotionVector {
     id: String,
+    record_type: String,
     fields: Vec<(String, String)>,
     canonical_bytes_hex: String,
     attestation: Option<String>,
@@ -155,12 +156,13 @@ fn leak_str(s: String) -> &'static str {
 }
 
 struct VectorRecord {
+    record_type: &'static str,
     fields: Vec<(&'static str, String)>,
 }
 
 impl AttestedRecord for VectorRecord {
     fn record_type(&self) -> &'static str {
-        RECORD_TYPE_PROMOTION
+        self.record_type
     }
     fn canonical_fields(&self) -> Vec<(&'static str, String)> {
         self.fields.clone()
@@ -188,6 +190,7 @@ fn ac19_promotion_vectors_replay_bytes_then_digest() {
 
     for v in &data.vectors {
         let record = VectorRecord {
+            record_type: leak_str(v.record_type.clone()),
             fields: v
                 .fields
                 .iter()
