@@ -70,6 +70,16 @@ VECTOR_FILE = REPO_ROOT / "crates" / "boundary-gjoll" / "vectors" / "gate_vector
 CRATE_DIR = REPO_ROOT / "crates" / "boundary-gjoll"
 CRATE_MANIFEST = CRATE_DIR / "Cargo.toml"
 
+# REQ-4 (`.opencode/plans/rust-promotion-gate-spec.md`): `boundary-gjoll` now
+# carries exactly one genuine in-workspace path dependency, on `hierarchy-vor`
+# (section 2.2's resolved dependency direction). This module's own call to
+# `check_dependency_posture` for `boundary-gjoll`'s manifest widens by this
+# explicit one-name allowlist; `check_dependency_posture`'s own default stays
+# an empty `frozenset`, untouched, so every OTHER caller (`hierarchy-vor` via
+# `rust_cohort_harness.py`, and any caller that does not pass this allowlist)
+# keeps the original strict, zero-dependency behaviour byte for byte.
+GJOLL_PERMITTED_PATH_DEPENDENCIES: frozenset[str] = frozenset({"hierarchy-vor"})
+
 
 def _sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -310,7 +320,9 @@ def control_check() -> list[str]:
             )
 
         # Dependency control: a manifest with a populated [dependencies] table must
-        # be reported as a violation naming the offending crate.
+        # be reported as a violation naming the offending crate, under the
+        # STRICT (no-allowlist) default that every other caller of this function
+        # still uses.
         bad_manifest = Path(d) / "Cargo.toml"
         bad_manifest.write_text(
             '[package]\nname = "boundary-gjoll"\n\n[dependencies]\nserde = "1"\n'
@@ -336,6 +348,44 @@ def control_check() -> list[str]:
                 "manifest with only [dev-dependencies] populated"
             )
 
+        # REQ-4's own negative control: `boundary-gjoll`'s now-widened call site
+        # (via GJOLL_PERMITTED_PATH_DEPENDENCIES) must still bite. An UNLISTED
+        # path-dependency name must be caught even under the allowlist.
+        unlisted_manifest = Path(d) / "Cargo-unlisted.toml"
+        unlisted_manifest.write_text(
+            '[package]\nname = "boundary-gjoll"\n\n'
+            '[dependencies]\nsome-other-crate = { path = "../some-other-crate" }\n'
+        )
+        unlisted_result = check_dependency_posture(
+            unlisted_manifest, permitted_path_dependencies=GJOLL_PERMITTED_PATH_DEPENDENCIES
+        )
+        if unlisted_result.ok or "some-other-crate" not in unlisted_result.violations:
+            failures.append(
+                "REQ-4 widened-allowlist control did NOT report a violation for an "
+                "UNLISTED path dependency (boundary-gjoll's allowlist names only "
+                "hierarchy-vor)"
+            )
+
+        # REQ-4's own negative control, second half: a listed NAME whose entry is
+        # not actually shaped as a path dependency (a registry dependency sharing
+        # hierarchy-vor's name) must also be caught -- the allowlist permits a
+        # genuine path dependency, never merely the right name.
+        non_path_shaped_manifest = Path(d) / "Cargo-non-path-shaped.toml"
+        non_path_shaped_manifest.write_text(
+            '[package]\nname = "boundary-gjoll"\n\n'
+            '[dependencies]\nhierarchy-vor = "1.0"\n'
+        )
+        non_path_shaped_result = check_dependency_posture(
+            non_path_shaped_manifest,
+            permitted_path_dependencies=GJOLL_PERMITTED_PATH_DEPENDENCIES,
+        )
+        if non_path_shaped_result.ok or "hierarchy-vor" not in non_path_shaped_result.violations:
+            failures.append(
+                "REQ-4 widened-allowlist control did NOT report a violation for a "
+                "registry-shaped entry named hierarchy-vor (the allowlist requires "
+                "a genuine path dependency, not merely the right name)"
+            )
+
     return failures
 
 
@@ -352,8 +402,11 @@ def main() -> int:
             print(f"  [CRITICAL] {cf}")
         return 1
     print("  [PASS] negative controls: a wrong digest is reported as drift, a "
-          "populated [dependencies] table is reported as a violation, and a "
-          "dev-dependency-only manifest reports clean with the exemption stated.")
+          "populated [dependencies] table is reported as a violation, a "
+          "dev-dependency-only manifest reports clean with the exemption stated, "
+          "and REQ-4's widened allowlist for boundary-gjoll still catches both an "
+          "unlisted path-dependency name and a listed name whose entry is not "
+          "path-shaped.")
     print()
 
     digest_result = check_digests()
@@ -361,7 +414,9 @@ def main() -> int:
     if not digest_result.ok:
         return 1  # fatal regardless of toolchain presence (REQ-28)
 
-    dep_result = check_dependency_posture()
+    dep_result = check_dependency_posture(
+        permitted_path_dependencies=GJOLL_PERMITTED_PATH_DEPENDENCIES
+    )
     print(f"  [{'PASS' if dep_result.ok else 'CRITICAL'}] dependency posture: {dep_result.detail}")
     if not dep_result.ok:
         return 1  # fatal regardless of toolchain presence (REQ-28)

@@ -36,11 +36,11 @@
 //! fail-closed substitute value to hand back.
 //!
 //! **The validity window is checked against a caller-supplied instant, never
-//! a clock this module reads itself (REQ-22).** `now` is a plain `u64`
-//! parameter with no default and no `Option`; this module names no
-//! `std::time`, `SystemTime`, `Instant` or other clock source anywhere.
-//! Boundaries are inclusive on both ends: `now == valid_from` and
-//! `now == valid_until` both verify.
+//! a wall-clock source this module reads itself (REQ-22).** `now` is a plain
+//! `u64` parameter with no default and no `Option`; this module reads no
+//! wall-clock source of any kind, and imports no clock-reading facility from
+//! anywhere in its dependency graph. Boundaries are inclusive on both ends:
+//! `now == valid_from` and `now == valid_until` both verify.
 //!
 //! **REQ-24: a genuine runtime refusal path, not a compile-time assertion.**
 //! Unlike `crate::cohort`'s hardcoded, compile-time-constant field values
