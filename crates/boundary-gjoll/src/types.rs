@@ -38,6 +38,40 @@ pub enum TrustLevel {
     Canonical,
 }
 
+impl TrustLevel {
+    /// This level's position in the lattice ordering TAINTED, VOUCHED, TRUSTED,
+    /// CANONICAL, ascending from zero (REQ-5), matching
+    /// `ontology/yggdrasil/spine/trust.py`'s `TRUST_ORDER` tuple exactly and in the
+    /// same order. Total and exhaustive over all four variants: no wildcard arm, so
+    /// a fifth variant added later fails the build rather than silently defaulting
+    /// to a rank.
+    pub fn rank(self) -> u8 {
+        match self {
+            TrustLevel::Tainted => 0,
+            TrustLevel::Vouched => 1,
+            TrustLevel::Trusted => 2,
+            TrustLevel::Canonical => 3,
+        }
+    }
+
+    /// Whether this level counts as untrusted-derived for the purpose of the
+    /// three-condition rule (REQ-6, REQ-7): true for every level ranked strictly
+    /// below [`TRUSTED_THRESHOLD`]. Defined as a direct rank comparison, never a
+    /// hand-rolled variant match, so it cannot silently diverge from the lattice's
+    /// own ordering.
+    pub fn is_untrusted_derived(self) -> bool {
+        self.rank() < TRUSTED_THRESHOLD.rank()
+    }
+}
+
+/// The lowest trust level that counts as **trusted** for the purpose of the
+/// three-condition rule (REQ-6). `Vouched`'s own documentation above reads
+/// "attested by a bounded source but not yet fully trusted": that sentence is
+/// exactly why `Vouched` sits below this threshold and a `Vouched` value is
+/// untrusted-derived, alongside `Tainted`. Only `Trusted` and `Canonical`, at or
+/// above this threshold by rank, count as trusted.
+pub const TRUSTED_THRESHOLD: TrustLevel = TrustLevel::Trusted;
+
 /// The narrow, four-field re-expression of `ClassifiedAssertion` the rule core is
 /// allowed to see (REQ-8). Deliberately **not** a full re-expression: the rule must
 /// not receive the sink registry, the agent consequential-sink set, the proposal's

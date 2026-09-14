@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use crate::types::{
-    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind, TrustLevel,
+    ActionProposal, ClassifiedParameter, ConsumeMode, GateDecision, Reason, ReasonKind,
 };
 
 /// An already-resolved consequentiality verdict: whether the proposal's sink is
@@ -79,7 +79,7 @@ pub fn apply(
                 // provenance at all has nothing to contradict: it is genuinely
                 // inert.
                 if let Some(c) = c {
-                    let untrusted_derived = c.trust_level == TrustLevel::Tainted;
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
                     if verdict.is_consequential() && untrusted_derived && c.action_critical {
                         reasons.push(Reason {
                             kind: ReasonKind::InertContradictsReachability,
@@ -113,7 +113,7 @@ pub fn apply(
                     });
                 }
                 Some(c) => {
-                    let untrusted_derived = c.trust_level == TrustLevel::Tainted;
+                    let untrusted_derived = c.trust_level.is_untrusted_derived();
                     if verdict.is_consequential() && untrusted_derived && c.action_critical {
                         reasons.push(Reason {
                             kind: ReasonKind::ActionOnActionCriticalTainted,
