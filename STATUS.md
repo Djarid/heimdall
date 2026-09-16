@@ -12,10 +12,22 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D120 to D123)
+## 0. Resume here (handoff, last updated after D124 and D125)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
+
+**The layer-one false-inert break's disposition is now settled: DECLINED at layer one
+(D124), and no number moves.** The fix is declined on cost-and-invariant grounds, not
+accepted as a small residual: 48 percent (16 of 33) on the independent corpus, 14 percent
+(5 of 36) blind and 22 findings across three corpora all stay exactly as measured, and the
+bar stays RED deliberately, because declining to fix is not declining to measure. R-1 (D73)
+stays OPEN: its own gate condition, "until D67-fix closes and is re-measured on an
+independent corpus", is now known to be unsatisfiable as written, since D67-fix will not
+close at layer one, and the re-scoping of that condition is opened separately as D125.
+D92, the external live-agent test, is named as the trigger that would genuinely reopen this
+question, not as a blocker on recording the disposition now: a pass is bounded containment,
+a fail is a real architecture finding. See D124 and D125 in `DECISIONS.md`.
 
 **Gjöll's promotion-requirement gate is built in Rust (D120 to D123), closing the mechanism-level
 gap the completed seven-step walking skeleton left open, and its own limits are stated plainly,
@@ -836,6 +848,11 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
   uses only relative intra-package imports, which is why it stays clean.
 - Do not soften the RED bar or report a harness result you have not run. The red layer-one
   suite is the honest artefact; a green one that never tested the break is worth less.
+- Do not read D124's "declined" as "done". The disposition declines to FIX the layer-one
+  break, not to MEASURE it: the three false-inert corpora must keep running and their
+  recorded counts must not regress, and this is now asserted by
+  `run_false_inert_disposition` in `ontology/tests/harness.py` rather than left to memory,
+  so a session that deletes a corpus or trims a case to quieten the bar fails the suite.
 - Use the `sync-project-docs` skill when recording anything: the repo and the Tolaria vault
   at `~/git/tolaria1` both have to be updated, and the vault has a strict schema.
 - Do not trust a docstring's claim of enforcement without reading the body: D97 found
@@ -890,8 +907,10 @@ across config changes, deletion, contract renewal, access grants, payroll redire
 security-state changes. It is bounded by invariant 3.1 (separating a passively-phrased or
 metaphorical consequence from a genuine informational statement needs world knowledge,
 which is a model 3.1 keeps off the classification path). It is left red and named, not
-papered over; the fix is an open design problem (D67-fix), and "accept a small residual"
-is now ruled out because the residual is not small. Its realised severity, though, is
+papered over; the fix is declined at layer one (D124), on cost-and-invariant grounds, and
+the break itself stays open and red. "Accept a small residual" stays ruled out, with no
+smallness claim substituted for it: declining to fix is not declining to measure, and the
+disposition does not reduce the rate and never will. Its realised severity, though, is
 bounded by defence in depth, none of which depends on the classifier being right: the
 action-time gate was never defeated by the break at all (D78, action-critical status is
 reachability-derived), promotion into trusted memory is human-gated (D76), and five
@@ -1170,7 +1189,7 @@ vocabulary's breadth, which grows on demand (D60, D85).
 | `COGNITION_EVIDENCE.md` | The committed record of build-order step seven's one real run: a real Qwen2.5-7B-Instruct-4bit call producing the advisory content on the engine's own non-test cognition path, blocked at Gjöll's own check five for the model-bound members, with the stub-bound positive control still executing live in the same build, and the honest statement of what the run does and does not claim (D115) |
 | `ONTOLOGY_CONSTRUCTION.md` | How the ontology (Yggdrasil) is built, grown and tested |
 | `ADVERSARIAL_REVIEW.md` | A briefing for a hostile reviewer: the claims, the evidence, and the honest seam list of where to attack |
-| `DECISIONS.md` | The decision log: 123 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot, D113 the process engine crate giving Himinbjörg's other three interfaces and Vör's `load_verified_cohort` their first genuine non-test callers, D114 the target loop's one real run end to end on a fixture (a genuine commit and push reachable in a real remote, three deliberately disallowed actions blocked at three distinct depths, and three pre-existing test defects found and fixed once a real secret was first provisioned), D115 a genuine Qwen2.5-7B-Instruct-4bit call on the process engine's own non-test cognition path, blocked at Gjöll's check five for the model-bound members, D116 amending D108's own "replace" wording since the cognition stub is retained as a positive control rather than replaced, D117 reopening D112's one-crate `std::process` ruling for the cognition-client sidecar's fixed-argv spawn, D118 settling the code licence as AGPL-3.0-or-later across all six crates, D119 naming and fixing a genuine pre-existing test-defect masked by a secret-gated skip, the same class as D114's own three, D120 building Gjöll's promotion-requirement gate in Rust with the equality-to-rank precondition fix, D121 recording D107's ruling as amended rather than complied with, D122 the fourth in-workspace path-dependency ruling (`boundary-gjoll` on `hierarchy-vor`), and D123 sharpening `DefaultCognitionStep`'s expiry-trigger doc comment) plus the still-open D67-fix layer-one break, with consistency checks |
+| `DECISIONS.md` | The decision log: 125 tracked decisions (D77 the independent corpus measuring layer-one false-inert at about 48 percent, D78 the correction that the false-inert break does NOT defeat Gjoll because action-critical status is reachability-derived, D79 to D82 the four false-inert mitigations, D83 the defence-in-depth pipeline score, D84 wiring the mitigations into the live engine and gate, D85 closing the residual class by slot-vocabulary growth, D86 Fenrir structural slot extraction feeding the state-delta layer, D87 the real-model demonstration of that extraction, D88 the blind-authored third-party corpus measuring layer-one at 5/36, D89 narrowing the root declaration seam by deriving sink consequentiality from an attested effect-primitive table plus a fail-closed consume mode, D90 true token-level grammar-constrained decoding replacing the bounded per-field stand-in, D91 delegating the genuinely third-party corpus to an external tester, D92 scoping that external test as the first OBSERVED end-to-end containment test with a vulnerable model in the agentic role, D93 direction D verifying a sink's declared effect primitive against its observed behaviour to close the wrong-primitive lie for observable sinks, D94 direction C attesting who declared a sink via a keyed digest to close the config-tamper adversary and complete all four scoped declaration directions in-repo, D95 closing the guard's own eval/exec/compile detection gap that three prior adversarial rounds missed, D96 mechanising the import-wiring-versus-live-call-invocation distinction as an AST detector, D97 fixing `control_surface.resolve()`'s unenforced trust ceiling and naming, without closing, gjoll's no-registry `agent_consequential_sinks` residual, D98 retiring D87's now-superseded stand-in files and closing a staleness gap in `poc/OUTCOME.md`, D99 finding the BFO cross-domain relatedness claim had no automated check, D100 narrowing gjoll's no-registry residual with a classify-time stamp, D101 closing D99's gap with a mechanised relatedness harness, D102 registering D93/D94 as main-suite fatal-gated obligations, D103 attesting `AgentContext` as a record type on the new shared `authorisation_record.py` substrate, closing D97's item (c) on its identity/integrity axis only, with three inherited limits named rather than closed, D109 to D111 re-expressing Gjöll, Vör and Himinbjörg's minimal slice in Rust, D112 the git actuator filling `broker_action`'s one slot, D113 the process engine crate giving Himinbjörg's other three interfaces and Vör's `load_verified_cohort` their first genuine non-test callers, D114 the target loop's one real run end to end on a fixture (a genuine commit and push reachable in a real remote, three deliberately disallowed actions blocked at three distinct depths, and three pre-existing test defects found and fixed once a real secret was first provisioned), D115 a genuine Qwen2.5-7B-Instruct-4bit call on the process engine's own non-test cognition path, blocked at Gjöll's check five for the model-bound members, D116 amending D108's own "replace" wording since the cognition stub is retained as a positive control rather than replaced, D117 reopening D112's one-crate `std::process` ruling for the cognition-client sidecar's fixed-argv spawn, D118 settling the code licence as AGPL-3.0-or-later across all six crates, D119 naming and fixing a genuine pre-existing test-defect masked by a secret-gated skip, the same class as D114's own three, D120 building Gjöll's promotion-requirement gate in Rust with the equality-to-rank precondition fix, D121 recording D107's ruling as amended rather than complied with, D122 the fourth in-workspace path-dependency ruling (`boundary-gjoll` on `hierarchy-vor`), D123 sharpening `DefaultCognitionStep`'s expiry-trigger doc comment, D124 settling the layer-one false-inert fix's disposition as DECLINED on cost-and-invariant grounds while the break itself stays open, red and measured, and D125 re-scoping R-1's own now-unsatisfiable gate condition as a separate open decision) plus the classification break itself, which stays open (only the FIX's disposition is settled by D124, not the break), with consistency checks |
 | `phase2/` | The Phase 2 detection layer: Fenrir (sandbox reader) and Huginn (canary + attempt-introspection monitoring), built under D74. Deterministic logic suite green; the real-model demonstration returned the D75 negative finding. See `phase2/OUTCOME.md` |
 | `STATUS.md` | This page |
 | `AGENTS.md` | Standing instructions for agents working on the repo, including the currency rule; auto-loaded by opencode |
@@ -1579,13 +1598,17 @@ pipeline score rose to 33 of 33 (100 percent) as a built property. Fenrir then g
 extraction feeding the state-delta layer end to end (D86), demonstrated first against a
 deterministic mock and then against a REAL model (D87, Qwen2.5-7B via the PoC's bounded
 generation), so the slot bindings the later layers need are produced by a real model rather
-than corpus-supplied. Open items now: the false-inert fix (D67-fix, still OPEN as a
-classification break and RED at layer one but mitigated in depth and wired), true
-token-level grammar-constrained decoding (D87 uses bounded per-field generation, the Phase-2
-stand-in; the true grammar constraint is the named refinement), declaration attestation (the
-honest-declaration seam D81 left open, `ADVERSARIAL_REVIEW.md` 5.1), a genuinely third-party
-corpus (D77 is same-author), value poisoning (contained by Gjöll, FR-6, not closed at the
-extraction layer), and the research questions D33 to D36.
+than corpus-supplied. Open items now: the false-inert classification break (D67-fix, still
+OPEN and RED at layer one, mitigated in depth and wired, with its DISPOSITION now settled by
+D124: DECLINED at layer one, on cost-and-invariant grounds, no number moved), R-1's own
+gate-condition re-scoping (D125, newly opened: the condition as written in D73 is now known
+to be unsatisfiable, since D67-fix will not close at layer one, and the re-scoped condition
+is not yet chosen), true token-level grammar-constrained decoding (D87 uses bounded
+per-field generation, the Phase-2 stand-in; the true grammar constraint is the named
+refinement), declaration attestation (the honest-declaration seam D81 left open,
+`ADVERSARIAL_REVIEW.md` 5.1), a genuinely third-party corpus (D77 is same-author), value
+poisoning (contained by Gjöll, FR-6, not closed at the extraction layer), and the research
+questions D33 to D36.
 
 An HLD and a Phase 1-3 Detailed Design have been authored for the build-out (D73,
 `plans/hld.md` and `plans/dd/`), grounded in an achievement audit against the real
@@ -1656,13 +1679,21 @@ corpus the author never saw.
    it constrains structure, not value truth, so value poisoning stays a Gjoll concern. The
    remaining declaration follow-ons are C (attest who may declare) and D (verify the effect
    primitive against behaviour), scoped in `plans/declaration_attestation_scoping.md`.
-4. **Decide the layer-one break's disposition (D67-fix); it is bounded by invariant 3.1.**
-   Now less urgent since the pipeline contains it, but still worth closing on the
-   classification side. The two honest directions are a deterministic
-   referential-completeness discipline stronger than a regex (measure its review-friction
-   cost first), or a fail-closed advisory model that only routes to review. "Accept a small
-   residual" is ruled out (the layer-one rate is 48 percent, not small), and more keywords
-   are barred (invariant 3.5).
+4. **DECIDED (D124): DECLINED at layer one.** The layer-one break's disposition, bounded by
+   invariant 3.1, is now settled rather than pending. The two directions this item
+   previously named as honest candidates are now dispositioned, not merely stated: the
+   stronger deterministic referential-completeness discipline is declined on cost and
+   invariant-interference grounds (it must be hand-written over `re`, since no statistical
+   parser may join `ALLOWED_IMPORT_ROOTS`, and it would perturb the classifier mid-measurement,
+   D91/D92), not on impossibility; and the fail-closed advisory model cannot move this
+   paragraph's number by construction (the rate is measured on the deterministic speech-act
+   type, which an advisory signal must never touch) and is in any case already built and wired,
+   in its licensed form, on the D80 consequence axis (D79, D84, D86, D90). This closes the
+   ITEM, not the BREAK: the break stays open, RED and measured at 22 findings, "accept a small
+   residual" stays ruled out with no smallness claim substituted, and more keywords stay
+   barred (invariant 3.5). D92, the external live-agent result, is the revisit trigger, not a
+   blocker: a pass is bounded containment, a fail reopens this question properly. This item
+   must not be re-attempted in-repo as a classification fix.
 5. **CLOSED AT THIS BOUND (Approach E, D96, built by D120 to D123). See item one above for the
    full statement.** `GatePolicy`, `GateResult` and the promotion-requirement gate now exist
    (`crates/boundary-gjoll/src/gate_policy.rs`, `crates/hierarchy-vor/src/promotion.rs`), and

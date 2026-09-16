@@ -138,7 +138,7 @@ None persistent. Fenrir holds no state between invocations: fresh context every 
   - No canary wrapping. Himinbjörg does not exist yet (Phase 3), so the signed top/tail canary, the per-invocation token and the honeypot phrase are specified but not constructed. Phase 2 builds Fenrir to consume a canary wrap; the wrap's construction and the token secrecy enforcement land with Himinbjörg.
   - No attempt-introspection tripwire. The null-surface detection over the reasoning trace is unbuilt; it depends on Huginn (Phase 2 canary monitoring) observing the emission.
   - The proof-of-concept constraint mechanism (per-field bounded sub-generation with a newline hard-stop) is a stand-in for true grammar-constrained decoding into the assertion schema, which Phase 2 builds.
-- Fenrir's guarantees are a Phase-2 obligation, and no Phase-3 consequential capability arms against them until the D67-fix arming gate closes (HLD R-1); until then Fenrir output stays tainted and non-actionable by default, which is the fail-closed posture that makes the gap safe.
+- Fenrir's guarantees are a Phase-2 obligation, and no Phase-3 consequential capability arms against them until the D67-fix arming gate closes (HLD R-1); the classification-side fix behind that gate is declined (D124) and the gate's own condition is re-scoped separately (D125), so R-1 stays open. Until then Fenrir output stays tainted and non-actionable by default, which is the fail-closed posture that makes the gap safe.
 
 ## 9. Test plan
 

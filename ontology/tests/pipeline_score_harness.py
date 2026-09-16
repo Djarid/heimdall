@@ -287,7 +287,20 @@ def main() -> int:
     import sys
     thirdparty = "--thirdparty" in sys.argv[1:]
     corpus_path = THIRDPARTY_CORPUS if thirdparty else CORPUS
-    data = json.loads(corpus_path.read_text())
+    try:
+        data = json.loads(corpus_path.read_text())
+    except FileNotFoundError:
+        print(f"[CRITICAL] pipeline_score_harness: corpus file not found: {corpus_path}")
+        print("This harness measures defence-in-depth pipeline containment over the")
+        print("false-inert independent corpus; it cannot run without that corpus file.")
+        print("Restore the corpus file and re-run.")
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"[CRITICAL] pipeline_score_harness: corpus file failed to parse as JSON: "
+              f"{corpus_path} ({exc})")
+        print("This harness measures defence-in-depth pipeline containment over the")
+        print("false-inert independent corpus; it cannot run without a well-formed corpus file.")
+        return 1
     cases = data["cases"]
     onto = load()
     nornir = Nornir(onto)
