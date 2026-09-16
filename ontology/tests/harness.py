@@ -1761,37 +1761,52 @@ FALSE_INERT_DISPOSITION_BASELINE: dict[str, int] = {
 FALSE_INERT_FINDINGS_BASELINE: int = 22
 
 
-def run_false_inert_disposition(rep: Report) -> None:
-    """D124: assert the layer-one false-inert MEASUREMENT still runs and has not
-    regressed. Declining to FIX is not declining to MEASURE. This obligation does
-    NOT turn the bar green and must never reduce `rep.false_inert_failures`; a
-    green layer-one bar would itself be the finding.
+def run_false_inert_preflight(rep: Report) -> dict[str, int | None]:
+    """D124 preflight, split out of `run_false_inert_disposition` and moved EARLIER
+    in `main()`'s obligation sequence (a quality-review fix): the existence and
+    parseability half of the D124 disposition check, run BEFORE any of the three
+    `run_false_inert(...)` calls rather than after them.
 
-    Two checks, both fatal-gated via `rep.false_inert_disposition_failures`
-    (never `rep.false_inert_failures`, which belongs to `run_false_inert` alone):
+    Why this exists as a separate, earlier step: `run_false_inert`'s own body
+    carries no exception handling around its corpus read (it is explicitly out of
+    scope to add any: REQ-14/AC-22), so a missing or unparseable corpus reaching
+    `run_false_inert` raises an unhandled `FileNotFoundError`/`JSONDecodeError`
+    that crashes the whole harness process. Previously `run_false_inert_disposition`
+    (which DID handle this gracefully) was registered AFTER the three
+    `run_false_inert` calls, so its own missing-corpus branch could never be
+    reached in a full run: the crash happened first. Running this preflight first
+    means a missing corpus is caught and reported here, gracefully, before
+    `run_false_inert` ever gets a chance to see it.
 
-    1. Each of the three corpus files exists and parses as JSON with a non-empty
-       `cases` list. A missing or unparseable corpus is a FAILURE: deleting a
-       corpus to quieten the bar now breaks the suite louder than the corpus did.
-    2. Each corpus's consequential-case count is at least its D124 baseline, and
-       the total false-inert finding count is at least the D124 baseline of 22.
-       A count that FALLS below baseline is a failure; a count that RISES above
-       baseline is not (a corpus may honestly grow, and a rising finding count
-       is the bar doing its job, not a regression in this obligation).
-    """
-    rep.line("=== False-inert disposition (D124: DECLINED at layer one; measurement asserted) ===")
+    Checks, fatal-gated via `rep.false_inert_disposition_failures` (never
+    `rep.false_inert_failures`, which belongs to `run_false_inert` alone): each of
+    the three corpus files exists and parses as JSON with a non-empty `cases`
+    list. A missing or unparseable corpus is a FAILURE: deleting a corpus to
+    quieten the bar now breaks the suite louder than the corpus did.
+
+    Returns a `{corpus_filename: consequential_case_count_or_None}` map: `None`
+    marks a corpus that is missing or failed to parse. `main()` uses this to
+    decide, per corpus, whether to call `run_false_inert` at all (skipping it, with
+    a clear report note, for any corpus this preflight could not read, rather than
+    letting it crash), and passes the same map on to `run_false_inert_disposition`
+    for the count-regression half, which is unaffected by this split and keeps its
+    exact position immediately after the three `run_false_inert` calls (REQ-13)."""
+    rep.line("=== False-inert disposition preflight (D124: corpus existence/parseability, "
+             "runs BEFORE run_false_inert so a missing corpus fails gracefully here "
+             "instead of crashing run_false_inert below) ===")
     corpora = [
         (FALSE_INERT_CORPUS, "false_inert_adversarial.json"),
         (FALSE_INERT_INDEPENDENT_CORPUS, "false_inert_independent.json"),
         (FALSE_INERT_THIRDPARTY_CORPUS, "false_inert_thirdparty.json"),
     ]
 
-    per_corpus_counts: dict[str, int] = {}
+    per_corpus_counts: dict[str, int | None] = {}
     any_missing = False
     for corpus_path, name in corpora:
         if not corpus_path.exists():
             rep.false_inert_disposition_failures += 1
             any_missing = True
+            per_corpus_counts[name] = None
             rep.line(f"  [CRITICAL] D124: missing corpus {name} at {corpus_path}; "
                      f"the false-inert measurement cannot run without it")
             continue
@@ -1800,6 +1815,7 @@ def run_false_inert_disposition(rep: Report) -> None:
         except (json.JSONDecodeError, OSError) as exc:
             rep.false_inert_disposition_failures += 1
             any_missing = True
+            per_corpus_counts[name] = None
             rep.line(f"  [CRITICAL] D124: corpus {name} failed to parse as JSON ({exc}); "
                      f"the false-inert measurement cannot run without it")
             continue
@@ -1807,6 +1823,7 @@ def run_false_inert_disposition(rep: Report) -> None:
         if not cases:
             rep.false_inert_disposition_failures += 1
             any_missing = True
+            per_corpus_counts[name] = None
             rep.line(f"  [CRITICAL] D124: corpus {name} has an empty or missing 'cases' list; "
                      f"the false-inert measurement cannot run without it")
             continue
@@ -1815,14 +1832,49 @@ def run_false_inert_disposition(rep: Report) -> None:
 
     if not any_missing:
         rep.line("  [PASS] all three corpora exist and parse with a non-empty case list.")
+    else:
+        skipped = [name for name, count in per_corpus_counts.items() if count is None]
+        rep.line(f"  [NOTE] D124: run_false_inert will be SKIPPED below for: "
+                 f"{', '.join(skipped)} (missing/unparseable corpus, see [CRITICAL] "
+                 f"line(s) above); the other corpus/corpora's run_false_inert "
+                 f"measurement(s) still run normally.")
+    rep.line("")
+    return per_corpus_counts
 
-    total_findings = 0
+
+def run_false_inert_disposition(rep: Report, per_corpus_counts: dict[str, int | None]) -> None:
+    """D124: assert the layer-one false-inert MEASUREMENT still runs and has not
+    regressed. Declining to FIX is not declining to MEASURE. This obligation does
+    NOT turn the bar green and must never reduce `rep.false_inert_failures`; a
+    green layer-one bar would itself be the finding.
+
+    The existence/parseability half of the original D124 check has moved to
+    `run_false_inert_preflight`, called earlier in `main()`, before the three
+    `run_false_inert(...)` calls (a quality-review fix: see that function's
+    docstring for why). `per_corpus_counts` is exactly the map that preflight
+    returned, threaded through unchanged; a `None` entry marks a corpus that
+    preflight already reported as missing/unparseable, and its count-regression
+    check below is skipped accordingly (it was already flagged as fatal there).
+
+    This function keeps only the count-regression half, in its original position
+    (REQ-13: immediately after the three `run_false_inert` calls): each corpus's
+    consequential-case count is at least its D124 baseline, and the total
+    false-inert finding count is at least the D124 baseline of 22. A count that
+    FALLS below baseline is a failure; a count that RISES above baseline is not (a
+    corpus may honestly grow, and a rising finding count is the bar doing its job,
+    not a regression in this obligation). Fatal-gated via
+    `rep.false_inert_disposition_failures` (never `rep.false_inert_failures`,
+    which belongs to `run_false_inert` alone).
+    """
+    rep.line("=== False-inert disposition (D124: DECLINED at layer one; measurement asserted) ===")
+
+    any_missing = any(count is None for count in per_corpus_counts.values())
+
     regressed = False
-    for corpus_path, name in corpora:
-        if name not in per_corpus_counts:
+    for name, baseline in FALSE_INERT_DISPOSITION_BASELINE.items():
+        count = per_corpus_counts.get(name)
+        if count is None:
             continue
-        baseline = FALSE_INERT_DISPOSITION_BASELINE[name]
-        count = per_corpus_counts[name]
         if count < baseline:
             regressed = True
             rep.false_inert_disposition_failures += 1
@@ -1834,8 +1886,9 @@ def run_false_inert_disposition(rep: Report) -> None:
                      + (" (grown)" if count > baseline else ""))
 
     # The total false-inert finding count is read off rep.false_inert_failures,
-    # which run_false_inert (called earlier, for all three corpora) has already
-    # populated by the time this obligation runs. Read-only: never modified here.
+    # which run_false_inert (called earlier, for the available corpora) has
+    # already populated by the time this obligation runs. Read-only: never
+    # modified here.
     total_findings = rep.false_inert_failures
     if total_findings < FALSE_INERT_FINDINGS_BASELINE:
         regressed = True
@@ -1854,6 +1907,19 @@ def run_false_inert_disposition(rep: Report) -> None:
              "not a repair. This obligation does NOT turn the bar green: it asserts the "
              "measurement keeps running and has not regressed, nothing more. A green layer-one "
              "bar would itself be the finding.")
+    rep.line("")
+
+
+def _skip_false_inert(rep: Report, label: str, name: str) -> None:
+    """Report the section a skipped `run_false_inert` measurement would have used,
+    with a clear note why it was not run, so a reader hitting a shorter report (one
+    of the three measurements missing) knows exactly why rather than wondering if
+    the report is truncated or broken. Used only when `run_false_inert_preflight`
+    found this corpus missing or unparseable (D124); never called otherwise."""
+    rep.line(f"=== False-inert rate ({label}, ADVERSARIAL_REVIEW 5.2) ===")
+    rep.line(f"  [SKIPPED] D124 preflight found corpus {name} missing or unparseable "
+             f"(see the preflight report above); run_false_inert was not called for "
+             f"this corpus so it could not crash the harness on the missing/bad file.")
     rep.line("")
 
 
@@ -2314,13 +2380,34 @@ def main() -> int:
     run_coverage_gaps(nornir, cases, rep)
     run_marshalling(nornir, rep)
     run_failclosed_property(nornir, rep, inert)
-    run_false_inert(nornir, rep, inert, FALSE_INERT_CORPUS,
-                    "self-authored corpus, a lower bound tuned to the rules")
-    run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
-                    "independent scenario-authored corpus, D77")
-    run_false_inert(nornir, rep, inert, FALSE_INERT_THIRDPARTY_CORPUS,
-                    "blind-authored corpus (fresh sub-agent, no rule access), D88")
-    run_false_inert_disposition(rep)          # D124, REQ-13
+
+    # D124 preflight (quality-review fix): runs FIRST, before any run_false_inert
+    # call, so a missing/unparseable corpus is caught and reported gracefully here
+    # instead of crashing run_false_inert below (run_false_inert's own body is out
+    # of scope to change: REQ-14/AC-22). Corpora this preflight could not read are
+    # skipped, with a clear report note, rather than passed to run_false_inert.
+    per_corpus_counts = run_false_inert_preflight(rep)
+    if per_corpus_counts["false_inert_adversarial.json"] is not None:
+        run_false_inert(nornir, rep, inert, FALSE_INERT_CORPUS,
+                        "self-authored corpus, a lower bound tuned to the rules")
+    else:
+        _skip_false_inert(rep, "self-authored corpus, a lower bound tuned to the rules",
+                          "false_inert_adversarial.json")
+    if per_corpus_counts["false_inert_independent.json"] is not None:
+        run_false_inert(nornir, rep, inert, FALSE_INERT_INDEPENDENT_CORPUS,
+                        "independent scenario-authored corpus, D77")
+    else:
+        _skip_false_inert(rep, "independent scenario-authored corpus, D77",
+                          "false_inert_independent.json")
+    if per_corpus_counts["false_inert_thirdparty.json"] is not None:
+        run_false_inert(nornir, rep, inert, FALSE_INERT_THIRDPARTY_CORPUS,
+                        "blind-authored corpus (fresh sub-agent, no rule access), D88")
+    else:
+        _skip_false_inert(rep, "blind-authored corpus (fresh sub-agent, no rule access), D88",
+                          "false_inert_thirdparty.json")
+    # The count-regression half (REQ-13): still runs here, immediately after the
+    # three run_false_inert calls, exactly as before this restructuring.
+    run_false_inert_disposition(rep, per_corpus_counts)
     run_mitigations(rep)
     run_soundness(nornir, cases, rep, hr)
     run_flow(nornir, fixtures, rep)
