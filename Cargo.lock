@@ -20,6 +20,10 @@ name = "cognition-client"
 version = "0.1.0"
 
 [[package]]
+name = "gjallarhorn"
+version = "0.1.0"
+
+[[package]]
 name = "hierarchy-vor"
 version = "0.1.0"
 dependencies = [
@@ -63,6 +67,7 @@ version = "0.1.0"
 dependencies = [
  "boundary-gjoll",
  "cognition-client",
+ "gjallarhorn",
  "hierarchy-vor",
  "himinbjorg",
 ]

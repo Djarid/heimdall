@@ -241,8 +241,16 @@ treating either list as static.
 - the world-model subgraph query in `build_context` (needs a Rust Mímisbrunnr, not built),
 - the full ten-group `HEIMDALL.md` control-surface schema (one hardcoded surface stands in),
 - the trust-ceiling ordering and clamp, HB-3's full ranked form (D97's open question, still open),
-- `Decision::Queue` and `Decision::Escalate` becoming reachable (need Gjallarhorn's protected
-  channel and Hliðskjálf respectively, neither built),
+- `Decision::Queue` and `Decision::Escalate` becoming reachable. **Restated, not closed, after
+  the Gjallarhorn build (`crates/gjallarhorn/`, `.opencode/plans/gjallarhorn-build-spec.md`):**
+  Gjallarhorn's protected channel now exists, but a channel existing is a **precondition** for
+  making these two reachable, not the change that makes them so. What is still missing is an
+  operator-answer path that feeds a human decision back into a **resumed** sequence run, which
+  `plans/dd/process-engine.md` section 6 names and which this build does not supply; the one
+  live raise site this build ships fires an alert on the `GateBlocked` branch, one step after
+  Himinbjörg's own decision, and cannot itself construct `Decision::Queue` or `Decision::Escalate`,
+  both of which stay declared and unconstructed on every non-test path (`.opencode/plans/gjallarhorn-build-spec.md`
+  REQ-43),
 - a signed, chained, durable Hliðskjálf with `verify_chain` and Gjallarhorn wiring, which the
   `DecisionRecorder` trait added by D112 is the extension point for, not a replacement of,
 - the credential broker's general form and the single-holder pattern's real implementation,

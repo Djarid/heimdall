@@ -182,8 +182,16 @@ TASK_SELECTOR_ENV_VAR_VALUE = "HEIMDALL_ENGINE_TASK"
 # `cognition-client`, mirroring rust_process_engine_harness.py's own REQ-58
 # widening. Duplicated rather than imported, on this file's own existing
 # discipline.
+#
+# WIDENED again for the Gjallarhorn build
+# (`.opencode/plans/gjallarhorn-build-spec.md` REQ-4, OR-7; expected
+# `DECISIONS.md` row for the fifth process-engine path-dependency ruling): a
+# fifth name, `gjallarhorn`, mirroring rust_process_engine_harness.py's own
+# widening. Duplicated rather than imported, on REQ-40's own instruction
+# that a target-loop regression and an engine-crate posture regression are
+# different reasons to change.
 PERMITTED_DEPENDENCIES: frozenset[str] = frozenset(
-    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client"}
+    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client", "gjallarhorn"}
 )
 FORBIDDEN_DEPENDENCIES: frozenset[str] = frozenset({"actuator-git"})
 

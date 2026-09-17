@@ -385,6 +385,44 @@ dependency to any future crate's gate-adjacent path remains a deliberate
 trust-boundary decision requiring its own `DECISIONS.md` row, exactly as
 HB3-3, D112 and D113 each already required in turn. See `DECISIONS.md` D122.
 
+**The fifth path-dependency ruling (D130), on `process-engine`'s own pairing
+with `gjallarhorn` rather than reused from any prior row's text.**
+`crates/process-engine/`'s `[dependencies]` table gains a fifth entry, a
+path dependency on `gjallarhorn`, so `crates/process-engine/src/sequence.rs`
+can call `gjallarhorn::raise` at its one live call site (`.opencode/plans/gjallarhorn-build-spec.md`
+OR-5, OR-7). Two grounds, specific to this pairing and stated fresh rather
+than borrowed from D122's own text, even though the underlying reasoning
+family is the same. **First, the direction is fixed by the call, not by
+convenience:** `sequence.rs` must name `gjallarhorn::raise` and its
+supporting types (`GjallarhornEvent`, `EventRecorder`, `Delivery`,
+`ProtectedChannel`, `TriageQueue`) at its own call site, while
+`crates/gjallarhorn/` names nothing from `process-engine` at all, its own
+`[dependencies]` table staying literally empty (GJ-B-3, REQ-2); the manifest
+edge follows the one-directional call, exactly as every prior ruling in this
+section fixes direction by the type or call dependency rather than by
+symmetry or convenience. **Second, this pairing sits outside the
+authorisation path proper, which if anything weakens the case for caution
+rather than strengthens it.** Gjallarhorn is an alerting layer, not a gate: it
+never adjudicates a proposal, and `crates/process-engine/` still reaches
+Gjöll's gate only through `himinbjorg::validate_proposal`, never through
+`gjallarhorn`. So even the standard the prior four rulings in this section
+already established, that an empty `[dependencies]` table was never the
+load-bearing property and the load-bearing property is that no crate on the
+authorisation path reaches a model call or a network call, is satisfied here
+with margin to spare: `gjallarhorn` has an empty runtime table and
+`#![forbid(unsafe_code)]`, and the crate it is being added to was already
+reaching a model call transitively, through `cognition-client`, before this
+ruling (D115), so this fifth dependency introduces no reachability that did
+not already exist on a different edge of the same crate's own table.
+`check_dependency_posture`'s strict empty default stays untouched:
+`crates/gjallarhorn/`'s own check (`ontology/tests/rust_gjallarhorn_harness.py`)
+keeps its strict, zero-dependency behaviour byte for byte, unaffected by
+`process-engine`'s own fifth-entry widening. Adding a **sixth** kind of
+dependency to any future crate's gate-adjacent path remains a deliberate
+trust-boundary decision requiring its own `DECISIONS.md` row, exactly as
+HB3-3, D112, D113 and D122 each already required in turn. See `DECISIONS.md`
+D130.
+
 ## 5. The two-layer module pattern
 
 `boundary-gjoll` splits into four modules, following a Single Responsibility discipline
@@ -544,6 +582,30 @@ build anything. In particular it does not:
   on `rust_actuator_harness.py`'s exact shape. This is the third instance of the same choice
   the bullet above already named as inherited, not a new rule: a fourth genuinely-new Rust
   component decides the same way, by whether a Python reference exists to replay.
+  **A fourth genuinely-new-component case confirms the ruling generalises to a seventh crate
+  (D126).** `crates/gjallarhorn/` has no Python analogue at any fidelity, not even a dormant
+  stub, and this is a sharper case than the three before it: `ontology/nornir/rules.py`'s use
+  of the phrase "Gjallarhorn event" is naming only, carrying no routing, no queue and no
+  `raise`, so there is not even a labelled data shape to point at, unlike `crates/hierarchy-vor/`'s
+  attested-record substrate (D110) or `crates/himinbjorg/`'s dormant `control_surface.py` stub
+  (D111). No parity is possible against `rules.py` and none is claimed
+  (`.opencode/plans/gjallarhorn-build-spec.md` REQ-54). Correctness is established the same way
+  D111 to D113's own resolutions name: Rust-native unit and integration tests written directly
+  against the build spec's own requirements and acceptance criteria, with no golden-vector
+  replay step, while the four mechanical obligations carry forward unchanged in shape:
+  dependency posture (the crate's own literally empty table, GJ-B-3, checked by
+  `ontology/tests/rust_gjallarhorn_harness.py` reusing `check_dependency_posture` by import),
+  test-and-code isolation, public-surface sufficiency (`crates/gjallarhorn/tests/public_surface.rs`,
+  proving a `GjallarhornEvent` is obtainable only through the eight minting functions of REQ-12
+  and never by direct construction), and live invocation-boundary detection, this time a new
+  standalone detector, `ontology/tests/gjallarhorn_invocation_harness.py`, on
+  `ACTUATOR_CALL_ALLOWLIST`'s own exactly-one-required polarity rather than the
+  zero-non-test-callers polarity every prior invocation detector in this workspace has used,
+  because Gjallarhorn's one raise site is a genuine, deliberate, non-test call from
+  `crates/process-engine/src/sequence.rs`, not an absence to be measured. This is the fourth
+  instance of the same choice the two bullets above already named as inherited, not a new
+  rule: a fifth genuinely-new Rust component decides the same way, by whether a Python
+  reference exists to replay.
 
 ## 9. Binary-target posture (D113, the workspace's first binary)
 
