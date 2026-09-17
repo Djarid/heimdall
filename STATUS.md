@@ -12,10 +12,46 @@ the map, not the territory.
 
 ---
 
-## 0. Resume here (handoff, last updated after D124 and D125)
+## 0. Resume here (handoff, last updated after the Gjallarhorn build)
 
 A fresh session should read this block, then section 6, then start work. Everything below
 is committed and pushed; the working tree is clean.
+
+**Gjallarhorn's event spine, channel separation and one live raise site are now built
+(`crates/gjallarhorn/`, the repository's seventh crate).** A closed eight-variant `EventType`,
+a `GjallarhornEvent` mintable only through eight narrow per-type constructor functions, a
+hardcoded compile-time routing table with exhaustive dispatch, a write-before-route `raise`
+entry point (`Result<RaiseOutcome, RaiseRefusal>`, amended from the design's own `-> None`),
+two genuinely separate structures for the protected channel and the triage queue, and
+`aggregate` over typed fields only. Delivery is stubbed behind a one-method trait with one
+in-process retaining implementation; no operator receives anything. One genuine non-test raise
+site lands in `crates/process-engine/src/sequence.rs`, at the `GateBlocked` branch, one step
+after Himinbjörg's own adjudication rather than inside it (an amendment to `plans/dd/gjallarhorn.md`
+section 7's own "Himinbjörg raises" wording, OR-7). Deliberately not built, by ruling rather than
+oversight: `contain()`, flood quarantine and reputation-weighted triage ordering; the triage
+queue orders on age alone, one of the DD's own four ordering terms, and HLD risk R-5 stays
+explicitly open. `cargo test --workspace` now passes 377 tests, up from 307 before this build; the
+22 RED findings, the 34 guard-scanned files, the 48 percent layer-one figure and the 33-of-33
+pipeline figure are all unaffected, since no line under `ontology/nornir/` or
+`ontology/yggdrasil/` changed.
+
+**This does NOT unblock live promotion minting, and the wording that said or implied it would
+is now corrected in five documents, not just this one.** Gjallarhorn's protected channel gives a
+human a place to act on a promotion request, but nothing in `crates/hierarchy-vor/` can currently
+**author** a promotion attestation at runtime: `compute_record_attestation` and
+`TrustedAuthoriserSet::secret_for` are both `pub(crate)` under that crate's own REQ-13, and no
+`src/` module calls the former to issue rather than to check. The live-minting path needs **two**
+things, not one: the channel (now built) and a promotion-authoring entry point inside
+`crates/hierarchy-vor/` that computes an attestation over a human-approved record (still open,
+its own separate decision row, reopening REQ-13's secret boundary). `promotion_invocation_harness.py`
+continuing to report zero non-test call sites is now evidence of the **second** half being open,
+not the first. Five documents previously overstated Gjallarhorn alone as the blocker and are
+corrected on this footing: `plans/dd/gjallarhorn.md` (its own section 7 and 3.1 wording, amended
+rather than corrected, since those describe the DD's own design deviated from by ruling),
+`.opencode/plans/rust-promotion-gate-spec.md` section 11.2 deferral 1 (split into 1a, closed, and
+1b, the genuine remaining blocker), `NEUROSYMBOLIC_FILTER_INVARIANTS.md` 3.6 clause (c),
+`DECISIONS.md` D120's own row text, and `plans/dd/gjoll.md` section 5.1. See section 6 item one
+below for the corrected next-step framing and `DECISIONS.md` for this build's own decision rows.
 
 **The layer-one false-inert break's disposition is now settled: DECLINED at layer one
 (D124), and no number moves.** The fix is declined on cost-and-invariant grounds, not
@@ -741,24 +777,44 @@ repository's own stated preference for honesty over reassurance. See D102 in `DE
    this closes, and see D120 to D123 in `DECISIONS.md` for the full build record.
 
    **The next honest next-step, named rather than guessed, per
-   `.opencode/plans/rust-promotion-gate-spec.md` section 11's own deferred-item table.** The
-   load-bearing blocker on the live-minting path (deferral 1 of that table) is **Gjallarhorn**:
+   `.opencode/plans/rust-promotion-gate-spec.md` section 11's own deferred-item table, corrected
+   after the Gjallarhorn build (`crates/gjallarhorn/`, `.opencode/plans/gjallarhorn-build-spec.md`).**
+   Deferral 1 of that table split into two halves once Gjallarhorn was built, and only the second
+   is now the load-bearing blocker. **Half one, the channel primitive, is CLOSED**: Gjallarhorn's
+   protected channel now exists, giving a human a place to act on a promotion request.
+   **Half two, the genuine remaining blocker, is OPEN**: nothing in `crates/hierarchy-vor/` can
+   currently author a promotion attestation at runtime, because `compute_record_attestation` and
+   `TrustedAuthoriserSet::secret_for` are both `pub(crate)` under that crate's own REQ-13, and no
+   `src/` module calls the former to issue rather than to check. A promotion-authoring entry point
+   inside `crates/hierarchy-vor/` is needed, and building one reopens REQ-13's secret boundary, a
+   trust-boundary decision of a different kind from building an alerting layer; it needs its own
+   specification and its own decision row, and must not be folded into any other work. Until it
+   exists, `promotion_invocation_harness.py` will keep reporting zero non-test callers, correctly,
+   because there is genuinely nothing to call it from outside a test, and that continuing zero is
+   now evidence of this second half being open, not of Gjallarhorn being unbuilt. Two further named
+   items, not started, not guessed: **the standing-grant and attendance-surface work**
+   (`.opencode/plans/attendance-surface-and-gate-policy-spec.md` REQ-5 to REQ-33) stays explicitly
+   out of scope by instruction, its disposition recorded in the Rust build's own brainstorm section
+   8 rather than re-derived; and **substrate extraction into a shared crate** (the brainstorm's
+   Approach C) stays deferred until a THIRD record type needs attestation outside
+   `crates/hierarchy-vor/`, a trigger this spec's own section 11.2 calls likely rather than
+   hypothetical, naming `synthesis-resolutions.md` ruling three's load-time-attested hierarchy
+   manifest and the attendance-attestation/standing-grant record types as three candidates that
+   would each independently spring it. A smaller, immediate item also carried forward unmet: the
+   audit obligation for a gate pass (writing it to Hliðskjálf before an allowed action fires) and
+   `CheckRecord` gaining pass evidence both share half two's own trigger, since a gate pass has no
+   live producer to audit until the authoring entry point exists.
+
+   **What this item's former text asked, preserved as the historical record of the framing this
+   correction supersedes, so a fresh reader can see what changed rather than only the new state:**
+   *"The load-bearing blocker on the live-minting path (deferral 1 of that table) is Gjallarhorn:
    human promotion on its protected channel is the only path by which a promotion attestation
    could ever be authored at runtime for a specific value at a specific instant, and it is
-   unbuilt. Until Gjallarhorn exists, `promotion_invocation_harness.py` will keep reporting zero
-   non-test callers, correctly, because there is genuinely nothing to call it from outside a
-   test. Two further named items, not started, not guessed: **the standing-grant and
-   attendance-surface work** (`.opencode/plans/attendance-surface-and-gate-policy-spec.md` REQ-5
-   to REQ-33) stays explicitly out of scope by instruction, its disposition recorded in the
-   Rust build's own brainstorm section 8 rather than re-derived; and **substrate extraction into a
-   shared crate** (the brainstorm's Approach C) stays deferred until a THIRD record type needs
-   attestation outside `crates/hierarchy-vor/`, a trigger this spec's own section 11.2 calls
-   likely rather than hypothetical, naming `synthesis-resolutions.md` ruling three's load-time-attested
-   hierarchy manifest and the attendance-attestation/standing-grant record types as three
-   candidates that would each independently spring it. A smaller, immediate item also carried
-   forward unmet: the audit obligation for a gate pass (writing it to Hliðskjálf before an
-   allowed action fires) and `CheckRecord` gaining pass evidence both share deferral 1's own
-   trigger, since a gate pass has no live producer to audit until Gjallarhorn exists.
+   unbuilt."* That framing named a single blocker where there were always two; the Gjallarhorn
+   build's own brainstorm found the second (finding 2.1) by reading `hierarchy-vor`'s own source,
+   and this row, `plans/dd/gjallarhorn.md`, `.opencode/plans/rust-promotion-gate-spec.md`,
+   `NEUROSYMBOLIC_FILTER_INVARIANTS.md` 3.6 and `plans/dd/gjoll.md` are the five documents corrected
+   on that finding.
 
    **What this item's former text asked, preserved as the historical record of the gap this row
    closes, so a fresh reader can see what changed rather than only the new state:** *"Building
@@ -1107,6 +1163,34 @@ structural per-value record inside `hierarchy-vor`'s own substrate. D122 records
 precedent; D123 sharpens `DefaultCognitionStep`'s expiry trigger to distinguish
 harness-demonstrated from live-wired-and-PROVEN. No line under `ontology/nornir/` or
 `ontology/yggdrasil/` changed; `cargo test --workspace` now passes 307 tests, up from 258.
+
+**The Gjallarhorn build (`crates/gjallarhorn/`, the repository's seventh crate) then builds the
+event spine, channel separation and one live raise site the DD names, and corrects five
+documents that had overstated a single blocker on live promotion minting as two.** A closed
+eight-variant `EventType`, an opaque `GjallarhornEvent` mintable only through eight narrow
+per-type constructor functions, a hardcoded compile-time routing table, a write-before-route
+`raise` returning `Result<RaiseOutcome, RaiseRefusal>` (amended from the design's own `-> None`),
+two genuinely separate structures for the protected channel and the triage queue, and `aggregate`
+over typed fields only. Delivery is stubbed; no operator receives anything. One genuine non-test
+raise site lands in `crates/process-engine/src/sequence.rs`, one step after Himinbjörg's own
+adjudication (an amendment to `plans/dd/gjallarhorn.md` section 7's "Himinbjörg raises" wording,
+OR-7); the manifests of every authorisation-path crate stay untouched. `contain()`, flood
+quarantine and reputation-weighted triage ordering are deliberately not built (OR-1); the triage
+queue orders on age alone and HLD risk R-5 stays explicitly open. **The build does not unblock
+live promotion minting.** The brainstorm behind it found, by reading `hierarchy-vor`'s own source
+rather than its documentation, that `compute_record_attestation` and `TrustedAuthoriserSet::secret_for`
+are both `pub(crate)`, so nothing outside that crate, and nothing inside it except its own unit
+tests, can compute a promotion attestation to issue rather than to check; a fully built Gjallarhorn
+with a real human on a real protected channel still could not mint a promotion. A second, separate
+half is needed inside `crates/hierarchy-vor/`, reopening that crate's REQ-13 secret boundary. Five
+documents previously read as though Gjallarhorn alone were the blocker (`plans/dd/gjallarhorn.md`,
+`.opencode/plans/rust-promotion-gate-spec.md`, `NEUROSYMBOLIC_FILTER_INVARIANTS.md` 3.6,
+`DECISIONS.md` D120's own row text, `plans/dd/gjoll.md` section 5.1) are corrected in their own
+text, not only in a new decision row. `cargo test --workspace` now passes 377 tests, up from 307;
+the 22 RED findings, the 34 guard-scanned files and the 48 percent/33-of-33 pipeline figures are
+all unaffected, since no line under `ontology/nornir/` or `ontology/yggdrasil/` changed, and
+`gjoll_invocation_harness` and `promotion_invocation_harness` both stay exactly as measured,
+unaffected by this build.
 
 **One caveat a fresh session must carry, or the 100 percent is misleading.** The pipeline
 score is now the BUILT pipeline, not the designed one: D84 wired the mitigations D79 to D82
@@ -1539,6 +1623,54 @@ named remaining refinement, contained by Gjoll at action time, not here.
   all unaffected, since no line under `ontology/nornir/` or `ontology/yggdrasil/` changed. See
   `plans/dd/gjoll.md` sections 5.1 and 10 for the full design and `DECISIONS.md` D120 to D123 for
   the build record.
+- **The repository's seventh Rust crate, Gjallarhorn's event spine and one live raise site**
+  (`crates/gjallarhorn/`, `.opencode/plans/gjallarhorn-build-spec.md`): a closed eight-variant
+  `EventType`; a `GjallarhornEvent` mintable only through eight narrow per-type constructor
+  functions in `mint.rs`, so no caller outside the crate can choose an arbitrary type-and-route
+  combination (GJ-B-1); a hardcoded compile-time routing table in `routing.rs`, exhaustive over
+  the closed enum with no wildcard arm; a genuine `EventRecorder`/`MinimalEventRecorder`
+  write-before-route ordering in `record.rs` and `raise.rs`; two genuinely separate structures,
+  `ProtectedChannel` and `TriageQueue`, with no shared backing store, no conversion and no method
+  that moves an item between them (`channel.rs`, GJ-B-2); `aggregate` deriving a correlation key
+  from typed fields only (`aggregate.rs`); and delivery stubbed behind a one-method trait with one
+  in-process retaining implementation, `InProcessDelivery` (`delivery.rs`), so no operator receives
+  anything (OR-4). The crate is library only, with a literally empty `[dependencies]` table
+  (GJ-B-3, OR-3). `raise` returns `Result<RaiseOutcome, RaiseRefusal>` and carries `#[must_use]`,
+  an amendment to the design's own `-> None` signature (section 2.3 of the build spec), because a
+  function returning nothing cannot express fail closed; the engine's own `EngineOutcome` is
+  byte-identical whether the raise succeeds or fails, tested with a deliberately failing recorder,
+  so the return value cannot become a second path to an authorisation effect. One genuine non-test
+  raise site lands in `crates/process-engine/src/sequence.rs`, at the `GateBlocked` branch, gaining
+  a fifth in-workspace path dependency for that crate; the manifests of `crates/himinbjorg/`,
+  `crates/boundary-gjoll/`, `crates/hierarchy-vor/`, `crates/actuator-git/` and
+  `crates/cognition-client/` are all unchanged, so no alerting dependency lands on the
+  authorisation path (OR-7, an amendment to `plans/dd/gjallarhorn.md` section 7's own "Himinbjörg
+  raises" wording, since the raise site sits one step after Himinbjörg's own adjudication rather
+  than inside it). Deliberately not built, by ruling rather than omission (OR-1): `contain()`, the
+  record-and-coordinate side of the DD's own section 3.4; flood detection and source quarantine;
+  and the reputation-weighted triage ordering, so the triage queue built here orders on age alone,
+  one of the DD's own four ordering terms, with HLD risk R-5 explicitly stated as untouched, not
+  closed (REQ-30). It cannot test the DD's own first-named load-bearing property, containment
+  firing without alert delivery, because no Rust Fenrir or Huginn exists; a named
+  absent-counterparty marker in the new `ontology/tests/rust_gjallarhorn_harness.py` reports that
+  gap live rather than in prose that can go stale. Two new Python sub-harnesses fold additively
+  into `ontology/tests/harness.py`: `ontology/tests/rust_gjallarhorn_harness.py` (dependency
+  posture, the forbidden-import scan, the narrow-mint public-surface scan, test/code isolation,
+  the absent-counterparty marker, the Rust test run) and
+  `ontology/tests/gjallarhorn_invocation_harness.py` (an exactly-one-required invocation detector
+  on `ACTUATOR_CALL_ALLOWLIST`'s own polarity, naming `crates/process-engine/src/sequence.rs` as
+  the one allowlisted non-test call site). **This build does not unblock live promotion minting**,
+  and five documents that previously overstated Gjallarhorn alone as the blocker are corrected on
+  that footing (`plans/dd/gjallarhorn.md`, `.opencode/plans/rust-promotion-gate-spec.md`,
+  `NEUROSYMBOLIC_FILTER_INVARIANTS.md` 3.6, `DECISIONS.md` D120's own row text, `plans/dd/gjoll.md`
+  section 5.1): see section 0 above for the corrected wording and `DECISIONS.md` for this build's
+  own decision rows. `cargo test --workspace` passes 377 tests, up from D120 to D123's 307, zero
+  failures; the invariant 3.1 guard, the 22-critical-finding RED bar and
+  `pipeline_score_harness`'s 48 percent/33-of-33 figures are all unaffected, since no line under
+  `ontology/nornir/` or `ontology/yggdrasil/` changed, and `gjoll_invocation_harness` and
+  `promotion_invocation_harness` both stay exactly as measured before this build, since neither is
+  touched by it. See `plans/dd/gjallarhorn.md` for the full design and `DECISIONS.md` D126 to
+  D130 for the build record.
 - **Ontology sources** (`ontology/`): BFO 2020 loaded (`upper/bfo`, CC BY 4.0);
   SUMO fetched as unloaded GPL reference (`reference/sumo`).
 - **The documentation spine**: invariants, ontology methodology, decision log,
@@ -1562,7 +1694,7 @@ From `DECISIONS.md` section 5. Nothing here is a surprise; each has a trigger.
 | D103: `AgentContext` attestation (D97's item (c), identity/integrity axis only) | SETTLED (with three limits) | Built: `ontology/nornir/authorisation_record.py` extends D94's authoriser-plus-digest pattern to a new record type, and `AgentContext` becomes its first record type, verified at `resolve()`/`Nornir.run` when a `TrustedAuthoriserSet` is supplied; an altered, unattested or unknown-authoriser context is REFUSED. Three limits stated, not closed: (1) enforcement is opt-in, no non-test caller supplies a trusted set today; (2) attestation binds identity and integrity, never honesty, and unlike the sink-declaration seam there is NO honesty backstop at all on the control surface, not even a supplied `sink_registry`; (3) D100's EC-8 in-process label rewrite stays untouched. For the same reason as (2) and (3), it does NOT close D100's own narrow remaining gap (a caller rewriting the stamp in process) |
 | D99 cross-domain relatedness has no automated check: `Ontology.ancestors()`/`anchor_of()`/`parents()` have zero callers, so the D23/D29/D59 claim that all domains anchor to the same BFO class is verified only by prose and by an attach test that proves isolation, not relatedness | SETTLED (closed by D101) | D101 added `run_bfo_relatedness` to `ontology/tests/harness.py`: every `DOMAIN_TYPE`/`FAILSAFE` node must resolve a non-None anchor, and the domain/failsafe roots must share exactly one BFO anchor, both checked against a mandatory negative control first. Live-verified on the seed ontology (23 nodes, six roots, one shared anchor, `bfo:generically_dependent_continuant`); the RED bar stayed at exactly 22, unaffected. This is a regression check re-verified on every run, not a one-off proof that a future domain will anchor correctly |
 | **D118 settles the code licence: AGPL-3.0-or-later, for all code.** D109 to D117 recorded this as a genuinely open blocker across the whole seven-step build order, growing from five crates to six as build-order step seven (D115) landed `crates/cognition-client/` and the top-level `cognition/` Python package, still unsettled; the operator was asked explicitly whether to settle before that sixth crate landed (the build spec's own step 0, EC-52) and chose explicitly to proceed with the build and settle before merge, not before build, a choice this row's predecessors recorded rather than smoothed over. D118 executes that choice: a root `LICENSE` file carries the AGPL-3.0 text verbatim; all six crate manifests (`crates/boundary-gjoll/Cargo.toml`, `crates/hierarchy-vor/Cargo.toml`, `crates/himinbjorg/Cargo.toml`, `crates/actuator-git/Cargo.toml`, `crates/process-engine/Cargo.toml`, `crates/cognition-client/Cargo.toml`) carry `license = "AGPL-3.0-or-later"`; and every tracked source file outside `ontology/reference/sumo/` carries an SPDX header, 89 Python files and 61 Rust files, 150 in total, mechanically checked by `ontology/tests/harness.py::run_licence_posture`. `LICENSE.md` covers documentation only (CC-BY-SA-4.0) and is unaffected; `ontology/reference/sumo/`'s GPL reference-only quarantine (D38, D40) is a separate and independent matter, untouched by this settlement, and remains true exactly as before | SETTLED (D118) | No longer blocks publication on this item. `LICENSE.md`'s Scope section now states the settlement rather than naming AGPL-3.0-or-later as an example (`e.g.`); the licence question is a one-way door now closed, and the historical rows (D109 to D117, and the consistency checks resting on them) keep their original "OPEN at that step" wording with a forward pointer to this row rather than being rewritten |
-| **D120 to D123 build Gjöll's promotion-requirement gate; the live-minting path is named as the actual open item, not the mechanism itself.** The mechanism (`GatePolicy`, `GateResult`, `PromotionRecord`, `VerifiedPromotion`) is built and DEMONSTRATED under harness and test invocation only. What remains open, and what forces closing it, is stated plainly rather than left implicit: nothing can mint a `VerifiedPromotion` at runtime because the live authoring path is **Gjallarhorn's protected channel, which is unbuilt**; the corroboration, re-derivation and semantic-constraint gates stay specified and unimplemented; the substrate stays unshared between `PromotionRecord` and `CohortDefinition`; and the standing-grant/attendance-surface work stays out of scope by instruction | OPEN (Gjallarhorn: unbuilt; the three gates: specified, not built; substrate sharing: deferred with a named trigger) | Gjallarhorn being built is deferral 1 of `.opencode/plans/rust-promotion-gate-spec.md` section 11.2: until then, `promotion_invocation_harness.py` correctly and permanently reports zero non-test callers, because there is nothing to call it from outside a test. The corroboration/re-derivation/semantic-constraint gates trigger on the capability set growing to where their respective evidence class becomes genuinely available (`plans/dd/gjoll.md` section 10's own "built as the capability set grows"). Substrate extraction (brainstorm Approach C) triggers on a THIRD record type needing attestation outside `hierarchy-vor`, named as likely rather than hypothetical (three candidates already named: the hierarchy manifest, attendance attestation, standing-grant records) |
+| **D120 to D123 build Gjöll's promotion-requirement gate; the live-minting path is named as the actual open item, not the mechanism itself, and that open item is now known to be two halves, corrected after the Gjallarhorn build.** The mechanism (`GatePolicy`, `GateResult`, `PromotionRecord`, `VerifiedPromotion`) is built and DEMONSTRATED under harness and test invocation only. Nothing can mint a `VerifiedPromotion` at runtime, and the reason now needs two clauses, not one: **half one, Gjallarhorn's protected channel, is CLOSED** (`crates/gjallarhorn/`, this build), giving a human a place to act on a promotion request; **half two, a promotion-authoring entry point inside `crates/hierarchy-vor/` that computes an attestation rather than checking one, is OPEN**, because `compute_record_attestation` and `TrustedAuthoriserSet::secret_for` are both `pub(crate)` under that crate's own REQ-13. The corroboration, re-derivation and semantic-constraint gates stay specified and unimplemented; the substrate stays unshared between `PromotionRecord` and `CohortDefinition`; and the standing-grant/attendance-surface work stays out of scope by instruction | OPEN (the authoring entry point inside `hierarchy-vor`: not started, its own decision row needed; the three gates: specified, not built; substrate sharing: deferred with a named trigger) | The authoring entry point is deferral 1b of `.opencode/plans/rust-promotion-gate-spec.md` section 11.2 (deferral 1a, the channel, is now discharged): until it exists, `promotion_invocation_harness.py` correctly and permanently reports zero non-test callers, because there is nothing to call it from outside a test. The corroboration/re-derivation/semantic-constraint gates trigger on the capability set growing to where their respective evidence class becomes genuinely available (`plans/dd/gjoll.md` section 10's own "built as the capability set grows"). Substrate extraction (brainstorm Approach C) triggers on a THIRD record type needing attestation outside `hierarchy-vor`, named as likely rather than hypothetical (three candidates already named: the hierarchy manifest, attendance attestation, standing-grant records) |
 
 D25, D32 and D38 were resolved by the substrate spike. D31 (domain governance) is
 settled single-curated, with its cross-domain priority principle D52; D51 (masking)
