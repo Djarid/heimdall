@@ -6,33 +6,20 @@
 //! separation (`.opencode/plans/gjallarhorn-build-spec.md`, issue #114 and
 //! its successors #115 to #117).
 //!
-//! STATUS AT THIS COMMIT (issue #114, spec files 1 to 4 only): only
-//! `types.rs` carries real content. The vocabulary is real: the closed
+//! STATUS AT THIS COMMIT (issue #117, spec files 1 to 11): the crate is
+//! complete against this spec's own module-by-module design. `types.rs`,
+//! `mint.rs`, `routing.rs`, `record.rs`, `channel.rs` and `aggregate.rs`
+//! landed in issues #114 to #116; `delivery.rs` and `raise.rs` land here.
+//! Every module named in section 4.0 now carries real content: the closed
 //! eight-variant [`EventType`], the closed four-variant [`Route`] with its
 //! total [`Route::force`], [`Severity`] with its total [`Severity::ordinal`],
-//! [`SourceProvenance`] and the opaque [`GjallarhornEvent`] with every field
-//! private and construction confined to `pub(crate) GjallarhornEvent::new`
-//! (REQ-10, REQ-11, GJ-B-1). `mint.rs`, `routing.rs`, `record.rs`,
-//! `channel.rs`, `aggregate.rs`, `delivery.rs` and `raise.rs` are declared
-//! here as modules so the crate's eventual shape is visible, but each is
-//! currently an empty file carrying only its SPDX header: no type, no
-//! function and no re-export from any of them exists yet. That work belongs
-//! to issues #115 to #117 and is deliberately left undone here rather than
-//! implemented ahead of its own scope.
-//!
-//! Because of that, `crate::mint`, `crate::routing`, `crate::record`,
-//! `crate::channel`, `crate::aggregate`, `crate::delivery` and `crate::raise`
-//! currently expose nothing, and this crate's own
-//! `unit_tests/routing_table.rs`, `unit_tests/aggregation.rs`,
-//! `unit_tests/channel_separation.rs` and `unit_tests/raise_failclosed.rs`
-//! (wired in below per REQ-52, because every unit-test file that exists on
-//! disk must be declared here regardless of whether the module it exercises
-//! is built yet) fail to compile against those empty modules. That failure
-//! is expected and correct at this stage: it is the next issue's starting
-//! point, not a defect in this one. `unit_tests/event_and_mint.rs` is wired
-//! in on the same footing and is the one unit-test file this issue's own
-//! scope makes buildable, once `mint.rs` and `aggregate.rs` exist (issue
-//! #115); until then it too fails to compile, for the same honest reason.
+//! [`SourceProvenance`], the opaque [`GjallarhornEvent`], the eight minting
+//! functions, the hardcoded routing table, the event recorder and its one
+//! minimal implementation, the two channel structures and their single
+//! admission rule, `aggregate` and its correlation key, the one-method
+//! delivery contract and its one in-process retaining implementation, and
+//! [`raise::raise`] itself sequencing record, then route, then admit, then
+//! deliver, exactly once, in that order (REQ-21).
 //!
 //! Four further things are stated here, in prose a reader cannot miss,
 //! because section 4.9 of the spec requires the crate-root doc comment to
@@ -65,6 +52,27 @@ pub mod mint;
 pub mod raise;
 pub mod record;
 pub mod routing;
+
+// Section 4.9's crate-root re-export list (REQ-52's own module-split
+// convention: `mod types;` with items re-exported individually above;
+// every other module stays `pub mod` with its own items reachable either
+// through the module path or, for the items section 4.9 names by name,
+// re-exported here too so `gjallarhorn::raise`, `gjallarhorn::EventRecorder`
+// and the rest all resolve at the crate root for any external caller,
+// including the one live raise site inside `crates/process-engine/`
+// (OR-5, OR-7) and `tests/public_surface.rs`).
+pub use aggregate::{AggregateRefusal, Incident, aggregate, correlation_key_for};
+pub use channel::{Admission, ProtectedChannel, TriageQueue, admission_for};
+pub use delivery::{Delivery, InProcessDelivery};
+pub use mint::{
+    MintRefusal, mint_anomaly_surfaced, mint_attempt_introspection_or_canary_fire,
+    mint_audit_log_integrity_failure, mint_constraint_axiom_violated,
+    mint_instruction_pattern_at_boundary, mint_promotion_request_above_threshold,
+    mint_resource_limit_breached, mint_taint_boundary_breach_attempt,
+};
+pub use raise::{RaiseOutcome, RaiseRefusal, raise};
+pub use record::{EventRecorder, MinimalEventRecorder};
+pub use routing::{GLOBAL_DEFAULT_ROUTE, route_for};
 
 // The only test-related construct permitted anywhere under src/ (REQ-52).
 // One `#[cfg(test)] #[path = ...] mod ...;` declaration per unit-test file,
