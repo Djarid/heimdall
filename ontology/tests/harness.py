@@ -179,6 +179,17 @@ class Report:
         # and 28th counters summed into `fatal`.
         self.rust_promotion_gate_failures = 0
         self.promotion_invocation_failures = 0
+        # REQ-55 (`.opencode/plans/gjallarhorn-build-spec.md`): Gjallarhorn's
+        # own posture detector (dependency posture, forbidden-import scan,
+        # the EventType-not-an-input scan, test/code isolation, the REQ-47
+        # absent-counterparty marker and the Rust suite) and its own live
+        # invocation-boundary detector, folded in following the
+        # run_rust_promotion_gate/run_promotion_invocation_boundary
+        # registration pattern above, exactly, and additively: no existing
+        # counter, obligation, ordering or message above changes behaviour.
+        # These are the 29th and 30th counters summed into `fatal`.
+        self.rust_gjallarhorn_failures = 0
+        self.gjallarhorn_invocation_failures = 0
 
     def line(self, s: str) -> None:
         self.lines.append(s)
@@ -2358,6 +2369,91 @@ def run_promotion_invocation_boundary(rep: Report) -> None:
     rep.line("")
 
 
+def run_rust_gjallarhorn(rep: Report) -> None:
+    """REQ-55 (`.opencode/plans/gjallarhorn-build-spec.md`): Gjallarhorn's own
+    posture detector at `crates/gjallarhorn/` proves dependency posture
+    (importing `rust_gate_harness.check_dependency_posture` with the strict
+    empty default, never widened, REQ-2), the forbidden-import text scan
+    (REQ-6), the EventType-not-an-input public-surface scan (REQ-11), the
+    test/code isolation grep (REQ-52), the REQ-47 absent-counterparty marker
+    (a live scan for the absence of any crate named fenrir or huginn) and
+    the Rust suite; it does NOT advance invariant 3.6's live-invocation
+    status, which `run_gjallarhorn_invocation_boundary` below governs
+    separately. Wired in following the `run_rust_promotion_gate` precedent:
+    this standalone sub-harness's own `main()` already returns a real
+    pass/fail code (0 clean, 1 on failure), so a failure here is folded into
+    the main suite's fatal count rather than left unregistered. Run it
+    directly for detail (`python -m ontology.tests.rust_gjallarhorn_harness`)."""
+    import contextlib
+    import io
+    from . import rust_gjallarhorn_harness
+
+    rep.line("=== REQ-55 Gjallarhorn posture detector: dependency posture, "
+              "forbidden-import scan, EventType-not-an-input scan, test/code "
+              "isolation, the REQ-47 absent-counterparty marker and the Rust "
+              "suite, not invariant 3.6's live-invocation status ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = rust_gjallarhorn_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] crates/gjallarhorn/ carries the strict empty dependency "
+                  "posture, none of REQ-6's forbidden tokens outside a comment, "
+                  "GjallarhornEvent::new stays pub(crate) with no public constructor "
+                  "taking an event type, keeps every test construct out of src/, "
+                  "prints the REQ-47 absent-counterparty marker live (Fenrir and "
+                  "Huginn do not exist in this workspace, so the design document's "
+                  "own first-named load-bearing test is NOT RUN), and passes its own "
+                  "Rust suite (or loudly skips that one step alone, if no toolchain "
+                  "is present). This proves mechanical posture, not invariant 3.6's "
+                  "live-invocation status (run the module directly for detail)")
+    else:
+        rep.rust_gjallarhorn_failures += 1
+        rep.line("  [CRITICAL] Gjallarhorn posture detector FAILED (run it directly for detail)")
+    rep.line("")
+
+
+def run_gjallarhorn_invocation_boundary(rep: Report) -> None:
+    """REQ-44 to REQ-46 (`.opencode/plans/gjallarhorn-build-spec.md`): the live
+    invocation-boundary detector for `gjallarhorn::raise`, on
+    `promotion_invocation_harness`'s own function shapes and
+    `actuator_invocation_harness.ACTUATOR_CALL_ALLOWLIST`'s own
+    exactly-one-required polarity, the OPPOSITE of
+    `run_promotion_invocation_boundary`'s zero-required polarity above
+    (OR-5, EC-22, EC-23): zero non-test call sites of `raise` is a FAILURE
+    here, and so is a second, unlisted call site. Reads exactly one
+    non-test call site (the allowlisted one, inside
+    `crates/process-engine/src/sequence.rs`'s `GateBlocked` branch); it does
+    NOT advance invariant 3.6 beyond that honest bound. Wired in following
+    the `run_promotion_invocation_boundary` precedent: this standalone
+    sub-harness's own `main()` already returns a real pass/fail code (0
+    clean, 1 on failure), so a failure here is folded into the main suite's
+    fatal count rather than left unregistered. Run it directly for detail
+    (`python -m ontology.tests.gjallarhorn_invocation_harness`)."""
+    import contextlib
+    import io
+    from . import gjallarhorn_invocation_harness
+
+    rep.line("=== REQ-44 to REQ-46 Gjallarhorn invocation boundary: a token scan, "
+              "weaker than an AST scan, exactly-one-required polarity (the "
+              "opposite of promotion_invocation_harness's zero-required polarity), "
+              "not invariant 3.6 beyond that honest bound ===")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = gjallarhorn_invocation_harness.main()
+    if rc == 0:
+        rep.line("  [PASS] exactly one non-test call site of gjallarhorn::raise "
+                  "today (the allowlisted one, inside "
+                  "crates/process-engine/src/sequence.rs's GateBlocked branch); "
+                  "the negative controls prove the scanner bites in both "
+                  "directions (zero call sites fails, a second unlisted call site "
+                  "fails, a test-path call site is not flagged). This does not "
+                  "advance invariant 3.6 beyond that honest bound (run the module "
+                  "directly for detail)")
+    else:
+        rep.gjallarhorn_invocation_failures += 1
+        rep.line("  [CRITICAL] Gjallarhorn invocation boundary detector FAILED "
+                  "(run it directly for detail)")
+    rep.line("")
+
+
 def main() -> int:
     data = json.loads(CORPUS.read_text())
     cases = data["cases"]
@@ -2434,6 +2530,8 @@ def main() -> int:
     run_licence_posture(rep)
     run_rust_promotion_gate(rep)
     run_promotion_invocation_boundary(rep)
+    run_rust_gjallarhorn(rep)
+    run_gjallarhorn_invocation_boundary(rep)
 
     rep.dump()
 
@@ -2458,7 +2556,9 @@ def main() -> int:
              + rep.rust_cognition_client_failures
              + rep.licence_posture_failures
              + rep.rust_promotion_gate_failures
-             + rep.promotion_invocation_failures)
+             + rep.promotion_invocation_failures
+             + rep.rust_gjallarhorn_failures
+             + rep.gjallarhorn_invocation_failures)
     print()
     if fatal == 0:
         print("SUITE PASS: no critical findings. Coverage is reported above; the")
