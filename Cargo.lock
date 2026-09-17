@@ -67,6 +67,7 @@ version = "0.1.0"
 dependencies = [
  "boundary-gjoll",
  "cognition-client",
+ "gjallarhorn",
  "hierarchy-vor",
  "himinbjorg",
 ]

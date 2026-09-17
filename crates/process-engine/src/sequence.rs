@@ -10,6 +10,23 @@
 //! refusal carry-through. No back edge anywhere in this module's own
 //! control flow, and no adjudication of its own: the engine sequences,
 //! it does not decide.
+//!
+//! **`.opencode/plans/gjallarhorn-build-spec.md` (REQ-39 to REQ-42, OR-5,
+//! OR-7): the one live `gjallarhorn::raise` site.** [`raise_constraint_axiom_violated`]
+//! calls it, once, from the `GateBlocked` branch of
+//! [`run_sequence_with_cognition`], after the gate's decision is already
+//! known and after `EngineOutcome::GateBlocked` is already built as a
+//! complete, owned value. The `EngineOutcome` returned on that branch is
+//! byte-identical whether the raise succeeds or fails (REQ-40): this
+//! module does not `match` or `if let` on `gjallarhorn::raise`'s `Result`
+//! to select an outcome variant, alter the six carried `CheckRecord`s or
+//! change an exit code. The recorder, the protected channel, the triage
+//! queue and the delivery implementation are all constructed fresh, once
+//! per call, inside [`raise_constraint_axiom_violated`] itself (REQ-42),
+//! on this module's own existing precedent of a fresh
+//! `himinbjorg::MinimalDecisionRecorder` per call in [`run_execute`]
+//! above: no static, no lazy global, no shared mutable state and no
+//! cross-run accumulation.
 
 use crate::cognition::{CognitionStep, DefaultCognitionStep, RealCognitionStep};
 use crate::outcome::EngineOutcome;
@@ -81,7 +98,10 @@ pub(crate) fn accept_task<'a>(
     task: &EngineTask,
     cohort: &'a hierarchy_vor::VerifiedCohort,
 ) -> Result<
-    (himinbjorg::AgentContext<'a>, himinbjorg::EffectiveSurface<'a>),
+    (
+        himinbjorg::AgentContext<'a>,
+        himinbjorg::EffectiveSurface<'a>,
+    ),
     EngineOutcome,
 > {
     if !is_task_well_formed(task) {
@@ -101,11 +121,12 @@ pub(crate) fn accept_task<'a>(
         declared_cost: task.declared_cost,
     };
 
-    let context = himinbjorg::build_context(&agent_id, &task_context, cohort).map_err(|refusal| {
-        EngineOutcome::RefusedBeforeCognition {
-            reason: format!("himinbjorg::build_context refused: {refusal:?}"),
-        }
-    })?;
+    let context =
+        himinbjorg::build_context(&agent_id, &task_context, cohort).map_err(|refusal| {
+            EngineOutcome::RefusedBeforeCognition {
+                reason: format!("himinbjorg::build_context refused: {refusal:?}"),
+            }
+        })?;
     let surface = himinbjorg::enforce_definition(&agent_id, cohort).map_err(|refusal| {
         EngineOutcome::RefusedBeforeCognition {
             reason: format!("himinbjorg::enforce_definition refused: {refusal:?}"),
@@ -152,6 +173,72 @@ pub(crate) fn run_execute(
     )
 }
 
+/// The `GateBlocked` branch's own single call site of `gjallarhorn::raise`
+/// (`.opencode/plans/gjallarhorn-build-spec.md` REQ-39, REQ-40, REQ-42,
+/// OR-5, OR-7): the only non-test call site of `raise` anywhere in the
+/// workspace. Called after the gate's decision is known and after
+/// `EngineOutcome::GateBlocked` is already a complete, owned value, so
+/// nothing this function does or fails to do can feed back into an
+/// authorisation outcome (REQ-40): this function's own return type is
+/// `()`, and its caller never inspects a `Result` from it at all.
+///
+/// Mints one `EventType::ConstraintAxiomViolated` event, through
+/// [`gjallarhorn::mint_constraint_axiom_violated`] and no other minting
+/// function (REQ-39): the raising component names Himinbjörg's
+/// validation as the origin of the decision, and the concrete origin
+/// identifier names the proposal's own task.
+///
+/// The recorder, the protected channel, the triage queue and the
+/// delivery implementation are all constructed fresh here, once per call
+/// (REQ-42), on this module's own existing precedent of a fresh
+/// `himinbjorg::MinimalDecisionRecorder` per call in [`run_execute`]
+/// above: no static, no lazy global, no shared mutable state and no
+/// cross-run accumulation.
+///
+/// A raise failure (a failed mint, a failed record write or a failed
+/// delivery) is deliberately swallowed here rather than propagated: the
+/// only thing this function's caller is permitted to do with the
+/// `Result` `gjallarhorn::raise` returns is avoid its own `#[must_use]`
+/// warning, never branch on it to select an `EngineOutcome` variant,
+/// alter a carried `CheckRecord` or change an exit code (REQ-40). The
+/// `let _ =` bindings below are that avoidance, not a diagnostic that
+/// could later grow into a decision.
+fn raise_constraint_axiom_violated(task: &EngineTask) {
+    let mut recorder = gjallarhorn::MinimalEventRecorder::new();
+    let mut protected = gjallarhorn::ProtectedChannel::new();
+    let mut triage = gjallarhorn::TriageQueue::new();
+    let mut delivery = gjallarhorn::InProcessDelivery::new();
+
+    let source = gjallarhorn::SourceProvenance::new(
+        "himinbjorg-validation".to_string(),
+        task.task_id.clone(),
+        "engine".to_string(),
+        false,
+    );
+
+    let minted = gjallarhorn::mint_constraint_axiom_violated(
+        source,
+        gjallarhorn::Severity::High,
+        format!("audit-ref:{}", task.task_id),
+        0,
+    );
+
+    if let Ok(event) = minted {
+        // The `Result` below is inspected only to avoid the
+        // `#[must_use]` warning on `gjallarhorn::raise` (REQ-40): this
+        // `let _ =` never selects an EngineOutcome variant, never alters
+        // a carried CheckRecord and never changes an exit code. Nothing
+        // downstream of this call reads this value at all.
+        let _ = gjallarhorn::raise(
+            event,
+            &mut recorder,
+            &mut protected,
+            &mut triage,
+            &mut delivery,
+        );
+    }
+}
+
 /// Runs the fixed five-step sequence with a caller-supplied cognition
 /// implementation (REQ-11's mandatory-shell pattern, `pub(crate)` only:
 /// the crate's one PUBLIC entry point is [`run_sequence`] below, which
@@ -195,9 +282,16 @@ pub(crate) fn run_sequence_with_cognition(
     // this run.
     let decision = run_gate(&context, &surface, &proposal);
     if decision.decision != himinbjorg::Decision::Allow {
-        return EngineOutcome::GateBlocked {
+        // The outcome value is determined FIRST, in full, before the raise
+        // site below ever runs (REQ-39, REQ-40): nothing the raise call
+        // below does or fails to do can feed back into `outcome`, because
+        // `outcome` is already a complete, owned value by the time
+        // `raise_constraint_axiom_violated` is even called.
+        let outcome = EngineOutcome::GateBlocked {
             checks: decision.checks,
         };
+        raise_constraint_axiom_violated(task);
+        return outcome;
     }
     let authorisation = match decision.authorisation() {
         Some(authorisation) => authorisation,

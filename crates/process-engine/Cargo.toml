@@ -48,3 +48,11 @@ boundary-gjoll = { path = "../boundary-gjoll" }
 # runs one way, this crate to `cognition-client`; that crate's own
 # `[dependencies]` table stays empty.
 cognition-client = { path = "../cognition-client" }
+# `.opencode/plans/gjallarhorn-build-spec.md` (REQ-4, OR-7): a fifth
+# in-workspace path dependency. The raise site lives at the GateBlocked
+# branch of `src/sequence.rs`, one step AFTER Himinbjörg's own decision is
+# known, never inside the function that decides: OR-7's whole purpose is
+# that no authorisation-path crate (`himinbjorg`, `boundary-gjoll`,
+# `hierarchy-vor`, `actuator-git`, `cognition-client`) gains an alerting
+# dependency, and this manifest is the only one that does.
+gjallarhorn = { path = "../gjallarhorn" }
