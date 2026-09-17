@@ -167,8 +167,17 @@ SEQUENCE_RS = SRC_DIR / "sequence.rs"
 # This is a reviewed, disclosed widening, on `PE-6`'s own precedent for
 # extending an allowlist by a justified, keyed entry rather than by
 # silently raising a count.
+#
+# WIDENED again for the Gjallarhorn build
+# (`.opencode/plans/gjallarhorn-build-spec.md` REQ-4, OR-7; expected
+# `DECISIONS.md` row for the fifth process-engine path-dependency ruling): a
+# fifth name, `gjallarhorn`, is added. The raise site lives at the
+# `GateBlocked` branch of `crates/process-engine/src/sequence.rs`, one step
+# after Himinbjörg's own decision is known, never inside the function that
+# decides, so OR-7's own purpose (no authorisation-path crate gains an
+# alerting dependency) holds.
 PERMITTED_DEPENDENCIES: frozenset[str] = frozenset(
-    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client"}
+    {"himinbjorg", "hierarchy-vor", "boundary-gjoll", "cognition-client", "gjallarhorn"}
 )
 
 FORBIDDEN_DEPENDENCIES: frozenset[str] = frozenset({"actuator-git"})
